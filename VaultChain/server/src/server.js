@@ -6,7 +6,9 @@ const port = process.env.PORT || 3000;
 async function startServer() {
 	await initializeDatabase();
 
-	app.listen(port);
+	app.listen(port, () => {
+		console.log(`VaultChain API running on port ${port}`);
+	});
 }
 
 startServer().catch((error) => {
