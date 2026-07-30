@@ -107,7 +107,77 @@ async function upsertAssetHash({ assetId, sha256Hash }) {
 	return mapAssetHashRow(row);
 }
 
+function mapAssetMetadataRow(row) {
+	if (!row) {
+		return null;
+	}
+
+	return {
+		assetId: row.asset_id,
+		width: row.width,
+		height: row.height,
+		camera: row.camera,
+		location: row.location,
+		createdDate: row.created_date,
+		metadataJson: row.metadata_json ? JSON.parse(row.metadata_json) : null,
+	};
+}
+
+async function upsertAssetMetadata({ assetId, width, height, camera, location, createdDate, metadataJson }) {
+	await run(
+		`INSERT INTO asset_metadata (
+			asset_id,
+			width,
+			height,
+			camera,
+			location,
+			created_date,
+			metadata_json
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(asset_id) DO UPDATE SET
+			width = excluded.width,
+			height = excluded.height,
+			camera = excluded.camera,
+			location = excluded.location,
+			created_date = excluded.created_date,
+			metadata_json = excluded.metadata_json`,
+		[
+			assetId,
+			width ?? null,
+			height ?? null,
+			camera || null,
+			location || null,
+			createdDate || null,
+			JSON.stringify(metadataJson || {}),
+		]
+	);
+
+	const row = await get(
+		`SELECT asset_id, width, height, camera, location, created_date, metadata_json
+		 FROM asset_metadata
+		 WHERE asset_id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetMetadataRow(row);
+}
+
+async function getAssetMetadataByAssetId(assetId) {
+	const row = await get(
+		`SELECT asset_id, width, height, camera, location, created_date, metadata_json
+		 FROM asset_metadata
+		 WHERE asset_id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetMetadataRow(row);
+}
+
 module.exports = {
 	createAsset,
 	upsertAssetHash,
+	upsertAssetMetadata,
+	getAssetMetadataByAssetId,
 };

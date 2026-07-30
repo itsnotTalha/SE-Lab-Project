@@ -1,7 +1,44 @@
 const fs = require('fs/promises');
 const crypto = require('crypto');
 
-async function generateSha256Hash(filePath) {
+function normalizeValue(value) {
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((item) => normalizeValue(item));
+	}
+
+	if (value && typeof value === 'object') {
+		return Object.keys(value)
+			.sort()
+			.reduce((normalized, key) => {
+				const normalizedValue = normalizeValue(value[key]);
+
+				if (normalizedValue !== undefined) {
+					normalized[key] = normalizedValue;
+				}
+
+				return normalized;
+			}, {});
+	}
+
+	if (value === undefined) {
+		return undefined;
+	}
+
+	return value;
+}
+
+function buildHashPayload(assetData = {}, metadata = {}) {
+	return JSON.stringify({
+		asset: normalizeValue(assetData),
+		metadata: normalizeValue(metadata),
+	});
+}
+
+async function generateSha256Hash({ filePath, assetData = {}, metadata = {} }) {
 	if (!filePath) {
 		const error = new Error('Missing file path');
 		error.status = 400;
@@ -25,7 +62,11 @@ async function generateSha256Hash(filePath) {
 		throw readError;
 	}
 
-	return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+	return crypto
+		.createHash('sha256')
+		.update(fileBuffer)
+		.update(buildHashPayload(assetData, metadata))
+		.digest('hex');
 }
 
 module.exports = {
