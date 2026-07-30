@@ -75,6 +75,39 @@ async function createAsset(assetData) {
 	return mapAssetRow(row);
 }
 
+function mapAssetHashRow(row) {
+	if (!row) {
+		return null;
+	}
+
+	return {
+		assetId: row.asset_id,
+		sha256Hash: row.sha256_hash,
+		createdAt: row.created_at,
+	};
+}
+
+async function upsertAssetHash({ assetId, sha256Hash }) {
+	await run(
+		`INSERT INTO asset_hashes (asset_id, sha256_hash, created_at)
+		 VALUES (?, ?, CURRENT_TIMESTAMP)
+		 ON CONFLICT(asset_id) DO UPDATE SET
+			sha256_hash = excluded.sha256_hash`,
+		[assetId, sha256Hash]
+	);
+
+	const row = await get(
+		`SELECT asset_id, sha256_hash, created_at
+		 FROM asset_hashes
+		 WHERE asset_id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetHashRow(row);
+}
+
 module.exports = {
 	createAsset,
+	upsertAssetHash,
 };

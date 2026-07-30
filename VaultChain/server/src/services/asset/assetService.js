@@ -1,4 +1,5 @@
 const assetRepository = require('../../repositories/assetRepository');
+const { generateSha256Hash } = require('../hashing/sha256Service');
 
 function validateUploadInput({ title, category, file }) {
 	if (!title || !String(title).trim()) {
@@ -31,7 +32,7 @@ async function uploadAsset(userId, payload) {
 
 	const { title, description, category, file } = payload;
 
-	return assetRepository.createAsset({
+	const asset = await assetRepository.createAsset({
 		ownerId: userId,
 		title: String(title).trim(),
 		description: description ? String(description).trim() : null,
@@ -41,6 +42,19 @@ async function uploadAsset(userId, payload) {
 		fileSize: file.size,
 		mimeType: file.mimetype,
 	});
+
+	const sha256 = await generateSha256Hash(file.path);
+	const hashRecord = await assetRepository.upsertAssetHash({
+		assetId: asset.id,
+		sha256Hash: sha256,
+	});
+
+	return {
+		asset,
+		hash: {
+			sha256: hashRecord.sha256Hash,
+		},
+	};
 }
 
 module.exports = {
