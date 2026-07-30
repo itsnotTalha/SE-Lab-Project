@@ -1,6 +1,6 @@
 # VaultChain
 
-VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build focuses on authentication and the first protected user experience.
+VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build now covers authentication, the first protected user experience, and authenticated asset uploads.
 
 ## What is implemented now
 
@@ -11,15 +11,17 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
   - `/api/auth/register`
   - `/api/auth/login`
   - `/api/auth/me`
+  - `/api/assets/upload`
   - `/api/dashboard/summary`
 - SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
 - Registration creates a user and wallet together, and login returns a JWT plus basic user data.
 - The authenticated user endpoint returns the signed-in user's profile without exposing the password hash.
 - The dashboard summary endpoint returns real counts from SQLite for assets, verification reports, vault items, and wallet balance.
+- The asset upload endpoint is protected by the existing JWT middleware, accepts jpg/jpeg/png/webp files up to 20 MB, stores uploads in `server/src/uploads/`, and persists asset metadata in SQLite.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage, and the core authentication and dashboard foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
+The app is beyond the initial skeleton stage, and the core authentication, dashboard, and asset upload foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
 
 ## Tech Stack
 
@@ -52,5 +54,5 @@ cd client && npm run dev
 ## Next Steps
 
 - Expand the dashboard with richer analytics and recent activity views.
-- Replace placeholder assets and profile pages with working features.
-- Add authenticated API routes for asset upload, verification, vault management, and wallet activity.
+- Replace placeholder profile pages with working features.
+- Add authenticated API routes for verification, vault management, and wallet activity.
