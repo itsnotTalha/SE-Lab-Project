@@ -5,6 +5,9 @@ function formatMetadataResponse(metadata) {
 	return {
 		width: metadata.width,
 		height: metadata.height,
+		pixelCount: metadata.pixelCount,
+		pixel_count: metadata.pixelCount,
+		patterns: metadata.patterns,
 		camera: metadata.camera,
 		location: metadata.location,
 		created_date: metadata.createdDate,
@@ -26,6 +29,7 @@ const uploadAsset = asyncHandler(async (req, res) => {
 		asset: result.asset,
 		hash: result.hash,
 		metadata: result.metadata,
+		pixelCount: result.asset?.pixelCount ?? result.metadata?.pixelCount ?? null,
 	});
 });
 

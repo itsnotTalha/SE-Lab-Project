@@ -203,6 +203,26 @@ function toPrettyJson(value) {
 	return JSON.stringify(value, null, 2);
 }
 
+function getPixelCount(metadata) {
+	if (!metadata) {
+		return null;
+	}
+
+	const directPixelCount = metadata.pixelCount ?? metadata.pixel_count;
+	if (directPixelCount != null) {
+		return directPixelCount;
+	}
+
+	const width = metadata.width ?? metadata.metadataJson?.ImageWidth;
+	const height = metadata.height ?? metadata.metadataJson?.ImageHeight;
+
+	if (typeof width === 'number' && typeof height === 'number') {
+		return width * height;
+	}
+
+	return null;
+}
+
 export default function DashboardPage() {
 	const [title, setTitle] = useState('');
 	const [category, setCategory] = useState('image');
@@ -368,7 +388,7 @@ export default function DashboardPage() {
 
 						{result ? (
 							<div style={{ ...pageStyles.success, marginTop: '18px' }}>
-								Upload succeeded. Asset id {result.asset?.id} was created and the backend returned hash and metadata details.
+								Upload succeeded. Asset id {result.asset?.id} was created and the backend returned metadata, asset, and hash details.
 							</div>
 						) : null}
 					</section>
@@ -381,6 +401,10 @@ export default function DashboardPage() {
 
 						<div style={pageStyles.list}>
 							<div style={pageStyles.item}>
+								<p style={pageStyles.itemLabel}>Upload metadata</p>
+								<p style={pageStyles.itemValue}>{result?.metadata ? toPrettyJson(result.metadata) : 'No metadata yet'}</p>
+							</div>
+							<div style={pageStyles.item}>
 								<p style={pageStyles.itemLabel}>Asset</p>
 								<p style={pageStyles.itemValue}>{result?.asset ? toPrettyJson(result.asset) : 'No upload yet'}</p>
 							</div>
@@ -389,8 +413,16 @@ export default function DashboardPage() {
 								<p style={pageStyles.itemValue}>{result?.hash?.sha256 || 'No hash yet'}</p>
 							</div>
 							<div style={pageStyles.item}>
-								<p style={pageStyles.itemLabel}>Upload metadata</p>
-								<p style={pageStyles.itemValue}>{result?.metadata ? toPrettyJson(result.metadata) : 'No metadata yet'}</p>
+								<p style={pageStyles.itemLabel}>Pixel count</p>
+								<p style={pageStyles.itemValue}>
+									{getPixelCount(result?.metadata) != null ? getPixelCount(result.metadata).toLocaleString() : 'No pixel count yet'}
+								</p>
+							</div>
+							<div style={pageStyles.item}>
+								<p style={pageStyles.itemLabel}>Patterns</p>
+								<p style={pageStyles.itemValue}>
+									{result?.metadata?.patterns?.length ? result.metadata.patterns.join(', ') : 'No patterns detected'}
+								</p>
 							</div>
 						</div>
 
@@ -413,6 +445,11 @@ export default function DashboardPage() {
 
 						<div style={pageStyles.json}>
 							<strong style={{ color: '#e2e8f0' }}>GET /api/assets/:id/metadata</strong>
+							{metadataLookup ? (
+								<div style={{ marginTop: '10px', color: '#94a3b8' }}>
+									Pixel count: {getPixelCount(metadataLookup) != null ? getPixelCount(metadataLookup).toLocaleString() : 'n/a'}
+								</div>
+							) : null}
 							<pre style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
 								{metadataLookup ? toPrettyJson(metadataLookup) : 'No metadata lookup yet'}
 							</pre>

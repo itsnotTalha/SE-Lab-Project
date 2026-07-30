@@ -112,6 +112,11 @@ function mapAssetMetadataRow(row) {
 		return null;
 	}
 
+	const metadataJson = row.metadata_json ? JSON.parse(row.metadata_json) : null;
+	const derivedPixelCount = row.width && row.height ? row.width * row.height : null;
+	const pixelCount = metadataJson?.pixelCount ?? derivedPixelCount;
+	const patterns = metadataJson?.patterns || [];
+
 	return {
 		assetId: row.asset_id,
 		width: row.width,
@@ -119,11 +124,19 @@ function mapAssetMetadataRow(row) {
 		camera: row.camera,
 		location: row.location,
 		createdDate: row.created_date,
-		metadataJson: row.metadata_json ? JSON.parse(row.metadata_json) : null,
+		pixelCount,
+		patterns,
+		metadataJson,
 	};
 }
 
-async function upsertAssetMetadata({ assetId, width, height, camera, location, createdDate, metadataJson }) {
+async function upsertAssetMetadata({ assetId, width, height, camera, location, createdDate, pixelCount, patterns, metadataJson }) {
+	const normalizedMetadataJson = {
+		...(metadataJson || {}),
+		pixelCount: pixelCount ?? metadataJson?.pixelCount ?? (width && height ? width * height : null),
+		patterns: patterns || metadataJson?.patterns || [],
+	};
+
 	await run(
 		`INSERT INTO asset_metadata (
 			asset_id,
@@ -148,7 +161,7 @@ async function upsertAssetMetadata({ assetId, width, height, camera, location, c
 			camera || null,
 			location || null,
 			createdDate || null,
-			JSON.stringify(metadataJson || {}),
+			JSON.stringify(normalizedMetadataJson),
 		]
 	);
 

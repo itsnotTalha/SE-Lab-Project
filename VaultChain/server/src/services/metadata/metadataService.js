@@ -33,6 +33,32 @@ function pickCreatedDate(metadata) {
 	return metadata.dateTimeOriginal || metadata.createDate || metadata.modifyDate || null;
 }
 
+function buildPatterns(metadata, width, height) {
+	const patterns = [];
+
+	if (width && height) {
+		patterns.push('resolution-available');
+	}
+
+	if (metadata.latitude != null && metadata.longitude != null) {
+		patterns.push('gps-present');
+	}
+
+	if (metadata.make || metadata.model) {
+		patterns.push('camera-present');
+	}
+
+	if (metadata.dateTimeOriginal || metadata.createDate || metadata.modifyDate) {
+		patterns.push('capture-date-present');
+	}
+
+	if (metadata.Orientation != null) {
+		patterns.push('orientation-present');
+	}
+
+	return patterns;
+}
+
 async function extractImageMetadata(filePath) {
 	if (!filePath) {
 		const error = new Error('Missing file path');
@@ -60,14 +86,24 @@ async function extractImageMetadata(filePath) {
 	}
 
 	const parsedMetadata = metadata || {};
+	const width = parsedMetadata.ImageWidth || parsedMetadata.ExifImageWidth || parsedMetadata.PixelXDimension || null;
+	const height = parsedMetadata.ImageHeight || parsedMetadata.ExifImageHeight || parsedMetadata.PixelYDimension || null;
+	const pixelCount = width && height ? width * height : null;
+	const patterns = buildPatterns(parsedMetadata, width, height);
 
 	return {
-		width: parsedMetadata.ImageWidth || parsedMetadata.ExifImageWidth || parsedMetadata.PixelXDimension || null,
-		height: parsedMetadata.ImageHeight || parsedMetadata.ExifImageHeight || parsedMetadata.PixelYDimension || null,
+		width,
+		height,
+		pixelCount,
+		patterns,
 		camera: buildCameraString(parsedMetadata),
 		location: buildLocationString(parsedMetadata),
 		createdDate: pickCreatedDate(parsedMetadata),
-		metadataJson: parsedMetadata,
+		metadataJson: {
+			...parsedMetadata,
+			pixelCount,
+			patterns,
+		},
 	};
 }
 

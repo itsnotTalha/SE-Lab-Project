@@ -49,6 +49,8 @@ async function uploadAsset(userId, payload) {
 		assetId: asset.id,
 		width: metadata.width,
 		height: metadata.height,
+		pixelCount: metadata.pixelCount,
+		patterns: metadata.patterns,
 		camera: metadata.camera,
 		location: metadata.location,
 		createdDate: metadata.createdDate,
@@ -57,8 +59,8 @@ async function uploadAsset(userId, payload) {
 
 	const sha256 = await generateSha256Hash({
 		filePath: file.path,
-		assetData: asset,
 		metadata,
+		assetData: asset,
 	});
 	const hashRecord = await assetRepository.upsertAssetHash({
 		assetId: asset.id,
@@ -66,7 +68,10 @@ async function uploadAsset(userId, payload) {
 	});
 
 	return {
-		asset,
+		asset: {
+			...asset,
+			pixelCount: metadataRecord?.pixelCount ?? metadata.pixelCount ?? null,
+		},
 		hash: {
 			sha256: hashRecord.sha256Hash,
 		},

@@ -33,8 +33,8 @@ function normalizeValue(value) {
 
 function buildHashPayload(assetData = {}, metadata = {}) {
 	return JSON.stringify({
-		asset: normalizeValue(assetData),
 		metadata: normalizeValue(metadata),
+		asset: normalizeValue(assetData),
 	});
 }
 
