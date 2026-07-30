@@ -1,5 +1,6 @@
 const assetRepository = require('../../repositories/assetRepository');
 const { generateSha256Hash } = require('../hashing/sha256Service');
+const { generatePhash } = require('../hashing/phashService');
 const { extractImageMetadata } = require('../metadata/metadataService');
 
 function validateUploadInput({ title, category, file }) {
@@ -33,6 +34,25 @@ async function uploadAsset(userId, payload) {
 
 	const { title, description, category, file } = payload;
 
+	const metadata = await extractImageMetadata(file.path);
+	const sha256 = await generateSha256Hash({
+		filePath: file.path,
+		metadata,
+	});
+	const phash = await generatePhash({
+		filePath: file.path,
+		mimeType: file.mimetype,
+	});
+	const existingHash = await assetRepository.findAssetHashByPhash(phash, null);
+
+	if (existingHash) {
+		const error = new Error(`This image was already uploaded before as asset id ${existingHash.assetId}`);
+		error.status = 409;
+		error.code = 'DUPLICATE_IMAGE';
+		error.duplicateAssetId = existingHash.assetId;
+		throw error;
+	}
+
 	const asset = await assetRepository.createAsset({
 		ownerId: userId,
 		title: String(title).trim(),
@@ -43,8 +63,6 @@ async function uploadAsset(userId, payload) {
 		fileSize: file.size,
 		mimeType: file.mimetype,
 	});
-
-	const metadata = await extractImageMetadata(file.path);
 	const metadataRecord = await assetRepository.upsertAssetMetadata({
 		assetId: asset.id,
 		width: metadata.width,
@@ -57,14 +75,13 @@ async function uploadAsset(userId, payload) {
 		metadataJson: metadata.metadataJson,
 	});
 
-	const sha256 = await generateSha256Hash({
-		filePath: file.path,
-		metadata,
-		assetData: asset,
-	});
 	const hashRecord = await assetRepository.upsertAssetHash({
 		assetId: asset.id,
 		sha256Hash: sha256,
+	});
+	const phashRecord = await assetRepository.updateAssetPhash({
+		assetId: asset.id,
+		phash,
 	});
 
 	return {
@@ -74,6 +91,9 @@ async function uploadAsset(userId, payload) {
 		},
 		hash: {
 			sha256: hashRecord.sha256Hash,
+			phash: phashRecord.phash,
+			alreadyUploadedBefore: false,
+			duplicateAssetId: null,
 		},
 		metadata: metadataRecord,
 	};
@@ -97,7 +117,30 @@ async function getAssetMetadata(assetId) {
 	return metadata;
 }
 
+async function getAssetHash(assetId) {
+	if (!assetId) {
+		const error = new Error('Asset id is required');
+		error.status = 400;
+		throw error;
+	}
+
+	const hash = await assetRepository.getAssetHashByAssetId(assetId);
+
+	if (!hash) {
+		const error = new Error('Asset hash not found');
+		error.status = 404;
+		throw error;
+	}
+
+	return {
+		...hash,
+		alreadyUploadedBefore: false,
+		duplicateAssetId: null,
+	};
+}
+
 module.exports = {
 	uploadAsset,
 	getAssetMetadata,
+	getAssetHash,
 };

@@ -83,6 +83,7 @@ function mapAssetHashRow(row) {
 	return {
 		assetId: row.asset_id,
 		sha256Hash: row.sha256_hash,
+		phash: row.phash,
 		createdAt: row.created_at,
 	};
 }
@@ -97,12 +98,69 @@ async function upsertAssetHash({ assetId, sha256Hash }) {
 	);
 
 	const row = await get(
-		`SELECT asset_id, sha256_hash, created_at
+		`SELECT asset_id, sha256_hash, phash, created_at
 		 FROM asset_hashes
 		 WHERE asset_id = ?
 		 LIMIT 1`,
 		[assetId]
 	);
+
+	return mapAssetHashRow(row);
+}
+
+async function updateAssetPhash({ assetId, phash }) {
+	const result = await run(
+		`UPDATE asset_hashes
+		 SET phash = ?
+		 WHERE asset_id = ?`,
+		[phash, assetId]
+	);
+
+	if (result.changes === 0) {
+		const error = new Error('Asset hash record not found');
+		error.status = 404;
+		throw error;
+	}
+
+	const row = await get(
+		`SELECT asset_id, sha256_hash, phash, created_at
+		 FROM asset_hashes
+		 WHERE asset_id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetHashRow(row);
+}
+
+async function getAssetHashByAssetId(assetId) {
+	const row = await get(
+		`SELECT asset_id, sha256_hash, phash, created_at
+		 FROM asset_hashes
+		 WHERE asset_id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetHashRow(row);
+}
+
+async function findAssetHashByPhash(phash, excludeAssetId) {
+	const query = excludeAssetId == null
+		? `SELECT asset_id, sha256_hash, phash, created_at
+		   FROM asset_hashes
+		   WHERE phash = ?
+		   ORDER BY created_at ASC, asset_id ASC
+		   LIMIT 1`
+		: `SELECT asset_id, sha256_hash, phash, created_at
+		   FROM asset_hashes
+		   WHERE phash = ?
+		     AND asset_id != ?
+		   ORDER BY created_at ASC, asset_id ASC
+		   LIMIT 1`;
+
+	const params = excludeAssetId == null ? [phash] : [phash, excludeAssetId];
+	const row = await get(query, params);
 
 	return mapAssetHashRow(row);
 }
@@ -191,6 +249,9 @@ async function getAssetMetadataByAssetId(assetId) {
 module.exports = {
 	createAsset,
 	upsertAssetHash,
+	updateAssetPhash,
 	upsertAssetMetadata,
 	getAssetMetadataByAssetId,
+	getAssetHashByAssetId,
+	findAssetHashByPhash,
 };

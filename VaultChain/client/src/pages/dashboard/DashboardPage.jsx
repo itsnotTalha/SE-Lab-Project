@@ -235,6 +235,31 @@ export default function DashboardPage() {
 	const [metadataLookup, setMetadataLookup] = useState(null);
 	const [lookupLoading, setLookupLoading] = useState(false);
 	const [lookupError, setLookupError] = useState('');
+	const [hashLookupId, setHashLookupId] = useState('');
+	const [hashLookup, setHashLookup] = useState(null);
+	const [hashLookupLoading, setHashLookupLoading] = useState(false);
+	const [hashLookupError, setHashLookupError] = useState('');
+
+	async function fetchHashesByAssetId(assetId) {
+		if (!assetId) {
+			throw new Error('Enter an asset id to inspect hashes.');
+		}
+
+		const token = localStorage.getItem('vaultchain_token');
+		const response = await fetch(`${API_BASE_URL}/assets/${assetId}/hash`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		});
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(data.message || 'Hash lookup failed');
+		}
+
+		return data.hashes;
+	}
 
 	async function handleUpload(event) {
 		event.preventDefault();
@@ -269,11 +294,42 @@ export default function DashboardPage() {
 			}
 
 			setResult(data);
-			setMetadataLookupId(String(data.asset?.id || ''));
+			const assetId = String(data.asset?.id || '');
+			setMetadataLookupId(assetId);
+			setHashLookupId(assetId);
+
+			if (assetId) {
+				try {
+					const hashes = await fetchHashesByAssetId(assetId);
+					setHashLookup(hashes);
+				} catch (hashFetchError) {
+					setHashLookupError(hashFetchError.message);
+				}
+			}
 		} catch (submitError) {
 			setError(submitError.message);
 		} finally {
 			setLoading(false);
+		}
+	}
+
+	async function handleHashLookup(event) {
+		event.preventDefault();
+		setHashLookupLoading(true);
+		setHashLookupError('');
+		setHashLookup(null);
+
+		try {
+			if (!hashLookupId.trim()) {
+				throw new Error('Enter an asset id to inspect hashes.');
+			}
+
+			const hashes = await fetchHashesByAssetId(hashLookupId.trim());
+			setHashLookup(hashes);
+		} catch (hashLookupSubmitError) {
+			setHashLookupError(hashLookupSubmitError.message);
+		} finally {
+			setHashLookupLoading(false);
 		}
 	}
 
@@ -391,6 +447,13 @@ export default function DashboardPage() {
 								Upload succeeded. Asset id {result.asset?.id} was created and the backend returned metadata, asset, and hash details.
 							</div>
 						) : null}
+						{result?.hash ? (
+							<div style={{ ...pageStyles.success, marginTop: '12px' }}>
+								{result.hash.alreadyUploadedBefore
+									? `This image was already uploaded before as asset id ${result.hash.duplicateAssetId}.`
+									: 'This image does not appear to have been uploaded before.'}
+							</div>
+						) : null}
 					</section>
 
 					<section style={{ ...pageStyles.card, ...pageStyles.panel }}>
@@ -410,7 +473,17 @@ export default function DashboardPage() {
 							</div>
 							<div style={pageStyles.item}>
 								<p style={pageStyles.itemLabel}>SHA-256</p>
-								<p style={pageStyles.itemValue}>{result?.hash?.sha256 || 'No hash yet'}</p>
+								<p style={pageStyles.itemValue}>{result?.hash?.sha256 || hashLookup?.sha256 || 'No hash yet'}</p>
+							</div>
+							<div style={pageStyles.item}>
+								<p style={pageStyles.itemLabel}>pHash</p>
+								<p style={pageStyles.itemValue}>{result?.hash?.phash || hashLookup?.phash || 'No perceptual hash yet'}</p>
+							</div>
+							<div style={pageStyles.item}>
+								<p style={pageStyles.itemLabel}>Already uploaded before</p>
+								<p style={pageStyles.itemValue}>
+									{result?.hash ? (result.hash.alreadyUploadedBefore ? `Yes, asset ${result.hash.duplicateAssetId}` : 'No') : hashLookup ? (hashLookup.alreadyUploadedBefore ? `Yes, asset ${hashLookup.duplicateAssetId}` : 'No') : 'No data yet'}
+								</p>
 							</div>
 							<div style={pageStyles.item}>
 								<p style={pageStyles.itemLabel}>Pixel count</p>
@@ -443,6 +516,23 @@ export default function DashboardPage() {
 							</button>
 						</form>
 
+						<form onSubmit={handleHashLookup} style={{ ...pageStyles.form, marginTop: '16px' }}>
+							<label style={pageStyles.field}>
+								<span style={pageStyles.label}>Lookup hashes by asset id</span>
+								<input
+									type="number"
+									value={hashLookupId}
+									onChange={(event) => setHashLookupId(event.target.value)}
+									style={pageStyles.input}
+									placeholder="e.g. 1"
+								/>
+							</label>
+							{hashLookupError ? <div style={pageStyles.error}>{hashLookupError}</div> : null}
+							<button type="submit" style={pageStyles.buttonSecondary} disabled={hashLookupLoading}>
+								{hashLookupLoading ? 'Loading hashes...' : 'Fetch hashes'}
+							</button>
+						</form>
+
 						<div style={pageStyles.json}>
 							<strong style={{ color: '#e2e8f0' }}>GET /api/assets/:id/metadata</strong>
 							{metadataLookup ? (
@@ -452,6 +542,22 @@ export default function DashboardPage() {
 							) : null}
 							<pre style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
 								{metadataLookup ? toPrettyJson(metadataLookup) : 'No metadata lookup yet'}
+							</pre>
+						</div>
+
+						<div style={{ ...pageStyles.json, marginTop: '16px' }}>
+							<strong style={{ color: '#e2e8f0' }}>GET /api/assets/:id/hash</strong>
+							{hashLookup ? (
+								<div style={{ marginTop: '10px', color: '#94a3b8' }}>
+									SHA-256: {hashLookup.sha256 || 'n/a'}
+									<br />
+									pHash: {hashLookup.phash || 'n/a'}
+									<br />
+									Already uploaded before: {hashLookup.alreadyUploadedBefore ? `Yes, asset ${hashLookup.duplicateAssetId}` : 'No'}
+								</div>
+							) : null}
+							<pre style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+								{hashLookup ? toPrettyJson(hashLookup) : 'No hash lookup yet'}
 							</pre>
 						</div>
 

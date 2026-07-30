@@ -15,6 +15,15 @@ function formatMetadataResponse(metadata) {
 	};
 }
 
+function formatHashResponse(hash) {
+	return {
+		sha256: hash.sha256Hash,
+		phash: hash.phash,
+		alreadyUploadedBefore: hash.alreadyUploadedBefore,
+		duplicateAssetId: hash.duplicateAssetId,
+	};
+}
+
 const uploadAsset = asyncHandler(async (req, res) => {
 	const result = await assetService.uploadAsset(req.user.id, {
 		title: req.body.title,
@@ -42,7 +51,17 @@ const getAssetMetadata = asyncHandler(async (req, res) => {
 	});
 });
 
+const getAssetHash = asyncHandler(async (req, res) => {
+	const hash = await assetService.getAssetHash(Number(req.params.id));
+
+	res.status(200).json({
+		success: true,
+		hashes: formatHashResponse(hash),
+	});
+});
+
 module.exports = {
 	uploadAsset,
 	getAssetMetadata,
+	getAssetHash,
 };
