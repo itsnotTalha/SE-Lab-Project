@@ -21,12 +21,12 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 - The dashboard summary endpoint returns real counts from SQLite for assets, verification reports, vault items, and wallet balance.
 - The asset upload endpoint is protected by the existing JWT middleware, accepts jpg/jpeg/png/webp files up to 20 MB, stores uploads in `server/src/uploads/`, persists asset metadata in SQLite, and generates a SHA-256 hash for each uploaded file.
 - The generated SHA-256 hash is stored in the `asset_hashes` table and returned in the upload response.
-- The upload flow also generates a perceptual hash with `image-hash`, stores it in the existing `asset_hashes` row, and exposes both hashes through `GET /api/assets/:id/hash`.
+- The upload flow also generates a perceptual hash with `image-hash`, stores it in the existing `asset_hashes` row, blocks duplicate image uploads before persistence, and exposes both hashes through `GET /api/assets/:id/hash`.
 - The upload flow also extracts available EXIF metadata with `exifr`, stores width, height, camera, location, created date, and the raw metadata JSON in `asset_metadata`, and exposes it through `GET /api/assets/:id/metadata`.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage, and the core authentication, dashboard, asset upload, hashing, and image metadata foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
+The app is beyond the initial skeleton stage, and the core authentication, dashboard, asset upload, hashing, duplicate protection, and image metadata foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
 
 ## Tech Stack
 
