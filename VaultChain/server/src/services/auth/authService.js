@@ -127,7 +127,24 @@ async function login(payload) {
 	};
 }
 
+async function getAuthenticatedUser(userId) {
+	const user = await authRepository.findUserById(userId);
+
+	if (!user) {
+		throw createHttpError(404, 'User not found');
+	}
+
+	return {
+		id: user.id,
+		full_name: user.fullName,
+		email: user.email,
+		role: user.role,
+		created_at: user.createdAt,
+	};
+}
+
 module.exports = {
 	register,
 	login,
+	getAuthenticatedUser,
 };

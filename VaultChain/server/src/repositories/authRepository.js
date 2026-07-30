@@ -54,6 +54,18 @@ async function findUserByEmail(email) {
 	return mapUserRow(row);
 }
 
+async function findUserById(id) {
+	const row = await get(
+		`SELECT id, full_name, email, password_hash, role, created_at, updated_at
+		 FROM users
+		 WHERE id = ?
+		 LIMIT 1`,
+		[id]
+	);
+
+	return mapUserRow(row);
+}
+
 async function createUserWithWallet({ fullName, email, passwordHash, role = 'user' }) {
 	await run('BEGIN TRANSACTION');
 
@@ -91,5 +103,6 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'use
 
 module.exports = {
 	findUserByEmail,
+	findUserById,
 	createUserWithWallet,
 };

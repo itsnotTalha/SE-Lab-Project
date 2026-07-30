@@ -6,13 +6,20 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 
 - React client with routed pages for login, registration, dashboard, assets, and profile.
 - Protected routing based on a stored JWT token.
-- Express API with `/api/health` and `/api/auth/register` and `/api/auth/login`.
-- SQLite database initialization with tables for users, wallets, assets, documents, verification, marketplace, vault items, and notifications.
+- Express API with health, authentication, and dashboard endpoints:
+  - `/api/health`
+  - `/api/auth/register`
+  - `/api/auth/login`
+  - `/api/auth/me`
+  - `/api/dashboard/summary`
+- SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
 - Registration creates a user and wallet together, and login returns a JWT plus basic user data.
+- The authenticated user endpoint returns the signed-in user's profile without exposing the password hash.
+- The dashboard summary endpoint returns real counts from SQLite for assets, verification reports, vault items, and wallet balance.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage, but most product areas are still placeholders. Authentication is working end to end, the database schema is in place, and the remaining pages are ready to be expanded into real dashboard, asset, and profile flows.
+The app is beyond the initial skeleton stage, and the core authentication and dashboard foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
 
 ## Tech Stack
 
@@ -44,6 +51,6 @@ cd client && npm run dev
 
 ## Next Steps
 
-- Build out the dashboard with real user data.
+- Expand the dashboard with richer analytics and recent activity views.
 - Replace placeholder assets and profile pages with working features.
-- Add authenticated API routes for assets, wallet activity, and vault management.
+- Add authenticated API routes for asset upload, verification, vault management, and wallet activity.

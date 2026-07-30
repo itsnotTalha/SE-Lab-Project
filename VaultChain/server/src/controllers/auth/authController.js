@@ -23,7 +23,17 @@ const login = asyncHandler(async (req, res) => {
 	});
 });
 
+const me = asyncHandler(async (req, res) => {
+	const user = await authService.getAuthenticatedUser(req.user.id);
+
+	res.status(200).json({
+		success: true,
+		user,
+	});
+});
+
 module.exports = {
 	register,
 	login,
+	me,
 };
