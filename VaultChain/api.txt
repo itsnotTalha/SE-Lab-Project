@@ -1,0 +1,319 @@
+VaultChain API Specification
+
+MVP Roadmap and API Inventory
+
+Base URL
+
+    /api
+
+Frontend Default API Base
+
+    http://localhost:3000/api
+
+========================================
+Sprint 1 - Authentication & Foundation
+========================================
+
+System
+
+GET /api/health
+- Health check endpoint.
+- Status: implemented
+
+Authentication
+
+POST /api/auth/register
+- Create a new user account.
+- Create user
+- Create wallet
+- Return JWT
+- Status: implemented
+
+POST /api/auth/login
+- Authenticate user.
+- Verify credentials
+- Return JWT
+- Status: implemented
+
+GET /api/auth/me
+- Return currently authenticated user.
+- Status: planned
+
+Dashboard
+
+GET /api/dashboard/summary
+- Return dashboard summary.
+- Example values:
+  - Total Assets
+  - Verification Reports
+  - Vault Items
+  - Wallet Balance
+- Status: planned
+
+========================================
+Sprint 2 - Digital Asset Authentication
+========================================
+
+Assets
+
+POST /api/assets/upload
+- Upload an image.
+- Automatically:
+  - Store file
+  - Generate SHA-256
+  - Generate pHash
+  - Extract metadata
+  - Save asset
+- Status: planned
+
+GET /api/assets
+- List authenticated user's assets.
+- Status: planned
+
+GET /api/assets/:id
+- Return asset details.
+- Status: planned
+
+DELETE /api/assets/:id
+- Delete asset.
+- Status: planned
+
+GET /api/assets/:id/hash
+- Return SHA-256 and pHash.
+- Status: planned
+
+GET /api/assets/:id/metadata
+- Return extracted metadata.
+- Status: planned
+
+Verification
+
+POST /api/verification/assets/:id
+- Verify an asset.
+- Checks:
+  - SHA-256 duplicate
+  - pHash similarity
+  - Metadata comparison
+- Possible results:
+  - Original
+  - Duplicate
+  - Modified Copy
+  - Unknown
+- Status: planned
+
+GET /api/verification/reports/:id
+- Return verification report.
+- Status: planned
+
+========================================
+Sprint 3 - Document Verification & Secure Vault
+========================================
+
+Documents
+
+POST /api/documents/upload
+- Upload PDF or image document.
+- Status: planned
+
+GET /api/documents
+- List documents.
+- Status: planned
+
+GET /api/documents/:id
+- Return document details.
+- Status: planned
+
+POST /api/documents/:id/ocr
+- Extract text using OCR.
+- Status: planned
+
+POST /api/documents/:id/verify
+- Verify document integrity using OCR, semantic hash, and text comparison.
+- Status: planned
+
+GET /api/documents/:id/report
+- Return document verification report.
+- Status: planned
+
+Secure Vault
+
+POST /api/vault/upload
+- Upload encrypted file.
+- Uses AES-256 encryption.
+- Status: planned
+
+GET /api/vault
+- List vault items.
+- Status: planned
+
+GET /api/vault/:id
+- Return vault item details.
+- Status: planned
+
+DELETE /api/vault/:id
+- Delete vault item.
+- Status: planned
+
+========================================
+Sprint 4 - Blockchain, Marketplace & Ownership
+========================================
+
+Blockchain
+
+POST /api/blockchain/mine
+- Create blockchain record.
+- Automatically called after asset upload and ownership transfer.
+- Status: planned
+
+GET /api/blockchain/blocks
+- Return blockchain ledger.
+- Status: planned
+
+GET /api/blockchain/assets/:id
+- Return blockchain history of an asset.
+- Status: planned
+
+Ownership
+
+POST /api/ownership/transfer
+- Transfer ownership.
+- Automatically:
+  - Create ownership history
+  - Mine blockchain record
+- Status: planned
+
+GET /api/ownership/history/:assetId
+- Return ownership timeline.
+- Status: planned
+
+Marketplace
+
+GET /api/marketplace/listings
+- List marketplace assets.
+- Status: planned
+
+POST /api/marketplace/listings
+- Create marketplace listing.
+- Status: planned
+
+PATCH /api/marketplace/listings/:id
+- Update listing.
+- Status: planned
+
+DELETE /api/marketplace/listings/:id
+- Remove listing.
+- Status: planned
+
+Fractional Ownership
+
+POST /api/fractional/create
+- Create fractional ownership.
+- Status: planned
+
+GET /api/fractional/:assetId
+- Return ownership shares.
+- Status: planned
+
+Wallet
+
+GET /api/wallet
+- Return wallet summary.
+- Status: planned
+
+GET /api/wallet/transactions
+- Return wallet transaction history.
+- Status: planned
+
+========================================
+Future Enhancements - Not Part of MVP
+========================================
+
+Authentication
+
+- POST /api/auth/logout
+- POST /api/auth/refresh
+- Email verification
+- Password reset
+- Two-factor authentication (2FA)
+
+User Profile
+
+- GET /api/users/profile
+- PATCH /api/users/profile
+- PATCH /api/users/password
+- Profile image upload
+
+Dashboard & Analytics
+
+- GET /api/dashboard/activity
+- Charts
+- Analytics
+- Recent verification history
+- System insights
+
+Notifications
+
+- GET /api/notifications
+- PATCH /api/notifications/:id/read
+- Real-time notifications
+
+Admin
+
+- GET /api/admin/users
+- GET /api/admin/assets
+- GET /api/admin/reports
+- User management
+- System monitoring
+
+Search
+
+- GET /api/search/assets
+- GET /api/search/documents
+- Advanced filtering
+- Full-text search
+
+Storage
+
+- IPFS integration
+- AWS S3 support
+- Azure Blob Storage
+- Google Cloud Storage
+
+Blockchain
+
+- Ethereum integration
+- Smart Contracts
+- Polygon
+- zkSync
+- WalletConnect
+- MetaMask
+
+Marketplace
+
+- Auctions
+- Bidding
+- Royalties
+- NFT Minting
+- Crypto Payments
+
+AI Features
+
+- AI Image Forgery Detection
+- AI Document Tampering Detection
+- Duplicate Image Clustering
+- Automatic Asset Classification
+
+========================================
+Sprint Summary
+========================================
+
+Sprint 1: Authentication, JWT, Protected Routes, Dashboard Summary
+Sprint 2: Image Upload, SHA-256, pHash, Metadata Extraction, Duplicate Detection, Verification Reports
+Sprint 3: OCR, Document Verification, AES-256 Secure Vault
+Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Fractional Ownership, Wallet Integration, Final UI Polish
+
+Notes
+
+- Only the Sprint 1 auth and health endpoints are implemented right now.
+- The remaining endpoints are roadmap items and should be added as the project grows.
+- This file is intended as the canonical API checklist for current and future work.
