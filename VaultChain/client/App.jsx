@@ -6,13 +6,12 @@ import DashboardPage from './src/pages/dashboard/DashboardPage';
 import LoginPage from './src/pages/auth/LoginPage';
 import RegisterPage from './src/pages/auth/RegisterPage';
 import ProfilePage from './src/pages/settings/ProfilePage';
-
-function isAuthenticated() {
-	return Boolean(localStorage.getItem('vaultchain_token'));
-}
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 function PublicRoute({ children }) {
-	if (isAuthenticated()) {
+	const { isAuthenticated } = useAuth();
+
+	if (isAuthenticated) {
 		return <Navigate to="/dashboard" replace />;
 	}
 
@@ -20,9 +19,11 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
+	const { isAuthenticated } = useAuth();
+
 	return (
 		<Routes>
-			<Route path="/" element={<Navigate to={isAuthenticated() ? '/dashboard' : '/login'} replace />} />
+			<Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
 			<Route
 				path="/login"
 				element={
@@ -44,7 +45,7 @@ function AppRoutes() {
 				<Route path="/assets" element={<AssetsPage />} />
 				<Route path="/profile" element={<ProfilePage />} />
 			</Route>
-			<Route path="*" element={<Navigate to={isAuthenticated() ? '/dashboard' : '/login'} replace />} />
+			<Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
 		</Routes>
 	);
 }
@@ -52,7 +53,9 @@ function AppRoutes() {
 export default function App() {
 	return (
 		<BrowserRouter>
-			<AppRoutes />
+			<AuthProvider>
+				<AppRoutes />
+			</AuthProvider>
 		</BrowserRouter>
 	);
 }

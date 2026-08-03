@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE_URL } from '../../constants/api';
+import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/authService';
 
 const pageStyles = {
 	page: {
@@ -224,6 +226,8 @@ function getPixelCount(metadata) {
 }
 
 export default function DashboardPage() {
+	const navigate = useNavigate();
+	const { logout } = useAuth();
 	const [title, setTitle] = useState('');
 	const [category, setCategory] = useState('image');
 	const [description, setDescription] = useState('');
@@ -245,7 +249,7 @@ export default function DashboardPage() {
 			throw new Error('Enter an asset id to inspect hashes.');
 		}
 
-		const token = localStorage.getItem('vaultchain_token');
+		const token = authService.getToken();
 		const response = await fetch(`${API_BASE_URL}/assets/${assetId}/hash`, {
 			headers: {
 				Authorization: `Bearer ${token}`,
@@ -261,6 +265,11 @@ export default function DashboardPage() {
 		return data.hashes;
 	}
 
+	function handleLogout() {
+		logout();
+		navigate('/login', { replace: true });
+	}
+
 	async function handleUpload(event) {
 		event.preventDefault();
 		setLoading(true);
@@ -272,7 +281,7 @@ export default function DashboardPage() {
 				throw new Error('Please choose an image file to upload.');
 			}
 
-			const token = localStorage.getItem('vaultchain_token');
+			const token = authService.getToken();
 			const formData = new FormData();
 			formData.append('title', title);
 			formData.append('category', category);
@@ -344,7 +353,7 @@ export default function DashboardPage() {
 				throw new Error('Enter an asset id to inspect metadata.');
 			}
 
-			const token = localStorage.getItem('vaultchain_token');
+			const token = authService.getToken();
 			const response = await fetch(`${API_BASE_URL}/assets/${metadataLookupId.trim()}/metadata`, {
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -382,6 +391,9 @@ export default function DashboardPage() {
 						<Link to="/profile" style={pageStyles.navLink}>
 							Profile
 						</Link>
+						<button type="button" onClick={handleLogout} style={{ ...pageStyles.navLink, cursor: 'pointer' }}>
+							Logout
+						</button>
 					</nav>
 				</header>
 

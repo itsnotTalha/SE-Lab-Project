@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { useAuth } from '../../context/AuthContext';
 
 const pageStyles = {
 	page: {
@@ -67,6 +67,7 @@ const pageStyles = {
 
 export default function LoginPage() {
 	const navigate = useNavigate();
+	const { login } = useAuth();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
@@ -78,21 +79,7 @@ export default function LoginPage() {
 		setError('');
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/auth/login`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ email, password }),
-			});
-
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.message || 'Login failed');
-			}
-
-			localStorage.setItem('vaultchain_token', data.token);
+			await login({ email, password });
 			navigate('/dashboard', { replace: true });
 		} catch (submitError) {
 			setError(submitError.message);
