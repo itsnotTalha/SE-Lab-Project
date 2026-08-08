@@ -47,6 +47,18 @@ function mapAssetRow(row) {
 	};
 }
 
+async function getAssetById(assetId) {
+	const row = await get(
+		`SELECT id, owner_id, title, description, category, file_name, file_path, file_size, mime_type, status, created_at, updated_at
+		 FROM assets
+		 WHERE id = ?
+		 LIMIT 1`,
+		[assetId]
+	);
+
+	return mapAssetRow(row);
+}
+
 async function createAsset(assetData) {
 	const { ownerId, title, description, category, fileName, filePath, fileSize, mimeType } = assetData;
 
@@ -247,6 +259,7 @@ async function getAssetMetadataByAssetId(assetId) {
 }
 
 module.exports = {
+	getAssetById,
 	createAsset,
 	upsertAssetHash,
 	updateAssetPhash,

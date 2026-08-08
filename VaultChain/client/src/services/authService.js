@@ -57,11 +57,27 @@ function logout() {
 	clearToken();
 }
 
+function getCurrentUserId() {
+	const token = getToken();
+
+	if (!token) {
+		return null;
+	}
+
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		return payload.id ?? null;
+	} catch {
+		return null;
+	}
+}
+
 export const authService = {
 	login,
 	register,
 	logout,
 	getCurrentUser,
+	getCurrentUserId,
 	getToken,
 	isAuthenticated: () => Boolean(getToken()),
 };

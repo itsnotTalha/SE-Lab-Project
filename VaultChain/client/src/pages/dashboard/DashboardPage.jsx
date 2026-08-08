@@ -388,6 +388,12 @@ export default function DashboardPage() {
 						<Link to="/assets" style={pageStyles.navLink}>
 							Assets
 						</Link>
+						<Link to="/wallet" style={pageStyles.navLink}>
+							Wallet
+						</Link>
+						<Link to="/marketplace" style={pageStyles.navLink}>
+							Marketplace
+						</Link>
 						<Link to="/profile" style={pageStyles.navLink}>
 							Profile
 						</Link>
