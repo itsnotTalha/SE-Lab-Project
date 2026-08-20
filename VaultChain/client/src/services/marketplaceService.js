@@ -23,40 +23,59 @@ async function getListings() {
 	return data.listings;
 }
 
-async function getListingById(id) {
-	const data = await request(`/marketplace/listings/${id}`);
+async function getListing(reference) {
+	const data = await request(`/marketplace/listings/${reference}`);
 	return data.listing;
 }
 
-async function createListing({ assetId, listingType, price }) {
+async function createListing({ assetId, title, description, price }) {
 	const data = await request('/marketplace/listings', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ assetId, listingType, price }),
+		body: JSON.stringify({ assetId, title, description, price }),
 	});
 	return data.listing;
 }
 
-async function updateListing(id, { price, status }) {
-	const data = await request(`/marketplace/listings/${id}`, {
+async function updateListing(reference, payload) {
+	const data = await request(`/marketplace/listings/${reference}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ price, status }),
+		body: JSON.stringify(payload),
 	});
 	return data.listing;
 }
 
-async function deleteListing(id) {
-	const data = await request(`/marketplace/listings/${id}`, {
+async function deleteListing(reference) {
+	const data = await request(`/marketplace/listings/${reference}`, {
 		method: 'DELETE',
 	});
 	return data.listing;
 }
 
+async function purchaseListing(reference) {
+	const data = await request(`/marketplace/listings/${reference}/purchase`, { method: 'POST' });
+	return data.receipt;
+}
+
+async function getContentObjectUrl(reference) {
+	const response = await fetch(`${API_BASE_URL}/marketplace/listings/${reference}/content`, {
+		headers: { Authorization: `Bearer ${authService.getToken()}` },
+	});
+	if (!response.ok) {
+		let message = 'Unable to load listing preview';
+		try { message = (await response.json()).message || message; } catch { /* Empty response. */ }
+		throw new Error(message);
+	}
+	return URL.createObjectURL(await response.blob());
+}
+
 export const marketplaceService = {
 	getListings,
-	getListingById,
+	getListing,
 	createListing,
 	updateListing,
 	deleteListing,
+	purchaseListing,
+	getContentObjectUrl,
 };

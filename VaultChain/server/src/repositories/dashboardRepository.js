@@ -17,10 +17,7 @@ async function getSummary(userId) {
 	const row = await get(
 		`SELECT
 			(SELECT COUNT(*) FROM assets WHERE owner_id = ?) AS totalAssets,
-			(SELECT COUNT(*)
-			 FROM verification_reports vr
-			 JOIN assets a ON a.id = vr.asset_id
-			 WHERE a.owner_id = ?) AS totalVerificationReports,
+			(SELECT COUNT(*) FROM verification_reports WHERE user_id = ?) AS totalVerificationReports,
 			(SELECT COUNT(*) FROM vaults WHERE user_id = ?) AS totalVaults,
 			(SELECT COUNT(DISTINCT va.asset_id) FROM vault_assets va JOIN vaults v ON v.id = va.vault_id WHERE v.user_id = ?) AS totalOrganizedAssets,
 			(SELECT COALESCE(balance, 0) FROM wallets WHERE user_id = ?) AS walletBalance`,

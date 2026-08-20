@@ -3,6 +3,7 @@ const fs = require('fs/promises');
 
 const { STRONG_MATCH_MAX, POSSIBLE_MATCH_MAX } = require('../../config/perceptualMatching');
 const assetRepository = require('../../repositories/assetRepository');
+const marketplaceService = require('../marketplace/marketplaceService');
 const { findBestPhashMatch } = require('../hashing/phashComparisonService');
 const { generateSha256Hash } = require('../hashing/sha256Service');
 const { generatePhash } = require('../hashing/phashService');
@@ -293,6 +294,10 @@ async function getAssetHash(userId, assetId, tokenFingerprint) {
 	};
 }
 
+async function getOwnershipHistory(userId, assetId) {
+	return marketplaceService.getOwnershipHistory(userId, assetId);
+}
+
 module.exports = {
 	uploadAsset,
 	checkAssetOwnership,
@@ -301,5 +306,6 @@ module.exports = {
 	getOwnedAssetOrThrow,
 	getAssetMetadata,
 	getAssetHash,
+	getOwnershipHistory,
 	assertAssetUnlocked: vaultAccessService.assertAssetUnlocked,
 };

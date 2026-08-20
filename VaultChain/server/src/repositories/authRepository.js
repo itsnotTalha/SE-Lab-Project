@@ -1,4 +1,5 @@
 const { database } = require('../database/database');
+const { serializeTransaction } = require('../database/transactionQueue');
 
 function run(sql, params = []) {
 	return new Promise((resolve, reject) => {
@@ -67,38 +68,40 @@ async function findUserById(id) {
 }
 
 async function createUserWithWallet({ fullName, email, passwordHash, role = 'user' }) {
-	await run('BEGIN TRANSACTION');
+	return serializeTransaction(async () => {
+		await run('BEGIN TRANSACTION');
 
-	try {
-		const userResult = await run(
-			`INSERT INTO users (full_name, email, password_hash, role)
-			 VALUES (?, ?, ?, ?)`,
-			[fullName, email, passwordHash, role]
-		);
-
-		const userId = userResult.lastID;
-
-		await run('INSERT INTO wallets (user_id, balance) VALUES (?, ?)', [userId, 0]);
-		await run('COMMIT');
-
-		const createdUser = await get(
-			`SELECT id, full_name, email, password_hash, role, created_at, updated_at
-			 FROM users
-			 WHERE id = ?
-			 LIMIT 1`,
-			[userId]
-		);
-
-		return mapUserRow(createdUser);
-	} catch (error) {
 		try {
-			await run('ROLLBACK');
-		} catch (rollbackError) {
-			void rollbackError;
-		}
+			const userResult = await run(
+				`INSERT INTO users (full_name, email, password_hash, role)
+				 VALUES (?, ?, ?, ?)`,
+				[fullName, email, passwordHash, role]
+			);
 
-		throw error;
-	}
+			const userId = userResult.lastID;
+
+			await run('INSERT INTO wallets (user_id, balance) VALUES (?, ?)', [userId, 0]);
+			await run('COMMIT');
+
+			const createdUser = await get(
+				`SELECT id, full_name, email, password_hash, role, created_at, updated_at
+				 FROM users
+				 WHERE id = ?
+				 LIMIT 1`,
+				[userId]
+			);
+
+			return mapUserRow(createdUser);
+		} catch (error) {
+			try {
+				await run('ROLLBACK');
+			} catch (rollbackError) {
+				void rollbackError;
+			}
+
+			throw error;
+		}
+	});
 }
 
 module.exports = {

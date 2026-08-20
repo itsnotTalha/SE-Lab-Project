@@ -22,14 +22,19 @@ const assetRepository = require('../src/repositories/assetRepository');
 const verificationRepository = require('../src/repositories/verificationRepository');
 const dashboardRepository = require('../src/repositories/dashboardRepository');
 const vaultRepository = require('../src/repositories/vaultRepository');
+const marketplaceRepository = require('../src/repositories/marketplaceRepository');
+const walletRepository = require('../src/repositories/walletRepository');
 const assetService = require('../src/services/asset/assetService');
 const authService = require('../src/services/auth/authService');
 const verificationService = require('../src/services/verification/verificationService');
 const vaultService = require('../src/services/vault/vaultService');
 const vaultAccessService = require('../src/services/vault/vaultAccessService');
+const marketplaceService = require('../src/services/marketplace/marketplaceService');
+const walletService = require('../src/services/wallet/walletService');
 
 let userA;
 let userB;
+let userC;
 let assetId;
 let fixtureBuffer;
 let fixtureName;
@@ -141,6 +146,7 @@ before(async () => {
 	unrelatedBuffer = fs.readFileSync(path.resolve(__dirname, '../src/uploads', unrelatedName));
 	userA = await authService.register({ fullName: 'Asset Owner A', email: 'asset-owner-a@example.test', password: 'StrongPass123!' });
 	userB = await authService.register({ fullName: 'Asset Owner B', email: 'asset-owner-b@example.test', password: 'StrongPass123!' });
+	userC = await authService.register({ fullName: 'Asset Buyer C', email: 'asset-buyer-c@example.test', password: 'StrongPass123!' });
 	userAFingerprint = tokenFingerprint(userA.token);
 	userBFingerprint = tokenFingerprint(userB.token);
 });
@@ -651,4 +657,153 @@ test('assets remain available after a fresh login', async () => {
 	assert.ok(login.token);
 	const assets = await assetService.getAssets(login.user.id);
 	assert.equal(assets.some((asset) => asset.id === assetId), true);
+});
+
+test('marketplace creation requires ownership, unlocked Vault access, and one active listing per asset', async () => {
+	await assert.rejects(
+		() => marketplaceService.createListing(userA.user.id, userAFingerprint, { assetId: userBAssetId, title: 'Not mine', description: '', price: 25 }),
+		(error) => error.status === 404
+	);
+	await vaultService.lockVault(userA.user.id, clientVaultReference, userAFingerprint);
+	await assert.rejects(
+		() => marketplaceService.createListing(userA.user.id, userAFingerprint, { assetId, title: 'Protected original', description: 'A registered original', price: 125 }),
+		(error) => error.status === 423
+	);
+	await vaultService.unlockVault(userA.user.id, clientVaultReference, 'ClientVault123!', userAFingerprint);
+	const listing = await marketplaceService.createListing(userA.user.id, userAFingerprint, {
+		assetId, title: 'Protected original', description: 'A registered original', price: 125,
+	});
+	assert.match(listing.reference, /^ML-[A-F0-9]{6}$/);
+	assert.equal(listing.seller.isCurrentUser, true);
+	assert.match(listing.seller.reference, /^VC-[A-F0-9]{8}$/);
+	assert.equal(listing.currency, 'VaultChain Credits');
+	assert.doesNotMatch(JSON.stringify(listing), /asset-owner-a@example\.test|Asset Owner A|filePath|passwordHash|password_hash/i);
+	await assert.rejects(
+		() => marketplaceService.createListing(userA.user.id, userAFingerprint, { assetId, title: 'Duplicate', description: '', price: 10 }),
+		(error) => error.status === 409 && error.code === 'DUPLICATE_LISTING'
+	);
+	const buyerView = await marketplaceService.getListing(listing.reference, userB.user.id, userBFingerprint);
+	assert.equal(buyerView.seller.isCurrentUser, false);
+	assert.equal(buyerView.asset.id, null);
+	assert.equal(buyerView.asset.isLocked, true);
+	assert.equal(buyerView.asset.contentUrl, null);
+	assert.equal(buyerView.asset.mimeType, null);
+	assert.equal(buyerView.asset.fileSize, null);
+	assert.equal(buyerView.asset.width, null);
+	await assert.rejects(
+		() => marketplaceService.deleteListing(userB.user.id, listing.reference, userBFingerprint),
+		(error) => error.status === 404
+	);
+	await assert.rejects(
+		() => marketplaceService.getListingContent(listing.reference, userB.user.id, userBFingerprint),
+		(error) => error.status === 423
+	);
+});
+
+test('purchase validation prevents self-purchase and insufficient-credit partial changes', async () => {
+	const listing = (await marketplaceRepository.getActiveListingForAsset(assetId));
+	await assert.rejects(
+		() => marketplaceService.purchaseListing(userA.user.id, listing.reference),
+		(error) => error.status === 409 && error.code === 'OWN_LISTING'
+	);
+	const ownerBefore = (await assetRepository.getAssetById(assetId)).ownerId;
+	const sellerBalanceBefore = (await walletRepository.getWalletByUserId(userA.user.id)).balance;
+	await assert.rejects(
+		() => marketplaceService.purchaseListing(userB.user.id, listing.reference),
+		(error) => error.status === 400 && error.code === 'INSUFFICIENT_BALANCE'
+	);
+	assert.equal((await assetRepository.getAssetById(assetId)).ownerId, ownerBefore);
+	assert.equal((await walletRepository.getWalletByUserId(userA.user.id)).balance, sellerBalanceBefore);
+	assert.equal((await marketplaceRepository.getListingByReference(listing.reference)).status, 'active');
+});
+
+test('purchase atomically transfers ownership, balances, Vault membership, and persistent history', async () => {
+	await walletService.addTransaction(userB.user.id, { type: 'deposit', amount: 500, description: 'Test credit allocation' });
+	const listing = await marketplaceRepository.getActiveListingForAsset(assetId);
+	const assetBefore = await assetRepository.getAssetById(assetId);
+	const hashBefore = await assetRepository.getAssetHashByAssetId(assetId);
+	const metadataBefore = await assetRepository.getAssetMetadataByAssetId(assetId);
+	const reportsBefore = await verificationService.getVerifications(userA.user.id);
+	const receipt = await marketplaceService.purchaseListing(userB.user.id, listing.reference);
+	assert.match(receipt.transactionReference, /^TX-[A-F0-9]{6}$/);
+	assert.equal(receipt.asset.reference, `VC-A${String(assetId).padStart(6, '0')}`);
+	assert.equal(receipt.price, 125);
+	assert.equal(receipt.buyerBalance, 375);
+	assert.equal((await walletRepository.getWalletByUserId(userA.user.id)).balance, 125);
+	assert.equal((await walletRepository.getWalletByUserId(userB.user.id)).balance, 375);
+	const assetAfter = await assetRepository.getAssetById(assetId);
+	assert.equal(assetAfter.ownerId, userB.user.id);
+	assert.equal(assetAfter.filePath, assetBefore.filePath);
+	assert.deepEqual(await assetRepository.getAssetHashByAssetId(assetId), hashBefore);
+	assert.deepEqual(await assetRepository.getAssetMetadataByAssetId(assetId), metadataBefore);
+	assert.equal((await marketplaceRepository.getListingByReference(listing.reference)).status, 'sold');
+	assert.equal((await vaultService.getVault(userA.user.id, clientVaultReference, userAFingerprint)).assetCount, 0);
+	assert.equal((await assetService.getAssets(userA.user.id, userAFingerprint)).some((asset) => asset.id === assetId), false);
+	assert.equal((await assetService.getAssets(userB.user.id, userBFingerprint)).some((asset) => asset.id === assetId), true);
+	assert.equal((await verificationService.getVerifications(userA.user.id)).length, reportsBefore.length);
+	assert.equal((await dashboardRepository.getSummary(userA.user.id)).totalVerificationReports, reportsBefore.length);
+	const history = await marketplaceService.getOwnershipHistory(userB.user.id, assetId);
+	assert.equal(history.length, 1);
+	assert.equal(history[0].transactionReference, receipt.transactionReference);
+	assert.match(history[0].previousOwner, /^VC-[A-F0-9]{8}$/);
+	assert.match(history[0].newOwner, /^VC-[A-F0-9]{8}$/);
+	assert.doesNotMatch(JSON.stringify(history), /@example\.test|Asset Owner/);
+	await assert.rejects(() => marketplaceService.getOwnershipHistory(userA.user.id, assetId), (error) => error.status === 404);
+	await assert.rejects(() => vaultService.getVault(userB.user.id, clientVaultReference, userBFingerprint), (error) => error.status === 404);
+	await assert.rejects(() => marketplaceService.purchaseListing(userC.user.id, listing.reference), (error) => error.status === 409);
+	const buyerTransactions = await walletService.getTransactions(userB.user.id);
+	const sellerTransactions = await walletService.getTransactions(userA.user.id);
+	assert.ok(buyerTransactions.some((transaction) => transaction.type === 'purchase' && transaction.referenceId === receipt.transactionReference));
+	assert.ok(sellerTransactions.some((transaction) => transaction.type === 'sale' && transaction.referenceId === receipt.transactionReference));
+	const ownership = await assetService.checkAssetOwnership(userB.user.id, createCheckFile('buyer-ownership.png'));
+	assert.equal(ownership.asset.owner.isCurrentUser, true);
+	assert.equal(ownership.asset.id, assetId);
+});
+
+test('concurrent purchases serialize so exactly one buyer succeeds', async () => {
+	await walletService.addTransaction(userC.user.id, { type: 'deposit', amount: 500, description: 'Test credit allocation' });
+	const listing = await marketplaceService.createListing(userA.user.id, userAFingerprint, {
+		assetId: newerAssetId, title: 'Concurrent sale', description: '', price: 50,
+	});
+	const results = await Promise.allSettled([
+		marketplaceService.purchaseListing(userB.user.id, listing.reference),
+		marketplaceService.purchaseListing(userC.user.id, listing.reference),
+	]);
+	assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+	assert.equal(results.filter((result) => result.status === 'rejected' && result.reason.status === 409).length, 1);
+	const sold = await marketplaceRepository.getListingByReference(listing.reference);
+	assert.equal(sold.status, 'sold');
+	assert.ok([userB.user.id, userC.user.id].includes((await assetRepository.getAssetById(newerAssetId)).ownerId));
+	assert.equal((await marketplaceRepository.getOwnershipHistory(newerAssetId)).length, 1);
+});
+
+test('forced persistence failure rolls the complete purchase transaction back', async () => {
+	const rollbackAsset = await assetRepository.createAsset({
+		ownerId: userA.user.id, title: 'Rollback asset', description: null, category: 'image',
+		fileName: 'rollback.png', filePath: path.join(testUploadDirectory, 'rollback.png'), fileSize: 10, mimeType: 'image/png',
+	});
+	const listing = await marketplaceService.createListing(userA.user.id, userAFingerprint, {
+		assetId: rollbackAsset.id, title: 'Rollback test', description: '', price: 25,
+	});
+	await vaultService.addAssets(userA.user.id, clientVaultReference, { assetIds: [rollbackAsset.id] }, userAFingerprint);
+	const buyerBefore = (await walletRepository.getWalletByUserId(userB.user.id)).balance;
+	const sellerBefore = (await walletRepository.getWalletByUserId(userA.user.id)).balance;
+	await new Promise((resolve, reject) => database.run(
+		`CREATE TRIGGER fail_marketplace_history BEFORE INSERT ON ownership_history
+		 BEGIN SELECT RAISE(ABORT, 'forced ownership history failure'); END`,
+		(error) => error ? reject(error) : resolve()
+	));
+	try {
+		await assert.rejects(() => marketplaceService.purchaseListing(userB.user.id, listing.reference), /forced ownership history failure/);
+	} finally {
+		await new Promise((resolve, reject) => database.run('DROP TRIGGER fail_marketplace_history', (error) => error ? reject(error) : resolve()));
+	}
+	assert.equal((await walletRepository.getWalletByUserId(userB.user.id)).balance, buyerBefore);
+	assert.equal((await walletRepository.getWalletByUserId(userA.user.id)).balance, sellerBefore);
+	assert.equal((await assetRepository.getAssetById(rollbackAsset.id)).ownerId, userA.user.id);
+	assert.equal((await marketplaceRepository.getListingByReference(listing.reference)).status, 'active');
+	assert.deepEqual(await marketplaceRepository.getOwnershipHistory(rollbackAsset.id), []);
+	assert.equal((await vaultService.getVault(userA.user.id, clientVaultReference, userAFingerprint)).assets.some((asset) => asset.id === rollbackAsset.id), true);
+	const cancelled = await marketplaceService.deleteListing(userA.user.id, listing.reference, userAFingerprint);
+	assert.equal(cancelled.status, 'cancelled');
 });

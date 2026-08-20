@@ -1,4 +1,4 @@
-import { CalendarDays, Database, Eye, FileText, Fingerprint, Image, ScanLine, UserRound, X } from 'lucide-react';
+import { CalendarDays, Database, Eye, FileText, Fingerprint, History, Image, ScanLine, UserRound, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { assetService } from '../../services/assetService';
@@ -21,6 +21,7 @@ export default function AssetInspector({ asset: initialAsset, onClose, onPreview
 	const [asset, setAsset] = useState(initialAsset);
 	const [hash, setHash] = useState(null);
 	const [metadata, setMetadata] = useState(null);
+	const [ownershipHistory, setOwnershipHistory] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 
@@ -42,6 +43,7 @@ export default function AssetInspector({ asset: initialAsset, onClose, onPreview
 		setAsset(initialAsset);
 		setHash(null);
 		setMetadata(null);
+		setOwnershipHistory([]);
 		setError('');
 		setLoading(true);
 
@@ -49,7 +51,8 @@ export default function AssetInspector({ asset: initialAsset, onClose, onPreview
 			assetService.getAsset(initialAsset.id),
 			assetService.getHashes(initialAsset.id),
 			assetService.getMetadata(initialAsset.id),
-		]).then(([assetResult, hashResult, metadataResult]) => {
+			assetService.getOwnershipHistory(initialAsset.id),
+		]).then(([assetResult, hashResult, metadataResult, historyResult]) => {
 			if (!active) return;
 			if (assetResult.status === 'rejected') {
 				setError(assetResult.reason.message);
@@ -58,6 +61,7 @@ export default function AssetInspector({ asset: initialAsset, onClose, onPreview
 			setAsset(assetResult.value);
 			if (hashResult.status === 'fulfilled') setHash(hashResult.value);
 			if (metadataResult.status === 'fulfilled') setMetadata(metadataResult.value);
+			if (historyResult.status === 'fulfilled') setOwnershipHistory(historyResult.value);
 		}).finally(() => { if (active) setLoading(false); });
 
 		return () => { active = false; };
@@ -74,6 +78,7 @@ export default function AssetInspector({ asset: initialAsset, onClose, onPreview
 						{onPreview ? <button type="button" className="asset-preview-trigger" onClick={() => onPreview(asset)}><Eye size={15}/> Preview image</button> : null}
 						<div className="inspector__title"><div><h3>{asset.title}</h3><p>{asset.description || 'No description provided.'}</p></div>{hash ? <StatusBadge tone="info"><Fingerprint size={10}/> Hash generated</StatusBadge> : null}</div>
 						<section><h3><UserRound size={15} />Ownership</h3><DetailRow label="Registered owner" value="You" /><DetailRow label="Asset reference" value={`VC-A${String(asset.id).padStart(6, '0')}`} mono /></section>
+						{ownershipHistory.length?<section><h3><History size={15}/>Ownership history</h3><div className="ownership-history">{ownershipHistory.map((record)=><article key={record.transactionReference}><div><code>{record.transactionReference}</code><small>{new Date(record.transferredAt).toLocaleString()}</small></div><p><span>{record.previousOwner}</span><b>→</b><span>{record.newOwner}</span></p><strong>{Number(record.price).toLocaleString()} VaultChain Credits</strong></article>)}</div></section>:null}
 						<section><h3><ScanLine size={15} />Cryptographic identity</h3><DetailRow label="SHA-256" value={hash?.sha256} copy mono /><DetailRow label="Perceptual hash" value={hash?.phash} copy mono /></section>
 						<section><h3><Image size={15} />Image metadata</h3><DetailRow label="Dimensions" value={metadata?.width && metadata?.height ? `${metadata.width} × ${metadata.height}` : null} /><DetailRow label="Pixel count" value={(metadata?.pixelCount ?? metadata?.pixel_count)?.toLocaleString?.()} /><DetailRow label="Camera" value={metadata?.camera} /><DetailRow label="Location" value={metadata?.location} /><DetailRow label="Image created" value={metadata?.created_date || null} /></section>
 						<section><h3><Database size={15} />Stored asset</h3><DetailRow label="Stored filename" value={asset.fileName} mono /><DetailRow label="MIME type" value={asset.mimeType} /><DetailRow label="Category" value={asset.category} /><DetailRow label="File size" value={fileSize(asset.fileSize)} /></section>

@@ -125,14 +125,20 @@ CREATE TABLE IF NOT EXISTS blockchain_blocks (
 -- marketplace_listings table
 CREATE TABLE IF NOT EXISTS marketplace_listings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  public_reference TEXT UNIQUE,
   asset_id INTEGER NOT NULL,
   seller_id INTEGER NOT NULL,
+  buyer_id INTEGER,
+  title TEXT,
+  description TEXT,
   listing_type TEXT,
   price REAL,
   status TEXT DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  sold_at DATETIME,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE,
-  FOREIGN KEY(seller_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY(seller_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- ownership_history table
@@ -141,12 +147,16 @@ CREATE TABLE IF NOT EXISTS ownership_history (
   asset_id INTEGER NOT NULL,
   previous_owner INTEGER,
   new_owner INTEGER,
+  listing_id INTEGER,
+  price REAL,
+  transaction_reference TEXT UNIQUE,
   transfer_type TEXT,
   blockchain_block_id INTEGER,
   transferred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE,
   FOREIGN KEY(previous_owner) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY(new_owner) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY(listing_id) REFERENCES marketplace_listings(id) ON DELETE SET NULL,
   FOREIGN KEY(blockchain_block_id) REFERENCES blockchain_blocks(id) ON DELETE SET NULL
 );
 

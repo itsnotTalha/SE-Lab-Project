@@ -1,4 +1,5 @@
 const { database } = require('../database/database');
+const { serializeTransaction } = require('../database/transactionQueue');
 
 function run(sql, params = []) {
 	return new Promise((resolve, reject) => {
@@ -166,17 +167,19 @@ async function getExistingMembershipIds(vaultId, assetIds) {
 }
 
 async function addAssets(vaultId, assetIds) {
-	await run('BEGIN IMMEDIATE TRANSACTION');
-	try {
-		for (const assetId of assetIds) {
-			await run('INSERT INTO vault_assets (vault_id, asset_id) VALUES (?, ?)', [vaultId, assetId]);
+	return serializeTransaction(async () => {
+		await run('BEGIN IMMEDIATE TRANSACTION');
+		try {
+			for (const assetId of assetIds) {
+				await run('INSERT INTO vault_assets (vault_id, asset_id) VALUES (?, ?)', [vaultId, assetId]);
+			}
+			await run('UPDATE vaults SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [vaultId]);
+			await run('COMMIT');
+		} catch (error) {
+			await run('ROLLBACK').catch(() => {});
+			throw error;
 		}
-		await run('UPDATE vaults SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [vaultId]);
-		await run('COMMIT');
-	} catch (error) {
-		await run('ROLLBACK').catch(() => {});
-		throw error;
-	}
+	});
 }
 
 async function removeAsset(vaultId, assetId) {

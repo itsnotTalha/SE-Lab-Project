@@ -99,6 +99,11 @@ const getAssetHash = asyncHandler(async (req, res) => {
 	});
 });
 
+const getOwnershipHistory = asyncHandler(async (req, res) => {
+	const history = await assetService.getOwnershipHistory(req.user.id, Number(req.params.id));
+	res.status(200).json({ success: true, history });
+});
+
 module.exports = {
 	uploadAsset,
 	checkAssetOwnership,
@@ -107,4 +112,5 @@ module.exports = {
 	getAssetContent,
 	getAssetMetadata,
 	getAssetHash,
+	getOwnershipHistory,
 };

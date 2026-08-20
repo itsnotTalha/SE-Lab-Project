@@ -30,3 +30,45 @@
 @media (max-width: 850px) { .sidebar { transform: translateX(-102%); transition: transform .25s; box-shadow: 20px 0 80px rgba(0,0,0,.4); }.sidebar.is-open { transform: translateX(0); }.sidebar__close { display: grid; }.app-shell__body { margin-left: 0; }.topbar__menu { display: grid; }.app-shell__scrim { position: fixed; z-index: 25; inset: 0; width: 100%; border: 0; background: rgba(0,0,0,.55); }.app-shell__scrim.is-open { display: block; }.profile-grid { grid-template-columns: 1fr; }.verification-workspace { grid-template-columns: 1fr; }.verification-fingerprint-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }.vault-stats { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media (max-width: 700px) { .dashboard-grid,.lookup-grid { grid-template-columns: 1fr; }.assets-toolbar { flex-wrap: wrap; }.assets-toolbar__filters { order: 3; width: 100%; overflow-x: auto; padding-bottom: 3px; }.asset-grid { grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); }.app-content { padding: 25px 16px 40px; }.topbar { padding: 0 15px; }.topbar__search { display: none; }.inspector { width: 100%; border-left: 0; }.inspector__scroll { padding: 16px; }.ownership-result__details,.ownership-result__comparison { grid-template-columns: 1fr; }.ownership-result__details strong { white-space: normal; }.ownership-processing p { line-height: 1.6; }.asset-preview-modal { padding: 0; }.asset-preview-modal__card { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; }.asset-preview-modal__content { flex: 1; height: auto; min-height: 0; }.verification-selected-asset,.comparison-uploader__selected,.verification-evidence-grid,.verification-timeline { grid-template-columns: 1fr; }.verification-selected-asset__preview,.comparison-uploader__image { min-height: 190px; height: 220px; }.verification-history-item { grid-template-columns: 38px minmax(0,1fr); }.verification-history-item__evidence,.verification-history-item time { grid-column: 2; }.verification-fingerprint-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.metadata-comparison__row { grid-template-columns: 1fr auto; }.metadata-comparison__row > div { grid-column: 1 / -1; grid-row: 2; }.metadata-comparison__row > .status-badge { grid-column: 2; grid-row: 1; }.verification-evidence-card__visual { height: 220px; } }
 @media (max-width: 500px) { .dashboard-stats { grid-template-columns: 1fr; }.topbar__profile div { display: none; }.assets-section-heading { align-items: flex-start; }.assets-list .asset-card { grid-template-columns: 1fr; }.assets-list .asset-card__visual { min-height: 155px; }.asset-thumbnail--large { height: 205px; }.modal { padding: 0; }.modal__card { width: 100%; max-height: 100vh; min-height: 100vh; border-radius: 0; }.modal__header,.modal__form { padding: 17px; }.market-grid { grid-template-columns: 1fr; }.transaction-item { grid-template-columns: 37px minmax(0,1fr); }.transaction-item b { grid-column: 2; }.listing-details { grid-template-columns: 1fr; }.ownership-check__actions { flex-direction: column; }.ownership-check__actions .button { width: 100%; }.ownership-dropzone { min-height: 132px; }.ownership-result { padding: 13px; }.vault-stats,.vault-detail-summary { grid-template-columns: 1fr; }.vault-grid { grid-template-columns: 1fr; }.vault-detail-actions,.vault-detail-actions .button { width: 100%; }.vault-detail-actions .button { justify-content: center; }.add-assets-item { grid-template-columns: 25px 48px minmax(0,1fr); }.add-assets-item em { grid-column: 3; }.add-assets-modal__footer { align-items: stretch; flex-direction: column; }.add-assets-modal__footer > div,.add-assets-modal__footer .button { width: 100%; }.add-assets-modal__footer > div { flex-direction: column-reverse; }.vault-confirm-modal > footer { margin-top: auto; flex-direction: column-reverse; }.vault-confirm-modal > footer .button { width: 100%; } }
+
+.marketplace-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.marketplace-toolbar .search-field { width:min(100%,420px); }
+.marketplace-grid { grid-template-columns:repeat(auto-fill,minmax(245px,320px)); align-items:start; }
+.market-card__visual { overflow:hidden; }
+.marketplace-thumbnail { width:100%; height:100%; display:grid; place-items:center; align-content:center; gap:7px; color:var(--text-muted); background:radial-gradient(circle,rgba(65,217,255,.08),transparent 45%),#070c14; font-size:.61rem; }
+.marketplace-thumbnail img { width:100%; height:100%; display:block; object-fit:cover; }
+.marketplace-thumbnail.is-loading { background:linear-gradient(100deg,#0a101a 30%,#131d2b 50%,#0a101a 70%); background-size:220% 100%; animation:shimmer 1.25s infinite; }
+.marketplace-thumbnail--large { height:250px; overflow:hidden; border-radius:12px; }
+.marketplace-thumbnail--large img { object-fit:contain; background:#05080e; }
+.market-card__body p { min-height:1.9em; display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.marketplace-form-modal { width:min(100%,680px); }
+.listing-asset-picker { max-height:230px; display:grid; gap:7px; overflow-y:auto; }
+.listing-asset-picker > button { display:grid; grid-template-columns:58px minmax(0,1fr); align-items:center; gap:10px; padding:7px; color:var(--text); text-align:left; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.015); cursor:pointer; }
+.listing-asset-picker > button:hover:not(:disabled),.listing-asset-picker > button.is-selected { border-color:rgba(65,217,255,.3); background:rgba(65,217,255,.05); }
+.listing-asset-picker > button:disabled { opacity:.55; cursor:not-allowed; }
+.listing-asset-picker > button > span { width:58px; height:48px; overflow:hidden; border-radius:7px; }
+.listing-asset-picker strong,.listing-asset-picker small { display:block; }
+.listing-asset-picker strong { font-size:.69rem; }
+.listing-asset-picker small { display:flex; align-items:center; gap:4px; margin-top:5px; color:var(--text-muted); font-size:.56rem; }
+.listing-asset-picker > p { margin:5px; color:var(--text-muted); font-size:.67rem; }
+.purchase-modal { width:min(100%,500px); }
+.purchase-modal__body { padding:21px; }
+.purchase-modal__body > p { margin:0 0 18px; color:var(--text-secondary); font-size:.73rem; line-height:1.6; }
+.purchase-modal__body > footer { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.purchase-total { display:flex; align-items:center; justify-content:space-between; padding:14px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.02); font-size:.7rem; }
+.purchase-receipt { display:grid; grid-template-columns:100px minmax(0,1fr); gap:10px; margin-bottom:19px; padding:15px; border:1px solid rgba(66,214,157,.18); border-radius:11px; background:rgba(66,214,157,.035); }
+.purchase-receipt span { color:var(--text-muted); font-size:.6rem; }
+.purchase-receipt strong,.purchase-receipt code { min-width:0; overflow-wrap:anywhere; font-size:.67rem; }
+.purchase-action p,.listing-description { color:var(--text-muted); font-size:.69rem; line-height:1.6; }
+.purchase-action .button { width:100%; justify-content:center; }
+.listing-description { margin:14px 0 0; }
+.ownership-history { display:grid; gap:7px; }
+.ownership-history article { padding:10px; border:1px solid var(--border); border-radius:9px; background:rgba(255,255,255,.015); }
+.ownership-history article > div { display:flex; justify-content:space-between; gap:8px; }
+.ownership-history code { color:var(--primary); font:600 .62rem var(--font-mono); }
+.ownership-history small { color:var(--text-muted); font-size:.54rem; }
+.ownership-history p { display:flex; align-items:center; gap:6px; margin:8px 0 5px; color:var(--text-secondary); font:.58rem var(--font-mono); }
+.ownership-history p b { color:var(--primary); }
+.ownership-history article > strong { font-size:.6rem; }
+@media (max-width:700px) { .marketplace-toolbar { align-items:stretch; flex-direction:column; }.marketplace-toolbar .search-field { width:100%; }.marketplace-grid { grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); } }
+@media (max-width:500px) { .marketplace-grid { grid-template-columns:1fr; }.purchase-modal__body { display:flex; flex:1; flex-direction:column; }.purchase-modal__body > footer { margin-top:auto; flex-direction:column-reverse; }.purchase-modal__body > footer .button { width:100%; }.marketplace-thumbnail--large { height:220px; }.purchase-receipt { grid-template-columns:80px minmax(0,1fr); } }

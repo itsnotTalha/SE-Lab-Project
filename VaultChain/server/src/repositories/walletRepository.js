@@ -1,4 +1,5 @@
 const { database } = require('../database/database');
+const { serializeTransaction } = require('../database/transactionQueue');
 
 function run(sql, params = []) {
 	return new Promise((resolve, reject) => {
@@ -94,57 +95,59 @@ async function getTransactionsByWalletId(walletId) {
 }
 
 async function createTransaction({ walletId, type, signedAmount, amount, description, referenceId }) {
-	await run('BEGIN TRANSACTION');
+	return serializeTransaction(async () => {
+		await run('BEGIN TRANSACTION');
 
-	try {
-		const wallet = await get('SELECT id, balance FROM wallets WHERE id = ? LIMIT 1', [walletId]);
-
-		if (!wallet) {
-			const error = new Error('Wallet not found');
-			error.status = 404;
-			throw error;
-		}
-
-		const newBalance = wallet.balance + signedAmount;
-
-		if (newBalance < 0) {
-			const error = new Error('Insufficient wallet balance');
-			error.status = 400;
-			throw error;
-		}
-
-		await run('UPDATE wallets SET balance = ? WHERE id = ?', [newBalance, walletId]);
-
-		const transactionResult = await run(
-			`INSERT INTO wallet_transactions (wallet_id, type, amount, description, reference_id)
-			 VALUES (?, ?, ?, ?, ?)`,
-			[walletId, type, amount, description || null, referenceId || null]
-		);
-
-		await run('COMMIT');
-
-		const wallet_ = await get('SELECT id, user_id, balance, created_at FROM wallets WHERE id = ? LIMIT 1', [walletId]);
-		const transactionRow = await get(
-			`SELECT id, wallet_id, type, amount, description, reference_id, created_at
-			 FROM wallet_transactions
-			 WHERE id = ?
-			 LIMIT 1`,
-			[transactionResult.lastID]
-		);
-
-		return {
-			wallet: mapWalletRow(wallet_),
-			transaction: mapTransactionRow(transactionRow),
-		};
-	} catch (error) {
 		try {
-			await run('ROLLBACK');
-		} catch (rollbackError) {
-			void rollbackError;
-		}
+			const wallet = await get('SELECT id, balance FROM wallets WHERE id = ? LIMIT 1', [walletId]);
 
-		throw error;
-	}
+			if (!wallet) {
+				const error = new Error('Wallet not found');
+				error.status = 404;
+				throw error;
+			}
+
+			const newBalance = wallet.balance + signedAmount;
+
+			if (newBalance < 0) {
+				const error = new Error('Insufficient wallet balance');
+				error.status = 400;
+				throw error;
+			}
+
+			await run('UPDATE wallets SET balance = ? WHERE id = ?', [newBalance, walletId]);
+
+			const transactionResult = await run(
+				`INSERT INTO wallet_transactions (wallet_id, type, amount, description, reference_id)
+				 VALUES (?, ?, ?, ?, ?)`,
+				[walletId, type, amount, description || null, referenceId || null]
+			);
+
+			await run('COMMIT');
+
+			const wallet_ = await get('SELECT id, user_id, balance, created_at FROM wallets WHERE id = ? LIMIT 1', [walletId]);
+			const transactionRow = await get(
+				`SELECT id, wallet_id, type, amount, description, reference_id, created_at
+				 FROM wallet_transactions
+				 WHERE id = ?
+				 LIMIT 1`,
+				[transactionResult.lastID]
+			);
+
+			return {
+				wallet: mapWalletRow(wallet_),
+				transaction: mapTransactionRow(transactionRow),
+			};
+		} catch (error) {
+			try {
+				await run('ROLLBACK');
+			} catch (rollbackError) {
+				void rollbackError;
+			}
+
+			throw error;
+		}
+	});
 }
 
 module.exports = {

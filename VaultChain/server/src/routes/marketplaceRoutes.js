@@ -1,20 +1,17 @@
 const express = require('express');
 
-const {
-	createListing,
-	deleteListing,
-	getListingById,
-	getListings,
-	updateListing,
-} = require('../controllers/marketplace/marketplaceController');
+const marketplaceController = require('../controllers/marketplace/marketplaceController');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/listings', authenticateToken, createListing);
-router.get('/listings', authenticateToken, getListings);
-router.get('/listings/:id', authenticateToken, getListingById);
-router.patch('/listings/:id', authenticateToken, updateListing);
-router.delete('/listings/:id', authenticateToken, deleteListing);
+router.use(authenticateToken);
+router.post('/listings', marketplaceController.createListing);
+router.get('/listings', marketplaceController.getListings);
+router.get('/listings/:reference/content', marketplaceController.getListingContent);
+router.post('/listings/:reference/purchase', marketplaceController.purchaseListing);
+router.get('/listings/:reference', marketplaceController.getListing);
+router.patch('/listings/:reference', marketplaceController.updateListing);
+router.delete('/listings/:reference', marketplaceController.deleteListing);
 
 module.exports = router;

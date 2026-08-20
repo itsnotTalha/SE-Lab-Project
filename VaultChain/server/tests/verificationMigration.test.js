@@ -44,4 +44,15 @@ test('database initialization adds report ownership to the legacy verification t
 	assert.equal(vaultColumns.some((column) => column.name === 'auto_lock_minutes'), true);
 	const membershipIndexes = await all('PRAGMA index_list(vault_assets)');
 	assert.equal(membershipIndexes.some((index) => index.origin === 'pk'), true);
+	const listingColumns = await all('PRAGMA table_info(marketplace_listings)');
+	for (const name of ['public_reference', 'buyer_id', 'title', 'description', 'sold_at']) {
+		assert.equal(listingColumns.some((column) => column.name === name), true);
+	}
+	const listingIndexes = await all('PRAGMA index_list(marketplace_listings)');
+	assert.equal(listingIndexes.some((index) => index.name === 'idx_marketplace_public_reference'), true);
+	assert.equal(listingIndexes.some((index) => index.name === 'idx_marketplace_active_asset'), true);
+	const historyColumns = await all('PRAGMA table_info(ownership_history)');
+	for (const name of ['listing_id', 'price', 'transaction_reference']) {
+		assert.equal(historyColumns.some((column) => column.name === name), true);
+	}
 });

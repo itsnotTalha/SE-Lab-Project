@@ -56,6 +56,11 @@ async function getHashes(id) {
 	return data.hashes;
 }
 
+async function getOwnershipHistory(id) {
+	const data = await request(`/assets/${id}/ownership-history`);
+	return data.history;
+}
+
 async function getContentObjectUrl(id) {
 	const response = await fetch(`${API_BASE_URL}/assets/${id}/content`, {
 		headers: { Authorization: `Bearer ${authService.getToken()}` },
@@ -75,4 +80,4 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const assetService = { getAssets, getAsset, uploadAsset, checkOwnership, getMetadata, getHashes, getContentObjectUrl };
+export const assetService = { getAssets, getAsset, uploadAsset, checkOwnership, getMetadata, getHashes, getOwnershipHistory, getContentObjectUrl };
