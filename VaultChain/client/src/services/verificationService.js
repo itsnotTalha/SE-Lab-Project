@@ -11,9 +11,8 @@ async function request(path, options = {}) {
 	return data;
 }
 
-async function create(assetId, file) {
+async function create(file) {
 	const body = new FormData();
-	body.append('assetId', assetId);
 	body.append('file', file);
 	return (await request('/verifications', { method: 'POST', body })).verification;
 }

@@ -32,6 +32,7 @@ function mapRow(row) {
 	return {
 		id: row.id,
 		assetId: row.asset_id,
+		assetOwnerId: row.asset_owner_id,
 		assetTitle: row.asset_title,
 		assetFileName: row.asset_file_name,
 		verificationType: row.verification_type,
@@ -43,9 +44,9 @@ function mapRow(row) {
 }
 
 const OWNED_REPORT_SELECT = `
-	SELECT vr.*, a.title AS asset_title, a.file_name AS asset_file_name
+	SELECT vr.*, a.owner_id AS asset_owner_id, a.title AS asset_title, a.file_name AS asset_file_name
 	FROM verification_reports vr
-	JOIN assets a ON a.id = vr.asset_id
+	LEFT JOIN assets a ON a.id = vr.asset_id
 `;
 
 async function createVerificationReport({ userId, assetId, verificationType, sha256Match, status, report }) {
@@ -64,7 +65,7 @@ async function createVerificationReport({ userId, assetId, verificationType, sha
 async function getVerificationReportsByOwnerId(ownerId) {
 	const rows = await all(
 		`${OWNED_REPORT_SELECT}
-		 WHERE vr.user_id = ? AND vr.verification_type = 'image_comparison'
+		 WHERE vr.user_id = ? AND vr.verification_type IN ('image_comparison', 'global_image_search')
 		 ORDER BY vr.created_at DESC, vr.id DESC`,
 		[ownerId]
 	);

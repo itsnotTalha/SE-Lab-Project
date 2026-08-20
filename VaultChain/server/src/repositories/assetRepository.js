@@ -133,6 +133,23 @@ async function getAssetByIdAndOwnerId(assetId, ownerId) {
 	return mapOwnedAssetRow(row);
 }
 
+async function getGlobalFingerprintCandidates() {
+	const rows = await all(
+		`SELECT a.id AS asset_id, a.owner_id, a.created_at, h.sha256_hash, h.phash
+		 FROM assets a
+		 JOIN asset_hashes h ON h.asset_id = a.id
+		 WHERE h.sha256_hash IS NOT NULL AND h.phash IS NOT NULL
+		 ORDER BY a.id ASC`
+	);
+	return rows.map((row) => ({
+		assetId: row.asset_id,
+		ownerId: row.owner_id,
+		registeredAt: row.created_at,
+		sha256Hash: row.sha256_hash,
+		phash: row.phash,
+	}));
+}
+
 async function createAsset(assetData) {
 	const { ownerId, title, description, category, fileName, filePath, fileSize, mimeType } = assetData;
 
@@ -387,6 +404,7 @@ module.exports = {
 	getAssetById,
 	getAssetsByOwnerId,
 	getAssetByIdAndOwnerId,
+	getGlobalFingerprintCandidates,
 	createAsset,
 	upsertAssetHash,
 	updateAssetPhash,

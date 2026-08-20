@@ -2,8 +2,7 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 const verificationService = require('../../services/verification/verificationService');
 
 const createVerification = asyncHandler(async (req, res) => {
-	const verification = await verificationService.verifyAsset(req.user.id, {
-		assetId: req.body.assetId,
+	const verification = await verificationService.verifyImage(req.user.id, {
 		file: req.file,
 		tokenFingerprint: req.authTokenFingerprint,
 	});
@@ -11,12 +10,12 @@ const createVerification = asyncHandler(async (req, res) => {
 });
 
 const getVerifications = asyncHandler(async (req, res) => {
-	const verifications = await verificationService.getVerifications(req.user.id);
+	const verifications = await verificationService.getVerifications(req.user.id, req.authTokenFingerprint);
 	res.status(200).json({ success: true, verifications });
 });
 
 const getVerification = asyncHandler(async (req, res) => {
-	const verification = await verificationService.getVerification(req.user.id, req.params.reference);
+	const verification = await verificationService.getVerification(req.user.id, req.params.reference, req.authTokenFingerprint);
 	res.status(200).json({ success: true, verification });
 });
 

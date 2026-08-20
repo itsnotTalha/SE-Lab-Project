@@ -131,6 +131,15 @@ function createImageVariants(buffer) {
 	};
 }
 
+function phashAtDistance(hash, distance) {
+	const digits = hash.split('').map((digit) => Number.parseInt(digit, 16));
+	for (let bit = 0; bit < distance; bit += 1) {
+		const digitIndex = Math.floor(bit / 4);
+		digits[digitIndex] ^= 1 << (bit % 4);
+	}
+	return digits.map((digit) => digit.toString(16)).join('');
+}
+
 before(async () => {
 	await initializeDatabase();
 	const fixtureNames = fs.readdirSync(path.resolve(__dirname, '../src/uploads'))
@@ -318,18 +327,42 @@ test('ownership check returns generated fingerprints without registering a no-ma
 	assertCheckDirectoryIsEmpty();
 });
 
-test('verification saves an exact report against the selected owned asset', async () => {
-	const verification = await verificationService.verifyAsset(userA.user.id, {
-		assetId,
+test('global verification ranks an exact match first, sorts visual candidates, and caps results at five', async () => {
+	const registeredHash = await assetRepository.getAssetHashByAssetId(assetId);
+	for (const distance of [1, 3, 6, 7, 10, 12, 13]) {
+		const candidate = await assetRepository.createAsset({
+			ownerId: userB.user.id,
+			title: `Private candidate ${distance}`,
+			description: 'Must not leave the global matcher',
+			category: 'image',
+			fileName: `private-${distance}.png`,
+			filePath: path.join(testUploadDirectory, `private-${distance}.png`),
+			fileSize: 100 + distance,
+			mimeType: 'image/png',
+		});
+		await assetRepository.upsertAssetHash({ assetId: candidate.id, sha256Hash: `candidate-sha-${distance}` });
+		await assetRepository.updateAssetPhash({ assetId: candidate.id, phash: phashAtDistance(registeredHash.phash, distance) });
+	}
+	const verification = await verificationService.verifyImage(userA.user.id, {
 		file: createCheckFile('verification-exact.png'),
+		tokenFingerprint: userAFingerprint,
 	});
 	assert.match(verification.reference, /^VR-[A-F0-9]{6}$/);
-	assert.equal(verification.result, 'exact');
-	assert.equal(verification.fingerprints.sha256Match, true);
-	assert.equal(verification.fingerprints.hashBits, 256);
-	assert.equal(verification.registeredAsset.id, assetId);
+	assert.equal(verification.result, 'matches_found');
+	assert.equal(verification.matches.length, 5);
+	assert.deepEqual(verification.matches.map((match) => match.rank), [1, 2, 3, 4, 5]);
+	assert.equal(verification.matches[0].matchType, 'exact');
+	assert.equal(verification.matches[0].sha256Match, true);
+	assert.equal(verification.matches[0].distance, 0);
+	assert.equal(verification.matches[0].hashBits, 256);
+	assert.equal(verification.matches[0].asset.id, assetId);
+	assert.equal(verification.matches[0].ownerReference, 'You');
+	assert.deepEqual(verification.matches.slice(1).map((match) => match.distance), [1, 3, 6, 7]);
+	assert.equal(verification.matches[4].matchType, 'possible_visual');
+	assert.equal(verification.matches[1].asset, undefined);
+	assert.match(verification.matches[1].ownerReference, /^VC-[A-F0-9]{8}$/);
 	assert.equal(verification.comparison.fileName, 'verification-exact.png');
-	assert.equal(JSON.stringify(verification).includes(testUploadDirectory), false);
+	assert.doesNotMatch(JSON.stringify(verification), /Private candidate|private-\d+\.png|uploads|candidate-sha|phash/i);
 	exactVerificationReference = verification.reference;
 	assertCheckDirectoryIsEmpty();
 });
@@ -342,55 +375,60 @@ test('verification classification follows cryptographic and configured perceptua
 	assert.equal(verificationService.classifyResult(false, 13).result, 'no_match');
 });
 
-test('verification classifies deterministic JPEG, resize, and brightness variants as strong visual evidence', async () => {
+test('global verification ranks the strongest visual candidates first', async () => {
 	for (const [name, buffer, mimetype] of [
 		['verification-recompressed.jpg', variants.jpeg, 'image/jpeg'],
 		['verification-resized.png', variants.resized, 'image/png'],
 		['verification-brighter.png', variants.brighter, 'image/png'],
 	]) {
-		const verification = await verificationService.verifyAsset(userA.user.id, {
-			assetId,
+		const verification = await verificationService.verifyImage(userA.user.id, {
 			file: createCheckFile(name, buffer, mimetype),
+			tokenFingerprint: userAFingerprint,
 		});
-		assert.equal(verification.result, 'strong_visual');
-		assert.equal(verification.fingerprints.sha256Match, false);
-		assert.ok(verification.fingerprints.perceptualDistance <= verification.fingerprints.strongThreshold);
-		assert.equal(verification.fingerprints.hashBits, 256);
+		assert.equal(verification.result, 'matches_found');
+		assert.equal(verification.matches[0].matchType, 'strong_visual');
+		assert.equal(verification.matches[0].sha256Match, false);
+		assert.ok(verification.matches[0].distance <= verification.thresholds.strong);
+		assert.equal(verification.matches[0].hashBits, 256);
+		assert.deepEqual(verification.matches.map((match) => match.distance), [...verification.matches.map((match) => match.distance)].sort((a, b) => a - b));
 		assertCheckDirectoryIsEmpty();
 	}
 });
 
 test('verification classifies an unrelated image as no meaningful match', async () => {
-	const verification = await verificationService.verifyAsset(userA.user.id, {
-		assetId,
+	const verification = await verificationService.verifyImage(userA.user.id, {
 		file: createCheckFile('verification-unrelated.png', unrelatedBuffer),
+		tokenFingerprint: userAFingerprint,
 	});
 	assert.equal(verification.result, 'no_match');
-	assert.equal(verification.fingerprints.sha256Match, false);
-	assert.ok(verification.fingerprints.perceptualDistance > verification.fingerprints.possibleThreshold);
+	assert.deepEqual(verification.matches, []);
+	assert.ok(verification.nearestDistance > verification.thresholds.possible);
 	assertCheckDirectoryIsEmpty();
 });
 
-test('verification rejects another user asset and creates no report', async () => {
-	const before = await verificationService.getVerifications(userB.user.id);
-	await assert.rejects(
-		() => verificationService.verifyAsset(userB.user.id, {
-			assetId,
-			file: createCheckFile('unauthorized-verification.png'),
-		}),
-		(error) => error.status === 404 && error.message === 'Asset not found'
-	);
-	assert.deepEqual(await verificationService.getVerifications(userB.user.id), before);
+test('cross-owner global matches expose only pseudonymous evidence', async () => {
+	const verification = await verificationService.verifyImage(userB.user.id, {
+		file: createCheckFile('cross-owner-verification.png'),
+		tokenFingerprint: userBFingerprint,
+	});
+	const exact = verification.matches[0];
+	assert.equal(exact.matchType, 'exact');
+	assert.equal(exact.ownerIsCurrentUser, false);
+	assert.match(exact.assetReference, /^VC-A\d{6}$/);
+	assert.match(exact.ownerReference, /^VC-[A-F0-9]{8}$/);
+	assert.equal(exact.asset, undefined);
+	assert.doesNotMatch(JSON.stringify(exact), /Owner A asset|owner-a-fixture|email|fileName|metadata|sha256Hash|phash|uploads/i);
 	assertCheckDirectoryIsEmpty();
 });
 
 test('verification history and report details are isolated by asset owner', async () => {
 	const ownerHistory = await verificationService.getVerifications(userA.user.id);
 	assert.ok(ownerHistory.length >= 5);
-	assert.equal(ownerHistory.every((report) => report.registeredAsset.id === assetId), true);
-	assert.deepEqual(await verificationService.getVerifications(userB.user.id), []);
-	const detail = await verificationService.getVerification(userA.user.id, exactVerificationReference);
-	assert.equal(detail.result, 'exact');
+	assert.equal(ownerHistory.every((report) => Array.isArray(report.matches)), true);
+	assert.equal((await verificationService.getVerifications(userB.user.id)).length, 1);
+	const detail = await verificationService.getVerification(userA.user.id, exactVerificationReference, userAFingerprint);
+	assert.equal(detail.result, 'matches_found');
+	assert.equal(detail.matches[0].matchType, 'exact');
 	await assert.rejects(
 		() => verificationService.getVerification(userB.user.id, exactVerificationReference),
 		(error) => error.status === 404 && error.message === 'Verification report not found'
@@ -402,9 +440,9 @@ test('verification removes its temporary file when report persistence fails', as
 	verificationRepository.createVerificationReport = async () => { throw new Error('Forced persistence failure'); };
 	try {
 		await assert.rejects(
-			() => verificationService.verifyAsset(userA.user.id, {
-				assetId,
+			() => verificationService.verifyImage(userA.user.id, {
 				file: createCheckFile('failed-verification.png', variants.resized),
+				tokenFingerprint: userAFingerprint,
 			}),
 			/Forced persistence failure/
 		);
@@ -502,10 +540,15 @@ test('server-side Vault grants protect assets, require every Vault, expire, lock
 		() => assetService.getAssetHash(userA.user.id, assetId, userAFingerprint),
 		() => assetService.getAssetMetadata(userA.user.id, assetId, userAFingerprint),
 	]) await assert.rejects(operation, (error) => error.status === 423);
-	await assert.rejects(
-		() => verificationService.verifyAsset(userA.user.id, { assetId, tokenFingerprint: userAFingerprint, file: createCheckFile('locked-verification.png') }),
-		(error) => error.status === 423
-	);
+	const lockedVerification = await verificationService.verifyImage(userA.user.id, {
+		tokenFingerprint: userAFingerprint,
+		file: createCheckFile('locked-verification.png'),
+	});
+	const lockedExactMatch = lockedVerification.matches.find((match) => match.assetReference === `VC-A${String(assetId).padStart(6, '0')}`);
+	assert.equal(lockedExactMatch.matchType, 'exact');
+	assert.equal(lockedExactMatch.ownerReference, 'You');
+	assert.equal(lockedExactMatch.asset, undefined);
+	assert.doesNotMatch(JSON.stringify(lockedExactMatch), /Owner A asset|owner-a-fixture|fileName|metadata|sha256Hash|phash|vault/i);
 	assertCheckDirectoryIsEmpty();
 	const ownershipResult = await assetService.checkAssetOwnership(userA.user.id, createCheckFile('locked-ownership.png'));
 	assert.equal(ownershipResult.matchType, 'exact');
@@ -758,6 +801,14 @@ test('purchase atomically transfers ownership, balances, Vault membership, and p
 	const ownership = await assetService.checkAssetOwnership(userB.user.id, createCheckFile('buyer-ownership.png'));
 	assert.equal(ownership.asset.owner.isCurrentUser, true);
 	assert.equal(ownership.asset.id, assetId);
+	const transferredVerification = await verificationService.verifyImage(userB.user.id, {
+		file: createCheckFile('buyer-global-verification.png'),
+		tokenFingerprint: userBFingerprint,
+	});
+	assert.equal(transferredVerification.matches[0].assetReference, `VC-A${String(assetId).padStart(6, '0')}`);
+	assert.equal(transferredVerification.matches[0].ownerReference, 'You');
+	assert.equal(transferredVerification.matches[0].ownerIsCurrentUser, true);
+	assert.equal(transferredVerification.matches[0].asset.id, assetId);
 });
 
 test('concurrent purchases serialize so exactly one buyer succeeds', async () => {

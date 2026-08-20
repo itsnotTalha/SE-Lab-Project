@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS ocr_results (
 CREATE TABLE IF NOT EXISTS verification_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER,
-  asset_id INTEGER NOT NULL,
+  asset_id INTEGER,
   verification_type TEXT,
   sha256_match INTEGER,
   similarity_score REAL,
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS verification_reports (
   report_json TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+  FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE SET NULL
 );
 
 -- blockchain_blocks table

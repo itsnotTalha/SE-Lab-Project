@@ -11,13 +11,40 @@ function all(sql, params = []) {
 }
 
 async function migrateVerificationReports() {
-  const columns = await all('PRAGMA table_info(verification_reports)');
+  let columns = await all('PRAGMA table_info(verification_reports)');
   if (!columns.some((column) => column.name === 'user_id')) {
     await run('ALTER TABLE verification_reports ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE');
+    columns = await all('PRAGMA table_info(verification_reports)');
   }
   await run(`UPDATE verification_reports
     SET user_id = (SELECT owner_id FROM assets WHERE assets.id = verification_reports.asset_id)
     WHERE user_id IS NULL`);
+  const assetColumn = columns.find((column) => column.name === 'asset_id');
+  if (assetColumn?.notnull) {
+    await exec(`PRAGMA foreign_keys = OFF;
+      BEGIN TRANSACTION;
+      CREATE TABLE verification_reports_migrated (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        asset_id INTEGER,
+        verification_type TEXT,
+        sha256_match INTEGER,
+        similarity_score REAL,
+        status TEXT,
+        report_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE SET NULL
+      );
+      INSERT INTO verification_reports_migrated
+        (id, user_id, asset_id, verification_type, sha256_match, similarity_score, status, report_json, created_at)
+      SELECT id, user_id, asset_id, verification_type, sha256_match, similarity_score, status, report_json, created_at
+      FROM verification_reports;
+      DROP TABLE verification_reports;
+      ALTER TABLE verification_reports_migrated RENAME TO verification_reports;
+      COMMIT;
+      PRAGMA foreign_keys = ON;`);
+  }
   await exec('CREATE INDEX IF NOT EXISTS idx_verification_reports_user_id ON verification_reports(user_id)');
 }
 

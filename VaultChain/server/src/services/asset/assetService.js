@@ -307,5 +307,7 @@ module.exports = {
 	getAssetMetadata,
 	getAssetHash,
 	getOwnershipHistory,
+	publicOwnerReference,
+	publicAssetReference,
 	assertAssetUnlocked: vaultAccessService.assertAssetUnlocked,
 };

@@ -35,6 +35,7 @@ test('database initialization adds report ownership to the legacy verification t
 	await initializeDatabase();
 	const columns = await all('PRAGMA table_info(verification_reports)');
 	assert.equal(columns.some((column) => column.name === 'user_id'), true);
+	assert.equal(columns.find((column) => column.name === 'asset_id').notnull, 0);
 	const indexes = await all('PRAGMA index_list(verification_reports)');
 	assert.equal(indexes.some((index) => index.name === 'idx_verification_reports_user_id'), true);
 	const tables = await all("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('vaults', 'vault_assets', 'vault_unlock_sessions', 'vault_unlock_attempts')");
