@@ -26,6 +26,19 @@ function get(sql, params = []) {
 	});
 }
 
+function all(sql, params = []) {
+	return new Promise((resolve, reject) => {
+		database.all(sql, params, (error, rows) => {
+			if (error) {
+				reject(error);
+				return;
+			}
+
+			resolve(rows);
+		});
+	});
+}
+
 function mapAssetRow(row) {
 	if (!row) {
 		return null;
@@ -57,6 +70,67 @@ async function getAssetById(assetId) {
 	);
 
 	return mapAssetRow(row);
+}
+
+const OWNED_ASSET_SELECT = `
+	SELECT
+		a.id,
+		a.owner_id,
+		a.title,
+		a.description,
+		a.category,
+		a.file_name,
+		a.file_path,
+		a.file_size,
+		a.mime_type,
+		a.status,
+		a.created_at,
+		a.updated_at,
+		m.id AS metadata_id,
+		m.width,
+		m.height,
+		h.id AS hash_id,
+		h.sha256_hash,
+		h.phash
+	FROM assets a
+	LEFT JOIN asset_metadata m ON m.asset_id = a.id
+	LEFT JOIN asset_hashes h ON h.asset_id = a.id
+`;
+
+function mapOwnedAssetRow(row) {
+	if (!row) return null;
+
+	return {
+		...mapAssetRow(row),
+		width: row.width,
+		height: row.height,
+		sha256Hash: row.sha256_hash,
+		phash: row.phash,
+		hasMetadata: row.metadata_id != null,
+		hasHash: row.hash_id != null,
+	};
+}
+
+async function getAssetsByOwnerId(ownerId) {
+	const rows = await all(
+		`${OWNED_ASSET_SELECT}
+		 WHERE a.owner_id = ?
+		 ORDER BY a.created_at DESC, a.id DESC`,
+		[ownerId]
+	);
+
+	return rows.map(mapOwnedAssetRow);
+}
+
+async function getAssetByIdAndOwnerId(assetId, ownerId) {
+	const row = await get(
+		`${OWNED_ASSET_SELECT}
+		 WHERE a.id = ? AND a.owner_id = ?
+		 LIMIT 1`,
+		[assetId, ownerId]
+	);
+
+	return mapOwnedAssetRow(row);
 }
 
 async function createAsset(assetData) {
@@ -177,6 +251,57 @@ async function findAssetHashByPhash(phash, excludeAssetId) {
 	return mapAssetHashRow(row);
 }
 
+const ASSET_MATCH_SELECT = `
+	SELECT
+		a.id AS asset_id,
+		a.owner_id,
+		a.title,
+		a.created_at
+	FROM asset_hashes h
+	JOIN assets a ON a.id = h.asset_id
+`;
+
+function mapAssetMatchRow(row) {
+	if (!row) return null;
+	return {
+		assetId: row.asset_id,
+		ownerId: row.owner_id,
+		title: row.title,
+		createdAt: row.created_at,
+	};
+}
+
+async function findAssetMatchBySha256(sha256Hash) {
+	const row = await get(
+		`${ASSET_MATCH_SELECT}
+		 WHERE h.sha256_hash = ?
+		 ORDER BY a.created_at ASC, a.id ASC
+		 LIMIT 1`,
+		[sha256Hash]
+	);
+	return mapAssetMatchRow(row);
+}
+
+async function getAssetPhashCandidates() {
+	const rows = await all(
+		`SELECT
+			a.id AS asset_id,
+			a.owner_id,
+			a.title,
+			a.created_at,
+			h.phash
+		 FROM asset_hashes h
+		 JOIN assets a ON a.id = h.asset_id
+		 WHERE h.phash IS NOT NULL
+		 ORDER BY a.id ASC`
+	);
+
+	return rows.map((row) => ({
+		...mapAssetMatchRow(row),
+		phash: row.phash,
+	}));
+}
+
 function mapAssetMetadataRow(row) {
 	if (!row) {
 		return null;
@@ -260,6 +385,8 @@ async function getAssetMetadataByAssetId(assetId) {
 
 module.exports = {
 	getAssetById,
+	getAssetsByOwnerId,
+	getAssetByIdAndOwnerId,
 	createAsset,
 	upsertAssetHash,
 	updateAssetPhash,
@@ -267,4 +394,6 @@ module.exports = {
 	getAssetMetadataByAssetId,
 	getAssetHashByAssetId,
 	findAssetHashByPhash,
+	findAssetMatchBySha256,
+	getAssetPhashCandidates,
 };

@@ -50,7 +50,13 @@ async function getCurrentUser() {
 		headers: { Authorization: `Bearer ${getToken()}` },
 	});
 
-	return data.user;
+	return {
+		id: data.user.id,
+		fullName: data.user.fullName || data.user.full_name,
+		email: data.user.email,
+		role: data.user.role,
+		createdAt: data.user.createdAt || data.user.created_at,
+	};
 }
 
 function logout() {

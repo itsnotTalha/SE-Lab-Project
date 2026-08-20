@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS ocr_results (
 -- verification_reports table
 CREATE TABLE IF NOT EXISTS verification_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
   asset_id INTEGER NOT NULL,
   verification_type TEXT,
   sha256_match INTEGER,
@@ -103,6 +104,7 @@ CREATE TABLE IF NOT EXISTS verification_reports (
   status TEXT,
   report_json TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
 
