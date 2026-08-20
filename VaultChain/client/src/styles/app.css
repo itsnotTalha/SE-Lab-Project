@@ -101,3 +101,58 @@
 .verification-no-match small { margin-top:12px; color:var(--warning); font-size:.61rem; }
 @media (max-width:700px) { .verification-match-evidence { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:420px) { .verification-match-evidence { grid-template-columns:1fr; }.verification-match-card > header { align-items:flex-start; }.verification-match-card > header > .status-badge { flex:0 0 auto; } }
+
+.marketplace-header-actions { display:flex; align-items:center; gap:10px; }
+.marketplace-wallet-balance { min-height:42px; display:flex; align-items:center; gap:9px; padding:6px 12px; border:1px solid var(--border); border-radius:11px; background:rgba(9,14,23,.72); }
+.marketplace-wallet-balance > svg { flex:0 0 auto; color:var(--primary); }
+.marketplace-wallet-balance span,.marketplace-wallet-balance strong { display:block; white-space:nowrap; }
+.marketplace-wallet-balance > div > span:first-child { margin-bottom:3px; color:var(--text-muted); font-size:.53rem; letter-spacing:.04em; text-transform:uppercase; }
+.marketplace-wallet-balance strong { color:#e1e8f1; font-size:.7rem; }
+.marketplace-wallet-balance strong small { color:var(--text-muted); font-size:.56rem; font-weight:550; }
+.marketplace-wallet-balance .skeleton { width:112px; height:10px; }
+.marketplace-toolbar { min-width:0; display:flex; align-items:center; gap:12px; margin-bottom:20px; padding:7px; border:1px solid var(--border); border-radius:14px; background:rgba(9,14,23,.68); box-shadow:0 8px 24px rgba(0,0,0,.08); }
+.marketplace-search { min-width:260px; flex:1; display:flex; align-items:center; gap:9px; padding:0 9px; color:var(--text-muted); }
+.marketplace-search:focus-within { border-radius:9px; box-shadow:inset 0 0 0 1px rgba(65,217,255,.34); }
+.marketplace-search input { width:100%; min-width:0; height:40px; color:var(--text); border:0; outline:0; background:transparent; font-size:.76rem; }
+.marketplace-search input::placeholder { color:#667286; }
+.marketplace-search button { width:26px; height:26px; flex:0 0 auto; display:grid; place-items:center; color:var(--text-muted); border:0; border-radius:7px; background:transparent; cursor:pointer; font-size:1rem; }
+.marketplace-search button:hover,.marketplace-search button:focus-visible { color:var(--text); background:rgba(255,255,255,.055); outline:none; }
+.marketplace-filter-group { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.marketplace-filter-group > svg { margin:0 3px; color:#5f6c80; }
+.marketplace-filter-group button { min-height:34px; padding:0 11px; color:var(--text-muted); border:1px solid transparent; border-radius:999px; background:transparent; cursor:pointer; font:600 .62rem var(--font-sans); transition:color .16s,border-color .16s,background .16s; }
+.marketplace-filter-group button:hover { color:var(--text-secondary); background:rgba(255,255,255,.035); }
+.marketplace-filter-group button.is-active { color:var(--primary); border-color:rgba(65,217,255,.2); background:rgba(65,217,255,.085); }
+.marketplace-filter-group button:focus-visible { outline:2px solid rgba(65,217,255,.5); outline-offset:2px; }
+.marketplace-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,360px)); align-items:start; gap:16px; }
+.marketplace-card { min-width:0; overflow:hidden; border:1px solid var(--border); border-radius:15px; background:rgba(9,14,23,.82); box-shadow:0 8px 24px rgba(0,0,0,.1); transition:transform .2s,border-color .2s,box-shadow .2s; }
+.marketplace-card:hover { transform:translateY(-2px); border-color:rgba(132,150,177,.28); box-shadow:0 12px 30px rgba(0,0,0,.16); }
+.marketplace-card__visual { position:relative; aspect-ratio:16/10; overflow:hidden; color:var(--primary); border-bottom:1px solid var(--border); background:#070c14; }
+.marketplace-card__visual .marketplace-thumbnail { position:absolute; inset:0; width:100%; height:100%; }
+.marketplace-card__visual .marketplace-thumbnail img { object-fit:cover; transition:transform .35s ease; }
+.marketplace-card:hover .marketplace-card__visual .marketplace-thumbnail img { transform:scale(1.025); }
+.marketplace-card__visual .status-badge { position:absolute; z-index:2; top:11px; right:11px; box-shadow:0 4px 12px rgba(0,0,0,.22); text-transform:capitalize; }
+.marketplace-card__owner-label { position:absolute; z-index:2; top:11px; left:11px; padding:5px 8px; color:#dce5ef; border:1px solid rgba(255,255,255,.12); border-radius:999px; background:rgba(5,9,15,.78); backdrop-filter:blur(7px); font-size:.52rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.marketplace-card__body { display:flex; flex-direction:column; min-height:210px; padding:16px; }
+.marketplace-card__identity { min-width:0; }
+.marketplace-card__identity h2 { margin:0 0 7px; overflow:hidden; color:#e1e7ef; font-size:.88rem; font-weight:660; letter-spacing:-.015em; text-overflow:ellipsis; white-space:nowrap; }
+.marketplace-card__identity code,.marketplace-card__seller code { color:#8390a3; font:500 .58rem var(--font-mono); }
+.marketplace-card__seller { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:15px; padding-top:12px; border-top:1px solid rgba(132,150,177,.1); }
+.marketplace-card__seller span { color:var(--text-muted); font-size:.57rem; }
+.marketplace-card__seller code { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.marketplace-card__footer { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:auto; padding-top:18px; }
+.marketplace-card__price strong,.marketplace-card__price span { display:block; }
+.marketplace-card__price strong { color:#f0f4f9; font-size:1.2rem; font-weight:700; letter-spacing:-.035em; }
+.marketplace-card__price span { margin-top:3px; color:var(--text-muted); font-size:.55rem; }
+.marketplace-card__footer > a { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:34px; flex:0 0 auto; padding:0 10px; color:var(--primary); border:1px solid rgba(65,217,255,.16); border-radius:9px; background:rgba(65,217,255,.045); text-decoration:none; font-size:.61rem; font-weight:650; transition:background .16s,border-color .16s; }
+.marketplace-card__footer > a:hover { border-color:rgba(65,217,255,.3); background:rgba(65,217,255,.08); }
+.marketplace-card__footer > a:focus-visible { outline:2px solid rgba(65,217,255,.55); outline-offset:2px; }
+.marketplace-empty { min-height:360px; display:grid; place-items:center; border:1px dashed var(--border); border-radius:16px; background:rgba(9,14,23,.38); }
+.marketplace-card-skeleton { overflow:hidden; border:1px solid var(--border); border-radius:15px; background:rgba(9,14,23,.72); }
+.marketplace-card-skeleton__visual { width:100%; aspect-ratio:16/10; border-radius:0; }
+.marketplace-card-skeleton > div { display:grid; gap:10px; padding:16px; }
+.marketplace-card-skeleton__eyebrow { width:35%; height:8px; }
+.marketplace-card-skeleton__title { width:72%; height:14px; }
+.marketplace-card-skeleton__line { width:88%; height:9px; }
+.marketplace-card-skeleton__price { width:45%; height:20px; margin-top:10px; }
+@media (max-width:900px) { .marketplace-toolbar { align-items:stretch; flex-direction:column; }.marketplace-search { min-width:0; border-bottom:1px solid var(--border); }.marketplace-filter-group { padding:1px 7px 2px; }.marketplace-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .marketplace-header-actions { width:100%; align-items:stretch; flex-direction:column; }.marketplace-wallet-balance { justify-content:center; }.marketplace-toolbar { padding:6px; }.marketplace-filter-group > svg { display:none; }.marketplace-filter-group button { flex:1 1 auto; padding:0 9px; }.marketplace-grid { grid-template-columns:1fr; }.marketplace-card { width:100%; }.marketplace-card__body { min-height:198px; }.marketplace-empty { min-height:320px; }.marketplace-card__footer { align-items:stretch; flex-direction:column; }.marketplace-card__footer > a { width:100%; }.marketplace-card__price { display:flex; align-items:baseline; gap:7px; }.marketplace-card__price span { margin-top:0; } }
