@@ -1,139 +1,44 @@
+import { AlertCircle, ArrowLeft, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const pageStyles = {
-	page: {
-		minHeight: '100vh',
-		display: 'flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: '24px',
-		background: 'linear-gradient(135deg, #0f172a 0%, #111827 55%, #1f2937 100%)',
-		color: '#e5e7eb',
-	},
-	card: {
-		width: '100%',
-		maxWidth: '420px',
-		padding: '32px',
-		borderRadius: '20px',
-		background: 'rgba(17, 24, 39, 0.9)',
-		border: '1px solid rgba(148, 163, 184, 0.18)',
-		boxShadow: '0 24px 80px rgba(0, 0, 0, 0.35)',
-	},
-	title: {
-		margin: 0,
-		fontSize: '2rem',
-		fontWeight: 700,
-	},
-	form: {
-		display: 'grid',
-		gap: '14px',
-		marginTop: '24px',
-	},
-	input: {
-		width: '100%',
-		padding: '14px 16px',
-		borderRadius: '12px',
-		border: '1px solid rgba(148, 163, 184, 0.2)',
-		background: '#0f172a',
-		color: '#e5e7eb',
-		fontSize: '1rem',
-	},
-	button: {
-		padding: '14px 16px',
-		border: 'none',
-		borderRadius: '12px',
-		background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 100%)',
-		color: '#fff',
-		fontSize: '1rem',
-		fontWeight: 700,
-		cursor: 'pointer',
-	},
-	error: {
-		padding: '12px 14px',
-		borderRadius: '10px',
-		background: 'rgba(220, 38, 38, 0.12)',
-		border: '1px solid rgba(220, 38, 38, 0.28)',
-		color: '#fca5a5',
-	},
-	footer: {
-		marginTop: '18px',
-		fontSize: '0.95rem',
-		color: '#94a3b8',
-	},
-};
+import Button from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
+import AuthLayout from '../../layouts/AuthLayout';
 
 export default function LoginPage() {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const { login } = useAuth();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 
 	async function handleSubmit(event) {
 		event.preventDefault();
-		setLoading(true);
 		setError('');
-
+		if (!email.trim() || !password) { setError('Enter your email and password to continue.'); return; }
+		setLoading(true);
 		try {
-			const response = await fetch(`${API_BASE_URL}/auth/login`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ email, password }),
-			});
-
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.message || 'Login failed');
-			}
-
-			localStorage.setItem('vaultchain_token', data.token);
-			navigate('/dashboard', { replace: true });
-		} catch (submitError) {
-			setError(submitError.message);
-		} finally {
-			setLoading(false);
-		}
+			await login({ email: email.trim(), password });
+			navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+		} catch (submitError) { setError(submitError.message); }
+		finally { setLoading(false); }
 	}
 
 	return (
-		<div style={pageStyles.page}>
-			<section style={pageStyles.card}>
-				<h1 style={pageStyles.title}>Login</h1>
-				<p style={{ marginTop: '10px', color: '#94a3b8' }}>Access your VaultChain dashboard.</p>
-
-				<form onSubmit={handleSubmit} style={pageStyles.form}>
-					<input
-						type="email"
-						placeholder="Email"
-						value={email}
-						onChange={(event) => setEmail(event.target.value)}
-						style={pageStyles.input}
-						autoComplete="email"
-					/>
-					<input
-						type="password"
-						placeholder="Password"
-						value={password}
-						onChange={(event) => setPassword(event.target.value)}
-						style={pageStyles.input}
-						autoComplete="current-password"
-					/>
-					{error ? <div style={pageStyles.error}>{error}</div> : null}
-					<button type="submit" style={pageStyles.button} disabled={loading}>
-						{loading ? 'Signing in...' : 'Login'}
-					</button>
-				</form>
-
-				<div style={pageStyles.footer}>
-					No account yet? <Link to="/register">Create one</Link>
-				</div>
-			</section>
-		</div>
+		<AuthLayout mode="login">
+			<header className="auth-card__header"><h2>Welcome back</h2><p>Sign in to access your secure VaultChain workspace.</p></header>
+			<form className="auth-form" onSubmit={handleSubmit} noValidate>
+				<div className="field"><label htmlFor="login-email">Email address</label><input id="login-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required /></div>
+				<div className="field"><label htmlFor="login-password">Password</label><div className="password-field"><input id="login-password" className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" required /><button type="button" className="password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div></div>
+				{error ? <div className="error-banner" role="alert"><AlertCircle size={16}/><span>{error}</span></div> : null}
+				<Button type="submit" size="lg" icon={LogIn} disabled={loading}>{loading ? 'Signing in…' : 'Sign in securely'}</Button>
+			</form>
+			<p className="auth-card__footer">New to VaultChain? <Link to="/register">Create an account</Link></p>
+			<Link to="/" className="auth-back-link"><ArrowLeft size={14}/> Back to home</Link>
+		</AuthLayout>
 	);
 }

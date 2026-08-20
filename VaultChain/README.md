@@ -12,8 +12,14 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
   - `/api/auth/login`
   - `/api/auth/me`
   - `/api/assets/upload`
+  - `/api/assets/check`
+  - `/api/assets`
+  - `/api/assets/:id`
+  - `/api/assets/:id/content`
   - `/api/assets/:id/metadata`
   - `/api/assets/:id/hash`
+  - `/api/verifications`
+  - `/api/verifications/:reference`
   - `/api/dashboard/summary`
 - SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
 - Registration creates a user and wallet together, and login returns a JWT plus basic user data.
@@ -23,6 +29,12 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 - The generated SHA-256 hash is stored in the `asset_hashes` table and returned in the upload response.
 - The upload flow also generates a perceptual hash with `image-hash`, stores it in the existing `asset_hashes` row, blocks duplicate image uploads before persistence, and exposes both hashes through `GET /api/assets/:id/hash`.
 - The upload flow also extracts available EXIF metadata with `exifr`, stores width, height, camera, location, created date, and the raw metadata JSON in `asset_metadata`, and exposes it through `GET /api/assets/:id/metadata`.
+- The authenticated asset library lists only the signed-in user's assets, and asset detail, content, hash, and metadata lookups all enforce the same ownership boundary.
+- The authenticated ownership check temporarily processes an image without creating an asset, checks SHA-256 first and then compares the existing perceptual-hash signature by bit-level Hamming distance, deletes the temporary file, and returns only a pseudonymous owner reference for cross-account matches.
+- Perceptual matching defaults to a strong-match maximum of 6 bits and a possible-match maximum of 12 bits. These can be tuned with `PHASH_STRONG_MATCH_MAX` and `PHASH_POSSIBLE_MATCH_MAX`; they are application heuristics, not authenticity guarantees.
+- The current closest-match scan is intentionally linear for the small SQLite dataset and should be replaced with an indexed or approximate search strategy if asset volume grows substantially.
+- Asset cards and the inspector offer authenticated image previews through the existing owner-protected content endpoint.
+- Verification compares one temporarily uploaded image against one selected asset owned by the authenticated user, saves fingerprint thresholds and privacy-safe metadata evidence in the existing `verification_reports` table, and exposes owner-isolated report history through pseudonymous `VR-XXXXXX` references.
 
 ## Current progress
 
@@ -60,4 +72,4 @@ cd client && npm run dev
 
 - Expand the dashboard with richer analytics and recent activity views.
 - Replace placeholder profile pages with working features.
-- Add authenticated API routes for verification, vault management, and wallet activity.
+- Add authenticated API routes for vault management and richer wallet activity.

@@ -64,15 +64,31 @@ POST /api/assets/upload
   - Generate pHash
   - Extract metadata
   - Save asset
-- Status: planned
+- Status: implemented
+
+POST /api/assets/check
+- Temporarily process a JPG, PNG, or WebP image without registering it.
+- Requires JWT authentication.
+- Checks exact SHA-256 matches first, then finds the closest stored perceptual hash using bit-level Hamming distance.
+- Perceptual responses include similarity classification, distance, applicable threshold, and hash bit length.
+- Deletes the temporary upload after processing.
+- Returns full asset identity only for the authenticated owner; cross-owner matches use pseudonymous owner and asset references.
+- Status: implemented
 
 GET /api/assets
 - List authenticated user's assets.
-- Status: planned
+- Owner-scoped and newest-first.
+- Status: implemented
 
 GET /api/assets/:id
 - Return asset details.
-- Status: planned
+- Enforces authenticated ownership.
+- Status: implemented
+
+GET /api/assets/:id/content
+- Return the stored image for an owned asset.
+- Requires JWT authentication and enforces ownership.
+- Status: implemented
 
 DELETE /api/assets/:id
 - Delete asset.
@@ -80,30 +96,30 @@ DELETE /api/assets/:id
 
 GET /api/assets/:id/hash
 - Return SHA-256 and pHash.
-- Status: planned
+- Enforces authenticated ownership.
+- Status: implemented
 
 GET /api/assets/:id/metadata
 - Return extracted metadata.
-- Status: planned
+- Enforces authenticated ownership.
+- Status: implemented
 
 Verification
 
-POST /api/verification/assets/:id
-- Verify an asset.
-- Checks:
-  - SHA-256 duplicate
-  - pHash similarity
-  - Metadata comparison
-- Possible results:
-  - Original
-  - Duplicate
-  - Modified Copy
-  - Unknown
-- Status: planned
+POST /api/verifications
+- Compare a temporary image against one selected asset owned by the authenticated user.
+- Requires JWT authentication and multipart fields `assetId` and `file`.
+- Produces exact, strong visual, possible visual, or no meaningful match evidence.
+- Saves thresholds, pHash distance, safe metadata differences, and report timestamps without storing the comparison image.
+- Status: implemented
 
-GET /api/verification/reports/:id
-- Return verification report.
-- Status: planned
+GET /api/verifications
+- Return only the authenticated user's verification history, newest first.
+- Status: implemented
+
+GET /api/verifications/:reference
+- Return one owner-scoped report by its pseudonymous VR reference.
+- Status: implemented
 
 ========================================
 Sprint 3 - Document Verification & Secure Vault
@@ -314,6 +330,6 @@ Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Fractional Ownersh
 
 Notes
 
-- Only the Sprint 1 auth and health endpoints are implemented right now.
+- Authentication, health, dashboard summary, upload, asset listing/detail/content/hash/metadata, and temporary ownership checking are implemented.
 - The remaining endpoints are roadmap items and should be added as the project grows.
 - This file is intended as the canonical API checklist for current and future work.
