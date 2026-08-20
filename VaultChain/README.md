@@ -1,10 +1,10 @@
 # VaultChain
 
-VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build now covers authentication, the first protected user experience, authenticated asset uploads, SHA-256 hashing for uploaded assets, pHash generation for uploaded images, and image metadata extraction.
+VaultChain is a full-stack web app for registering digital assets, organizing them in private Vaults, and comparing image fingerprints. The current build covers authentication, protected asset uploads and previews, SHA-256 and perceptual hashing, image metadata extraction, verification reports, and private organizational collections.
 
 ## What is implemented now
 
-- React client with routed pages for login, registration, dashboard, assets, and profile.
+- React client with routed pages for login, registration, dashboard, assets, verification, Vaults, and profile.
 - Protected routing based on a stored JWT token.
 - Express API with health, authentication, and dashboard endpoints:
   - `/api/health`
@@ -20,11 +20,15 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
   - `/api/assets/:id/hash`
   - `/api/verifications`
   - `/api/verifications/:reference`
+  - `/api/vaults`
+  - `/api/vaults/:reference`
+  - `/api/vaults/:reference/assets`
+  - `/api/vaults/:reference/assets/:assetId`
   - `/api/dashboard/summary`
-- SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
+- SQLite database initialization includes owner-scoped Vault collections and an asset-membership join table; the registered asset record and stored file remain the single source of truth.
 - Registration creates a user and wallet together, and login returns a JWT plus basic user data.
 - The authenticated user endpoint returns the signed-in user's profile without exposing the password hash.
-- The dashboard summary endpoint returns real counts from SQLite for assets, verification reports, vault items, and wallet balance.
+- The dashboard summary endpoint returns real counts from SQLite for assets, verification reports, Vaults, organized assets, and wallet balance.
 - The asset upload endpoint is protected by the existing JWT middleware, accepts jpg/jpeg/png/webp files up to 20 MB, stores uploads in `server/src/uploads/`, persists asset metadata in SQLite, and generates a SHA-256 hash for each uploaded file.
 - The generated SHA-256 hash is stored in the `asset_hashes` table and returned in the upload response.
 - The upload flow also generates a perceptual hash with `image-hash`, stores it in the existing `asset_hashes` row, blocks duplicate image uploads before persistence, and exposes both hashes through `GET /api/assets/:id/hash`.
@@ -35,10 +39,12 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 - The current closest-match scan is intentionally linear for the small SQLite dataset and should be replaced with an indexed or approximate search strategy if asset volume grows substantially.
 - Asset cards and the inspector offer authenticated image previews through the existing owner-protected content endpoint.
 - Verification compares one temporarily uploaded image against one selected asset owned by the authenticated user, saves fingerprint thresholds and privacy-safe metadata evidence in the existing `verification_reports` table, and exposes owner-isolated report history through pseudonymous `VR-XXXXXX` references.
+- Vault routes require JWT authentication, expose only the signed-in user's collections, use privacy-safe `VT-XXXXXX` references, and reject attempts to add another user's assets.
+- Adding to or removing from a Vault only changes collection membership. Deleting a Vault does not delete registered assets, their stored files, hashes, metadata, or verification history.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage, and the core authentication, dashboard, asset upload, hashing, duplicate protection, and image metadata foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
+The core authentication, dashboard, asset library, hashing, duplicate protection, metadata, verification, and organizational Vault workflows are working. Broader marketplace, wallet, and document features remain planned.
 
 ## Tech Stack
 
@@ -72,4 +78,4 @@ cd client && npm run dev
 
 - Expand the dashboard with richer analytics and recent activity views.
 - Replace placeholder profile pages with working features.
-- Add authenticated API routes for vault management and richer wallet activity.
+- Add richer wallet activity.

@@ -19,9 +19,12 @@ const { initializeDatabase } = require('../src/database/initDatabase');
 const { authenticateToken } = require('../src/middleware/auth');
 const assetRepository = require('../src/repositories/assetRepository');
 const verificationRepository = require('../src/repositories/verificationRepository');
+const dashboardRepository = require('../src/repositories/dashboardRepository');
+const vaultRepository = require('../src/repositories/vaultRepository');
 const assetService = require('../src/services/asset/assetService');
 const authService = require('../src/services/auth/authService');
 const verificationService = require('../src/services/verification/verificationService');
+const vaultService = require('../src/services/vault/vaultService');
 
 let userA;
 let userB;
@@ -31,6 +34,10 @@ let fixtureName;
 let variants;
 let unrelatedBuffer;
 let exactVerificationReference;
+let newerAssetId;
+let photographyVaultReference;
+let clientVaultReference;
+let userBAssetId;
 
 function createFile(filename, buffer = fixtureBuffer, mimetype = 'image/png') {
 	fs.mkdirSync(testUploadDirectory, { recursive: true });
@@ -172,6 +179,7 @@ test('asset list is owner-scoped, omits private paths, and returns newest first'
 		fileSize: 100,
 		mimeType: 'image/png',
 	});
+	newerAssetId = newerAsset.id;
 
 	const ownerAssets = await assetService.getAssets(userA.user.id);
 	assert.equal(ownerAssets.length, 2);
@@ -387,6 +395,101 @@ test('verification removes its temporary file when report persistence fails', as
 		verificationRepository.createVerificationReport = originalCreate;
 	}
 	assertCheckDirectoryIsEmpty();
+});
+
+test('creates, lists, and retrieves owner-scoped Vaults with safe references', async () => {
+	const photography = await vaultService.createVault(userA.user.id, { name: '  Photography  ', description: 'Original photo assets' });
+	const clientWork = await vaultService.createVault(userA.user.id, { name: 'Client Work', description: '' });
+	photographyVaultReference = photography.reference;
+	clientVaultReference = clientWork.reference;
+	assert.match(photography.reference, /^VT-[A-F0-9]{6}$/);
+	assert.equal(photography.name, 'Photography');
+	assert.equal(photography.description, 'Original photo assets');
+	assert.equal((await vaultService.getVaults(userA.user.id)).length, 2);
+	assert.deepEqual(await vaultService.getVaults(userB.user.id), []);
+	assert.equal((await vaultService.getVault(userA.user.id, photography.reference)).name, 'Photography');
+	await assert.rejects(() => vaultService.getVault(userB.user.id, photography.reference), (error) => error.status === 404);
+});
+
+test('updates an owned Vault and rejects cross-owner update attempts', async () => {
+	const updated = await vaultService.updateVault(userA.user.id, photographyVaultReference, { name: 'Photography Archive' });
+	assert.equal(updated.name, 'Photography Archive');
+	assert.equal(updated.description, 'Original photo assets');
+	await assert.rejects(
+		() => vaultService.updateVault(userB.user.id, photographyVaultReference, { name: 'Tampered' }),
+		(error) => error.status === 404
+	);
+});
+
+test('adds multiple owned assets without copying asset records and updates real dashboard counts', async () => {
+	const beforeAssets = await assetService.getAssets(userA.user.id);
+	const vault = await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId, newerAssetId] });
+	assert.equal(vault.assetCount, 2);
+	assert.deepEqual(new Set(vault.assets.map((asset) => asset.id)), new Set([assetId, newerAssetId]));
+	assert.equal((await assetService.getAssets(userA.user.id)).length, beforeAssets.length);
+	const summary = await dashboardRepository.getSummary(userA.user.id);
+	assert.equal(summary.totalVaults, 2);
+	assert.equal(summary.totalOrganizedAssets, 2);
+});
+
+test('rejects duplicate Vault membership and foreign asset injection', async () => {
+	await assert.rejects(
+		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] }),
+		(error) => error.status === 409
+	);
+	const foreignAsset = await assetRepository.createAsset({
+		ownerId: userB.user.id,
+		title: 'Foreign asset',
+		description: null,
+		category: 'image',
+		fileName: 'foreign.png',
+		filePath: path.join(testUploadDirectory, 'foreign.png'),
+		fileSize: 10,
+		mimeType: 'image/png',
+	});
+	userBAssetId = foreignAsset.id;
+	await assert.rejects(
+		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [foreignAsset.id] }),
+		(error) => error.status === 404
+	);
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference)).assetCount, 2);
+});
+
+test('removes only Vault membership while preserving asset, hashes, and verification reports', async () => {
+	const reportsBefore = await verificationService.getVerifications(userA.user.id);
+	const updated = await vaultService.removeAsset(userA.user.id, photographyVaultReference, assetId);
+	assert.equal(updated.assets.some((asset) => asset.id === assetId), false);
+	assert.equal((await assetService.getAsset(userA.user.id, assetId)).id, assetId);
+	assert.ok((await assetService.getAssetHash(userA.user.id, assetId)).sha256Hash);
+	assert.equal((await verificationService.getVerifications(userA.user.id)).length, reportsBefore.length);
+	await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] });
+});
+
+test('deletes a Vault and memberships without deleting contained assets or verification evidence', async () => {
+	await assert.rejects(() => vaultService.deleteVault(userB.user.id, photographyVaultReference), (error) => error.status === 404);
+	const reportsBefore = await verificationService.getVerifications(userA.user.id);
+	await vaultService.deleteVault(userA.user.id, photographyVaultReference);
+	await assert.rejects(() => vaultService.getVault(userA.user.id, photographyVaultReference), (error) => error.status === 404);
+	assert.equal((await assetService.getAsset(userA.user.id, assetId)).id, assetId);
+	assert.ok((await assetService.getAssetHash(userA.user.id, assetId)).phash);
+	assert.equal((await verificationService.getVerifications(userA.user.id)).length, reportsBefore.length);
+});
+
+test('asset row deletion cascades Vault membership without leaving a broken relation', async () => {
+	const temporaryAsset = await assetRepository.createAsset({
+		ownerId: userA.user.id,
+		title: 'Temporary membership asset',
+		description: null,
+		category: 'image',
+		fileName: 'temporary.png',
+		filePath: path.join(testUploadDirectory, 'temporary.png'),
+		fileSize: 10,
+		mimeType: 'image/png',
+	});
+	await vaultService.addAssets(userA.user.id, clientVaultReference, { assetIds: [temporaryAsset.id] });
+	await new Promise((resolve, reject) => database.run('DELETE FROM assets WHERE id = ?', [temporaryAsset.id], (error) => error ? reject(error) : resolve()));
+	assert.equal((await vaultService.getVault(userA.user.id, clientVaultReference)).assetCount, 0);
+	assert.deepEqual(await vaultRepository.getExistingMembershipIds((await vaultRepository.getVaultByReferenceAndUserId(clientVaultReference, userA.user.id)).id, [temporaryAsset.id]), []);
 });
 
 test('duplicate detection remains active across accounts', async () => {

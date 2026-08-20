@@ -13,7 +13,7 @@ const primaryNav = [
 	{ label: 'Overview', to: '/dashboard', icon: LayoutDashboard },
 	{ label: 'Assets', to: '/assets', icon: Images },
 	{ label: 'Verification', to: '/verification', icon: ScanSearch },
-	{ label: 'Vault', icon: LockKeyhole, soon: true },
+	{ label: 'Vault', to: '/vault', icon: LockKeyhole },
 	{ label: 'Documents', icon: FileText, soon: true },
 	{ label: 'Wallet', to: '/wallet', icon: WalletCards },
 	{ label: 'Marketplace', to: '/marketplace', icon: Store },

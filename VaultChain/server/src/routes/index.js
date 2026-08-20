@@ -7,6 +7,7 @@ const healthRoutes = require('./healthRoutes');
 const marketplaceRoutes = require('./marketplaceRoutes');
 const walletRoutes = require('./walletRoutes');
 const verificationRoutes = require('./verificationRoutes');
+const vaultRoutes = require('./vaultRoutes');
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/marketplace', marketplaceRoutes);
 router.use('/verifications', verificationRoutes);
+router.use('/vaults', vaultRoutes);
 
 module.exports = router;

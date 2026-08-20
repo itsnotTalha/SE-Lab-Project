@@ -173,6 +173,27 @@ CREATE TABLE IF NOT EXISTS vault_items (
   FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- organizational vault collections
+CREATE TABLE IF NOT EXISTS vaults (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  public_reference TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vault_assets (
+  vault_id INTEGER NOT NULL,
+  asset_id INTEGER NOT NULL,
+  added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(vault_id, asset_id),
+  FOREIGN KEY(vault_id) REFERENCES vaults(id) ON DELETE CASCADE,
+  FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+);
+
 -- notifications table
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,3 +216,5 @@ CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_block
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_vaults_user_id ON vaults(user_id);
+CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);

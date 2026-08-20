@@ -37,7 +37,7 @@ POST /api/auth/login
 
 GET /api/auth/me
 - Return currently authenticated user.
-- Status: planned
+- Status: implemented
 
 Dashboard
 
@@ -46,9 +46,9 @@ GET /api/dashboard/summary
 - Example values:
   - Total Assets
   - Verification Reports
-  - Vault Items
+  - Vaults and organized assets
   - Wallet Balance
-- Status: planned
+- Status: implemented
 
 ========================================
 Sprint 2 - Digital Asset Authentication
@@ -122,7 +122,7 @@ GET /api/verifications/:reference
 - Status: implemented
 
 ========================================
-Sprint 3 - Document Verification & Secure Vault
+Sprint 3 - Documents & Organizational Vaults
 ========================================
 
 Documents
@@ -151,24 +151,38 @@ GET /api/documents/:id/report
 - Return document verification report.
 - Status: planned
 
-Secure Vault
+Vaults
 
-POST /api/vault/upload
-- Upload encrypted file.
-- Uses AES-256 encryption.
-- Status: planned
+POST /api/vaults
+- Create a private organizational collection with a safe `VT-XXXXXX` reference.
+- Requires JWT authentication.
+- Status: implemented
 
-GET /api/vault
-- List vault items.
-- Status: planned
+GET /api/vaults
+- List only the authenticated user's Vaults, newest first, with real collection statistics and preview assets.
+- Status: implemented
 
-GET /api/vault/:id
-- Return vault item details.
-- Status: planned
+GET /api/vaults/:reference
+- Return one owner-scoped Vault and its registered asset memberships.
+- Status: implemented
 
-DELETE /api/vault/:id
-- Delete vault item.
-- Status: planned
+PATCH /api/vaults/:reference
+- Update an owned Vault's name or description.
+- Status: implemented
+
+DELETE /api/vaults/:reference
+- Delete only the Vault and its memberships; registered assets and their stored data remain.
+- Status: implemented
+
+POST /api/vaults/:reference/assets
+- Add one or more assets already owned by the authenticated user; no file is copied or reprocessed.
+- Body: `{ "assetIds": [1, 2] }`
+- Rejects duplicate memberships and assets owned by another user.
+- Status: implemented
+
+DELETE /api/vaults/:reference/assets/:assetId
+- Remove only the asset-to-Vault relationship.
+- Status: implemented
 
 ========================================
 Sprint 4 - Blockchain, Marketplace & Ownership
@@ -325,11 +339,11 @@ Sprint Summary
 
 Sprint 1: Authentication, JWT, Protected Routes, Dashboard Summary
 Sprint 2: Image Upload, SHA-256, pHash, Metadata Extraction, Duplicate Detection, Verification Reports
-Sprint 3: OCR, Document Verification, AES-256 Secure Vault
+Sprint 3: Organizational Vault collections implemented; OCR and document verification remain planned
 Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Fractional Ownership, Wallet Integration, Final UI Polish
 
 Notes
 
-- Authentication, health, dashboard summary, upload, asset listing/detail/content/hash/metadata, and temporary ownership checking are implemented.
+- Authentication, health, dashboard summary, upload, asset listing/detail/content/hash/metadata, temporary ownership checking, verification reports, and private organizational Vaults are implemented.
 - The remaining endpoints are roadmap items and should be added as the project grows.
 - This file is intended as the canonical API checklist for current and future work.

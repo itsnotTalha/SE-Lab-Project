@@ -57,7 +57,7 @@ export default function DashboardPage() {
 	const stats = [
 		{ label: 'Total Assets', value: summary?.totalAssets ?? 0, helper: 'Stored in your collection', icon: FileImage, tone: 'blue' },
 		{ label: 'Verifications', value: summary?.totalVerificationReports ?? 0, helper: 'Verification reports', icon: Fingerprint, tone: 'violet' },
-		{ label: 'Vault Items', value: summary?.totalVaultItems ?? 0, helper: 'Secure vault records', icon: LockKeyhole, tone: 'green' },
+		{ label: 'Vaults', value: summary?.totalVaults ?? 0, helper: `${summary?.totalOrganizedAssets ?? 0} organized assets`, icon: LockKeyhole, tone: 'green' },
 		{ label: 'Wallet Balance', value: `${(summary?.walletBalance ?? 0).toLocaleString()} credits`, helper: 'Available account balance', icon: WalletCards, tone: 'amber' },
 	];
 
@@ -77,7 +77,7 @@ export default function DashboardPage() {
 				</div>
 				<div className="dashboard-stack">
 					<SectionCard title="Protection status" description="Systems currently active for supported image uploads."><div className="security-score"><div className="security-score__ring"><div><strong>Active</strong><span>Core protection</span></div></div></div><div className="security-list"><div><CircleCheck size={14}/> SHA-256 fingerprinting active</div><div><CircleCheck size={14}/> Perceptual matching active</div><div><CircleCheck size={14}/> Metadata inspection active</div><div><ShieldCheck size={14}/> JWT access protection active</div></div></SectionCard>
-					<SectionCard title="Product roadmap" description="Additional protection modules are being built."><div className="security-list"><div><LockKeyhole size={14}/> Secure vault <span className="sidebar-link__soon">Soon</span></div><div><Fingerprint size={14}/> Authenticity reports <span className="sidebar-link__soon">Soon</span></div></div></SectionCard>
+					<SectionCard title="Workspace modules" description="Organization and evidence tools available in your account."><div className="security-list"><div><LockKeyhole size={14}/> Private Vault collections active</div><div><Fingerprint size={14}/> Verification reports active</div></div></SectionCard>
 				</div>
 			</div>
 			{selectedAsset ? <AssetInspector asset={selectedAsset} onClose={() => setSelectedAsset(null)} /> : null}

@@ -1,6 +1,6 @@
 import { AlertCircle, Play, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import AssetPreviewModal from '../../components/assets/AssetPreviewModal';
 import Button from '../../components/ui/Button';
@@ -19,6 +19,7 @@ const MAX_SIZE = 20 * 1024 * 1024;
 
 export default function VerificationPage() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [assets, setAssets] = useState([]);
 	const [history, setHistory] = useState([]);
 	const [selectedAsset, setSelectedAsset] = useState(null);
@@ -34,7 +35,7 @@ export default function VerificationPage() {
 
 	async function loadAssets() {
 		setLoadingAssets(true);
-		try { setAssets(await assetService.getAssets()); }
+		try { const nextAssets = await assetService.getAssets(); setAssets(nextAssets); if (location.state?.assetId) setSelectedAsset(nextAssets.find((asset) => asset.id === location.state.assetId) || null); }
 		catch (loadError) { setError(loadError.message); }
 		finally { setLoadingAssets(false); }
 	}

@@ -13,6 +13,8 @@ import ListingDetails from './src/pages/marketplace/ListingDetails';
 import MarketplacePage from './src/pages/marketplace/MarketplacePage';
 import ProfilePage from './src/pages/settings/ProfilePage';
 import VerificationPage from './src/pages/verification/VerificationPage';
+import VaultDetailPage from './src/pages/vault/VaultDetailPage';
+import VaultPage from './src/pages/vault/VaultPage';
 import WalletPage from './src/pages/wallet/WalletPage';
 
 function PublicOnlyRoute({ children }) {
@@ -33,6 +35,8 @@ function AppRoutes() {
 					<Route path="/dashboard" element={<DashboardPage />} />
 					<Route path="/assets" element={<AssetsPage />} />
 					<Route path="/verification" element={<VerificationPage />} />
+					<Route path="/vault" element={<VaultPage />} />
+					<Route path="/vault/:reference" element={<VaultDetailPage />} />
 					<Route path="/profile" element={<ProfilePage />} />
 					<Route path="/wallet" element={<WalletPage />} />
 					<Route path="/marketplace" element={<MarketplacePage />} />

@@ -21,15 +21,18 @@ async function getSummary(userId) {
 			 FROM verification_reports vr
 			 JOIN assets a ON a.id = vr.asset_id
 			 WHERE a.owner_id = ?) AS totalVerificationReports,
-			(SELECT COUNT(*) FROM vault_items WHERE owner_id = ?) AS totalVaultItems,
+			(SELECT COUNT(*) FROM vaults WHERE user_id = ?) AS totalVaults,
+			(SELECT COUNT(DISTINCT va.asset_id) FROM vault_assets va JOIN vaults v ON v.id = va.vault_id WHERE v.user_id = ?) AS totalOrganizedAssets,
 			(SELECT COALESCE(balance, 0) FROM wallets WHERE user_id = ?) AS walletBalance`,
-		[userId, userId, userId, userId]
+		[userId, userId, userId, userId, userId]
 	);
 
 	return {
 		totalAssets: Number(row?.totalAssets || 0),
 		totalVerificationReports: Number(row?.totalVerificationReports || 0),
-		totalVaultItems: Number(row?.totalVaultItems || 0),
+		totalVaults: Number(row?.totalVaults || 0),
+		totalOrganizedAssets: Number(row?.totalOrganizedAssets || 0),
+		totalVaultItems: Number(row?.totalOrganizedAssets || 0),
 		walletBalance: Number(row?.walletBalance || 0),
 	};
 }
