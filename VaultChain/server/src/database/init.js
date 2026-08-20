@@ -21,6 +21,16 @@ async function migrateVerificationReports() {
   await exec('CREATE INDEX IF NOT EXISTS idx_verification_reports_user_id ON verification_reports(user_id)');
 }
 
+async function migrateVaultPasswords() {
+  const columns = await all('PRAGMA table_info(vaults)');
+  if (!columns.some((column) => column.name === 'password_hash')) {
+    await run('ALTER TABLE vaults ADD COLUMN password_hash TEXT');
+  }
+  if (!columns.some((column) => column.name === 'auto_lock_minutes')) {
+    await run('ALTER TABLE vaults ADD COLUMN auto_lock_minutes INTEGER NOT NULL DEFAULT 10 CHECK(auto_lock_minutes IN (5, 10, 30))');
+  }
+}
+
 async function initializeDatabase() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -29,6 +39,7 @@ async function initializeDatabase() {
 
       await exec(schema);
       await migrateVerificationReports();
+      await migrateVaultPasswords();
     })();
   }
 

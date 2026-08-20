@@ -59,7 +59,7 @@ function publicReport(row, detailed = true) {
 	};
 }
 
-async function verifyAsset(userId, { assetId, file }) {
+async function verifyAsset(userId, { assetId, file, tokenFingerprint }) {
 	if (!userId) throw createHttpError(401, 'Unauthorized');
 	if (!file) throw createHttpError(400, 'Comparison image is required');
 
@@ -70,6 +70,7 @@ async function verifyAsset(userId, { assetId, file }) {
 		}
 
 		const asset = await assetService.getOwnedAssetOrThrow(userId, numericAssetId);
+		await assetService.assertAssetUnlocked(userId, numericAssetId, tokenFingerprint);
 		if (!asset.sha256Hash || !asset.phash) {
 			throw createHttpError(422, 'The registered asset does not have complete fingerprints');
 		}

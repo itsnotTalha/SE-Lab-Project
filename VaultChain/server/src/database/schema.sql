@@ -180,6 +180,8 @@ CREATE TABLE IF NOT EXISTS vaults (
   public_reference TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT,
+  password_hash TEXT,
+  auto_lock_minutes INTEGER NOT NULL DEFAULT 10 CHECK(auto_lock_minutes IN (5, 10, 30)),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -192,6 +194,29 @@ CREATE TABLE IF NOT EXISTS vault_assets (
   PRIMARY KEY(vault_id, asset_id),
   FOREIGN KEY(vault_id) REFERENCES vaults(id) ON DELETE CASCADE,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vault_unlock_sessions (
+  vault_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  token_fingerprint TEXT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(vault_id, token_fingerprint),
+  FOREIGN KEY(vault_id) REFERENCES vaults(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vault_unlock_attempts (
+  vault_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  window_started_at DATETIME NOT NULL,
+  blocked_until DATETIME,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(vault_id, user_id),
+  FOREIGN KEY(vault_id) REFERENCES vaults(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- notifications table
@@ -218,3 +243,6 @@ CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(a
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_vaults_user_id ON vaults(user_id);
 CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
+CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);
+CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_expires_at ON vault_unlock_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_vault_unlock_attempts_blocked_until ON vault_unlock_attempts(blocked_until);

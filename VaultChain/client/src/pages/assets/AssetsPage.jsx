@@ -37,6 +37,12 @@ export default function AssetsPage() {
 	}, []);
 
 	useEffect(() => { loadAssets(); }, [loadAssets]);
+	useEffect(() => {
+		const expirations = assets.map((asset) => asset.vaultProtection?.unlockExpiresAt).filter(Boolean).map((value) => new Date(value).getTime());
+		if (!expirations.length) return undefined;
+		const timeout = window.setTimeout(loadAssets, Math.max(0, Math.min(...expirations) - Date.now()) + 250);
+		return () => window.clearTimeout(timeout);
+	}, [assets, loadAssets]);
 
 	const filteredAssets = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();

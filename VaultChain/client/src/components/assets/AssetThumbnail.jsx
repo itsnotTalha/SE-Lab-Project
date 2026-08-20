@@ -1,4 +1,4 @@
-import { FileImage } from 'lucide-react';
+import { FileImage, LockKeyhole } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { assetService } from '../../services/assetService';
@@ -10,7 +10,7 @@ export default function AssetThumbnail({ asset, large = false }) {
 		let active = true;
 		let objectUrl = '';
 
-		if (!asset?.id || !asset.mimeType?.startsWith('image/')) return undefined;
+		if (!asset?.id || !asset.mimeType?.startsWith('image/') || asset.vaultProtection?.isLocked) return undefined;
 
 		assetService.getContentObjectUrl(asset.id)
 			.then((nextUrl) => {
@@ -26,11 +26,11 @@ export default function AssetThumbnail({ asset, large = false }) {
 			active = false;
 			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
-	}, [asset?.id, asset?.mimeType]);
+	}, [asset?.id, asset?.mimeType, asset?.vaultProtection?.isLocked]);
 
 	return (
 		<div className={`asset-thumbnail ${large ? 'asset-thumbnail--large' : ''}`}>
-			{url ? <img src={url} alt={`Preview of ${asset.title}`} /> : <><div className="asset-card__pattern" /><FileImage size={large ? 42 : 32} aria-hidden="true" /></>}
+			{asset?.vaultProtection?.isLocked ? <div className="asset-thumbnail__locked"><LockKeyhole size={large ? 38 : 29}/><span>Password protected</span></div> : url ? <img src={url} alt={`Preview of ${asset.title}`} /> : <><div className="asset-card__pattern" /><FileImage size={large ? 42 : 32} aria-hidden="true" /></>}
 		</div>
 	);
 }

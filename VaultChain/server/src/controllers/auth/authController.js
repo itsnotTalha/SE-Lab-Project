@@ -1,5 +1,6 @@
 const { asyncHandler } = require('../../middleware/asyncHandler');
 const authService = require('../../services/auth/authService');
+const vaultAccessService = require('../../services/vault/vaultAccessService');
 
 const register = asyncHandler(async (req, res) => {
 	const result = await authService.register(req.body);
@@ -32,8 +33,14 @@ const me = asyncHandler(async (req, res) => {
 	});
 });
 
+const logout = asyncHandler(async (req, res) => {
+	await vaultAccessService.revokeTokenAccess(req.user.id, req.authTokenFingerprint);
+	res.status(200).json({ success: true, message: 'Logged out successfully' });
+});
+
 module.exports = {
 	register,
 	login,
 	me,
+	logout,
 };

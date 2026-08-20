@@ -48,10 +48,12 @@ export function AuthProvider({ children }) {
 		return authenticatedUser;
 	}
 
-	function logout() {
-		authService.logout();
-		setIsAuthenticated(false);
-		setUser(null);
+	async function logout() {
+		try { await authService.logout(); }
+		finally {
+			setIsAuthenticated(false);
+			setUser(null);
+		}
 	}
 
 	return (

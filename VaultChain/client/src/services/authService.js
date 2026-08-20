@@ -59,8 +59,13 @@ async function getCurrentUser() {
 	};
 }
 
-function logout() {
-	clearToken();
+async function logout() {
+	const token = getToken();
+	try {
+		if (token) await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+	} finally {
+		clearToken();
+	}
 }
 
 function getCurrentUserId() {

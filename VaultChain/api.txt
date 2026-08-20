@@ -39,6 +39,10 @@ GET /api/auth/me
 - Return currently authenticated user.
 - Status: implemented
 
+POST /api/auth/logout
+- Revoke temporary Vault unlock grants associated with the current JWT.
+- Status: implemented
+
 Dashboard
 
 GET /api/dashboard/summary
@@ -155,6 +159,7 @@ Vaults
 
 POST /api/vaults
 - Create a private organizational collection with a safe `VT-XXXXXX` reference.
+- Requires a Vault password; only its bcrypt hash is stored.
 - Requires JWT authentication.
 - Status: implemented
 
@@ -163,7 +168,30 @@ GET /api/vaults
 - Status: implemented
 
 GET /api/vaults/:reference
-- Return one owner-scoped Vault and its registered asset memberships.
+- Return one owner-scoped Vault. Asset memberships are omitted while it is locked.
+- Status: implemented
+
+POST /api/vaults/:reference/unlock
+- Verify the Vault password and create a temporary server-side grant for the current JWT session.
+- Unlock duration uses the Vault's 5, 10, or 30 minute setting and defaults to 10 minutes; `VAULT_UNLOCK_TTL_SECONDS` can provide a server override.
+- Status: implemented
+
+POST /api/vaults/:reference/lock
+- Revoke the current JWT session's grant for this Vault immediately.
+- Status: implemented
+
+POST /api/vaults/:reference/change-password
+- Require `currentPassword`, `newPassword`, and `confirmPassword`.
+- Optionally accept `autoLockMinutes` as 5, 10, or 30.
+- Replace the bcrypt hash and revoke every active unlock grant for the Vault.
+- Repeated incorrect current-password attempts use the same Vault rate limit as unlock.
+- Status: implemented
+
+POST /api/vaults/:reference/reset-password
+- Account-recovery flow requiring `accountPassword`, `newPassword`, and `confirmPassword`.
+- This is authenticated application recovery, not cryptographic recovery.
+- Incorrect account-password attempts use the same per-user, per-Vault rate limit.
+- Replace the bcrypt hash and revoke every active unlock grant for the Vault.
 - Status: implemented
 
 PATCH /api/vaults/:reference
@@ -179,6 +207,12 @@ POST /api/vaults/:reference/assets
 - Body: `{ "assetIds": [1, 2] }`
 - Rejects duplicate memberships and assets owned by another user.
 - Status: implemented
+
+Protected asset rule
+- If an asset belongs to multiple password-protected Vaults, every protecting Vault must be unlocked for the current JWT before content, hashes, metadata, or a new Verification comparison is allowed.
+- Ownership Check may compare stored fingerprints internally but does not return protected content or private metadata.
+- Password protection controls access; asset files are not encrypted at rest.
+- Unlock attempts are limited per authenticated user and owned Vault. Defaults are 5 attempts per 15-minute window followed by a 15-minute block; configure with `VAULT_UNLOCK_MAX_ATTEMPTS`, `VAULT_UNLOCK_WINDOW_SECONDS`, and `VAULT_UNLOCK_BLOCK_SECONDS`.
 
 DELETE /api/vaults/:reference/assets/:assetId
 - Remove only the asset-to-Vault relationship.

@@ -29,6 +29,8 @@ function mapVault(row) {
 		reference: row.public_reference,
 		name: row.name,
 		description: row.description,
+		passwordHash: row.password_hash,
+		autoLockMinutes: Number(row.auto_lock_minutes || 10),
 		assetCount: Number(row.asset_count || 0),
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
@@ -60,11 +62,11 @@ const VAULT_SELECT = `
 	LEFT JOIN vault_assets va ON va.vault_id = v.id
 `;
 
-async function createVault({ userId, reference, name, description }) {
+async function createVault({ userId, reference, name, description, passwordHash, autoLockMinutes }) {
 	const result = await run(
-		`INSERT INTO vaults (user_id, public_reference, name, description)
-		 VALUES (?, ?, ?, ?)`,
-		[userId, reference, name, description]
+		`INSERT INTO vaults (user_id, public_reference, name, description, password_hash, auto_lock_minutes)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[userId, reference, name, description, passwordHash, autoLockMinutes]
 	);
 	return getVaultById(result.lastID);
 }
@@ -101,6 +103,24 @@ async function updateVault(id, { name, description }) {
 		`UPDATE vaults SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		[name, description, id]
 	);
+	return getVaultById(id);
+}
+
+async function setVaultPassword(id, passwordHash) {
+	await run('UPDATE vaults SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [passwordHash, id]);
+	return getVaultById(id);
+}
+
+async function setVaultSecurity(id, { passwordHash, autoLockMinutes }) {
+	await run(
+		'UPDATE vaults SET password_hash = ?, auto_lock_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+		[passwordHash, autoLockMinutes, id]
+	);
+	return getVaultById(id);
+}
+
+async function updateAutoLockMinutes(id, autoLockMinutes) {
+	await run('UPDATE vaults SET auto_lock_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [autoLockMinutes, id]);
 	return getVaultById(id);
 }
 
@@ -180,11 +200,95 @@ async function getVaultStats(userId) {
 	};
 }
 
+async function upsertUnlockSession({ vaultId, userId, tokenFingerprint, expiresAt }) {
+	await run(
+		`INSERT INTO vault_unlock_sessions (vault_id, user_id, token_fingerprint, expires_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(vault_id, token_fingerprint) DO UPDATE SET
+			user_id = excluded.user_id,
+			expires_at = excluded.expires_at,
+			created_at = CURRENT_TIMESTAMP`,
+		[vaultId, userId, tokenFingerprint, expiresAt]
+	);
+}
+
+async function getUnlockSession(vaultId, userId, tokenFingerprint) {
+	return get(
+		`SELECT expires_at FROM vault_unlock_sessions
+		 WHERE vault_id = ? AND user_id = ? AND token_fingerprint = ?
+		 LIMIT 1`,
+		[vaultId, userId, tokenFingerprint]
+	);
+}
+
+async function deleteUnlockSession(vaultId, userId, tokenFingerprint) {
+	return run(
+		'DELETE FROM vault_unlock_sessions WHERE vault_id = ? AND user_id = ? AND token_fingerprint = ?',
+		[vaultId, userId, tokenFingerprint]
+	);
+}
+
+async function deleteUnlockSessionsByToken(userId, tokenFingerprint) {
+	return run(
+		'DELETE FROM vault_unlock_sessions WHERE user_id = ? AND token_fingerprint = ?',
+		[userId, tokenFingerprint]
+	);
+}
+
+async function deleteUnlockSessionsByVault(vaultId) {
+	return run('DELETE FROM vault_unlock_sessions WHERE vault_id = ?', [vaultId]);
+}
+
+async function deleteExpiredUnlockSessions(now) {
+	return run('DELETE FROM vault_unlock_sessions WHERE expires_at <= ?', [now]);
+}
+
+async function getProtectingVaultsForAsset(userId, assetId, tokenFingerprint) {
+	return all(
+		`SELECT v.id, v.public_reference, v.name, v.password_hash, s.expires_at
+		 FROM vault_assets va
+		 JOIN vaults v ON v.id = va.vault_id
+		 LEFT JOIN vault_unlock_sessions s
+			ON s.vault_id = v.id AND s.user_id = v.user_id AND s.token_fingerprint = ?
+		 WHERE va.asset_id = ? AND v.user_id = ? AND v.password_hash IS NOT NULL
+		 ORDER BY v.id ASC`,
+		[tokenFingerprint || '', assetId, userId]
+	);
+}
+
+async function getUnlockAttempts(vaultId, userId) {
+	return get(
+		`SELECT attempt_count, window_started_at, blocked_until
+		 FROM vault_unlock_attempts WHERE vault_id = ? AND user_id = ? LIMIT 1`,
+		[vaultId, userId]
+	);
+}
+
+async function saveUnlockAttempts({ vaultId, userId, attemptCount, windowStartedAt, blockedUntil }) {
+	return run(
+		`INSERT INTO vault_unlock_attempts (vault_id, user_id, attempt_count, window_started_at, blocked_until)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(vault_id, user_id) DO UPDATE SET
+			attempt_count = excluded.attempt_count,
+			window_started_at = excluded.window_started_at,
+			blocked_until = excluded.blocked_until,
+			updated_at = CURRENT_TIMESTAMP`,
+		[vaultId, userId, attemptCount, windowStartedAt, blockedUntil]
+	);
+}
+
+async function clearUnlockAttempts(vaultId, userId) {
+	return run('DELETE FROM vault_unlock_attempts WHERE vault_id = ? AND user_id = ?', [vaultId, userId]);
+}
+
 module.exports = {
 	createVault,
 	getVaultsByUserId,
 	getVaultByReferenceAndUserId,
 	updateVault,
+	setVaultPassword,
+	setVaultSecurity,
+	updateAutoLockMinutes,
 	deleteVault,
 	getVaultAssets,
 	getOwnedAssetsByIds,
@@ -192,4 +296,14 @@ module.exports = {
 	addAssets,
 	removeAsset,
 	getVaultStats,
+	upsertUnlockSession,
+	getUnlockSession,
+	deleteUnlockSession,
+	deleteUnlockSessionsByToken,
+	deleteUnlockSessionsByVault,
+	deleteExpiredUnlockSessions,
+	getProtectingVaultsForAsset,
+	getUnlockAttempts,
+	saveUnlockAttempts,
+	clearUnlockAttempts,
 };

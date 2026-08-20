@@ -11,6 +11,7 @@ VaultChain is a full-stack web app for registering digital assets, organizing th
   - `/api/auth/register`
   - `/api/auth/login`
   - `/api/auth/me`
+  - `/api/auth/logout`
   - `/api/assets/upload`
   - `/api/assets/check`
   - `/api/assets`
@@ -41,6 +42,10 @@ VaultChain is a full-stack web app for registering digital assets, organizing th
 - Verification compares one temporarily uploaded image against one selected asset owned by the authenticated user, saves fingerprint thresholds and privacy-safe metadata evidence in the existing `verification_reports` table, and exposes owner-isolated report history through pseudonymous `VR-XXXXXX` references.
 - Vault routes require JWT authentication, expose only the signed-in user's collections, use privacy-safe `VT-XXXXXX` references, and reject attempts to add another user's assets.
 - Adding to or removing from a Vault only changes collection membership. Deleting a Vault does not delete registered assets, their stored files, hashes, metadata, or verification history.
+- New Vaults require a password stored only as a bcrypt hash. Unlock grants are stored server-side against a SHA-256 fingerprint of the exact JWT and expire using the Vault's 5, 10, or 30 minute setting (`VAULT_UNLOCK_TTL_SECONDS` can provide a server override).
+- Protected asset content, hashes, metadata, and new Verification comparisons require every password-protected Vault containing the asset to be unlocked for the current JWT. Manual lock, timeout, and authenticated logout revoke access without claiming file encryption.
+- Vaults support 5, 10, or 30 minute auto-lock settings. Unlock failures are rate-limited per user and Vault using `VAULT_UNLOCK_MAX_ATTEMPTS`, `VAULT_UNLOCK_WINDOW_SECONDS`, and `VAULT_UNLOCK_BLOCK_SECONDS`.
+- Password changes require the current Vault password; password resets require the authenticated user's account password. Both replace the bcrypt hash and revoke every active unlock grant for that Vault.
 
 ## Current progress
 

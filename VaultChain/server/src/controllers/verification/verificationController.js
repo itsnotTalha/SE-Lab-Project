@@ -5,6 +5,7 @@ const createVerification = asyncHandler(async (req, res) => {
 	const verification = await verificationService.verifyAsset(req.user.id, {
 		assetId: req.body.assetId,
 		file: req.file,
+		tokenFingerprint: req.authTokenFingerprint,
 	});
 	res.status(201).json({ success: true, verification });
 });

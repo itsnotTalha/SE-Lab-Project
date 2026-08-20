@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -25,6 +26,7 @@ const assetService = require('../src/services/asset/assetService');
 const authService = require('../src/services/auth/authService');
 const verificationService = require('../src/services/verification/verificationService');
 const vaultService = require('../src/services/vault/vaultService');
+const vaultAccessService = require('../src/services/vault/vaultAccessService');
 
 let userA;
 let userB;
@@ -38,6 +40,12 @@ let newerAssetId;
 let photographyVaultReference;
 let clientVaultReference;
 let userBAssetId;
+let userAFingerprint;
+let userBFingerprint;
+
+function tokenFingerprint(token) {
+	return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 function createFile(filename, buffer = fixtureBuffer, mimetype = 'image/png') {
 	fs.mkdirSync(testUploadDirectory, { recursive: true });
@@ -133,6 +141,8 @@ before(async () => {
 	unrelatedBuffer = fs.readFileSync(path.resolve(__dirname, '../src/uploads', unrelatedName));
 	userA = await authService.register({ fullName: 'Asset Owner A', email: 'asset-owner-a@example.test', password: 'StrongPass123!' });
 	userB = await authService.register({ fullName: 'Asset Owner B', email: 'asset-owner-b@example.test', password: 'StrongPass123!' });
+	userAFingerprint = tokenFingerprint(userA.token);
+	userBFingerprint = tokenFingerprint(userB.token);
 });
 
 after(async () => {
@@ -151,6 +161,7 @@ test('authentication middleware rejects missing credentials and accepts a valid 
 	authenticateToken(request, {}, (error) => { validTokenError = error; });
 	assert.equal(validTokenError, undefined);
 	assert.equal(request.user.id, userA.user.id);
+	assert.equal(request.authTokenFingerprint, userAFingerprint);
 });
 
 test('upload still creates hashes and metadata without exposing a filesystem path', async () => {
@@ -195,7 +206,7 @@ test('asset list is owner-scoped, omits private paths, and returns newest first'
 test('asset detail, hash, metadata, and content lookup enforce ownership', async () => {
 	const detail = await assetService.getAsset(userA.user.id, assetId);
 	assert.equal(detail.id, assetId);
-	assert.ok((await assetService.getAssetHash(userA.user.id, assetId)).sha256Hash);
+	assert.ok((await assetService.getAssetHash(userA.user.id, assetId, userAFingerprint)).sha256Hash);
 	assert.ok((await assetService.getAssetMetadata(userA.user.id, assetId)).width);
 	assert.equal((await assetService.getOwnedAssetOrThrow(userA.user.id, assetId)).id, assetId);
 
@@ -398,32 +409,71 @@ test('verification removes its temporary file when report persistence fails', as
 });
 
 test('creates, lists, and retrieves owner-scoped Vaults with safe references', async () => {
-	const photography = await vaultService.createVault(userA.user.id, { name: '  Photography  ', description: 'Original photo assets' });
-	const clientWork = await vaultService.createVault(userA.user.id, { name: 'Client Work', description: '' });
+	const photography = await vaultService.createVault(userA.user.id, { name: '  Photography  ', description: 'Original photo assets', password: 'PhotoVault123!' });
+	const clientWork = await vaultService.createVault(userA.user.id, { name: 'Client Work', description: '', password: 'ClientVault123!' });
 	photographyVaultReference = photography.reference;
 	clientVaultReference = clientWork.reference;
 	assert.match(photography.reference, /^VT-[A-F0-9]{6}$/);
 	assert.equal(photography.name, 'Photography');
 	assert.equal(photography.description, 'Original photo assets');
-	assert.equal((await vaultService.getVaults(userA.user.id)).length, 2);
-	assert.deepEqual(await vaultService.getVaults(userB.user.id), []);
-	assert.equal((await vaultService.getVault(userA.user.id, photography.reference)).name, 'Photography');
-	await assert.rejects(() => vaultService.getVault(userB.user.id, photography.reference), (error) => error.status === 404);
+	assert.equal(photography.isLocked, true);
+	assert.equal(photography.autoLockMinutes, 10);
+	assert.equal(JSON.stringify(photography).includes('passwordHash'), false);
+	assert.doesNotMatch(JSON.stringify(photography), /PhotoVault123!/);
+	const storedVault = await vaultRepository.getVaultByReferenceAndUserId(photography.reference, userA.user.id);
+	assert.match(storedVault.passwordHash, /^\$2[aby]\$/);
+	assert.notEqual(storedVault.passwordHash, 'PhotoVault123!');
+	assert.equal((await vaultService.getVaults(userA.user.id, userAFingerprint)).length, 2);
+	assert.deepEqual(await vaultService.getVaults(userB.user.id, userBFingerprint), []);
+	assert.equal((await vaultService.getVault(userA.user.id, photography.reference, userAFingerprint)).name, 'Photography');
+	await assert.rejects(() => vaultService.getVault(userB.user.id, photography.reference, userBFingerprint), (error) => error.status === 404);
+	await assert.rejects(() => vaultService.unlockVault(userA.user.id, photography.reference, 'wrong-password', userAFingerprint), (error) => error.status === 401);
+	await assert.rejects(() => vaultService.unlockVault(userB.user.id, photography.reference, 'PhotoVault123!', userBFingerprint), (error) => error.status === 404);
+	const unlocked = await vaultService.unlockVault(userA.user.id, photography.reference, 'PhotoVault123!', userAFingerprint);
+	assert.equal(unlocked.isLocked, false);
+	assert.ok(unlocked.unlockExpiresAt);
+	await vaultService.unlockVault(userA.user.id, clientWork.reference, 'ClientVault123!', userAFingerprint);
+});
+
+test('repeated wrong Vault passwords are rate limited before a later successful unlock', async () => {
+	process.env.VAULT_UNLOCK_MAX_ATTEMPTS = '3';
+	process.env.VAULT_UNLOCK_BLOCK_SECONDS = '1';
+	process.env.VAULT_UNLOCK_WINDOW_SECONDS = '60';
+	await vaultService.lockVault(userA.user.id, photographyVaultReference, userAFingerprint);
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		await assert.rejects(
+			() => vaultService.unlockVault(userA.user.id, photographyVaultReference, 'wrong-password', userAFingerprint),
+			(error) => error.status === 401
+		);
+	}
+	await assert.rejects(
+		() => vaultService.unlockVault(userA.user.id, photographyVaultReference, 'wrong-password', userAFingerprint),
+		(error) => error.status === 429
+	);
+	await assert.rejects(
+		() => vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint),
+		(error) => error.status === 429
+	);
+	await new Promise((resolve) => setTimeout(resolve, 1100));
+	assert.equal((await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint)).isLocked, false);
+	delete process.env.VAULT_UNLOCK_MAX_ATTEMPTS;
+	delete process.env.VAULT_UNLOCK_BLOCK_SECONDS;
+	delete process.env.VAULT_UNLOCK_WINDOW_SECONDS;
 });
 
 test('updates an owned Vault and rejects cross-owner update attempts', async () => {
-	const updated = await vaultService.updateVault(userA.user.id, photographyVaultReference, { name: 'Photography Archive' });
+	const updated = await vaultService.updateVault(userA.user.id, photographyVaultReference, { name: 'Photography Archive' }, userAFingerprint);
 	assert.equal(updated.name, 'Photography Archive');
 	assert.equal(updated.description, 'Original photo assets');
 	await assert.rejects(
-		() => vaultService.updateVault(userB.user.id, photographyVaultReference, { name: 'Tampered' }),
+		() => vaultService.updateVault(userB.user.id, photographyVaultReference, { name: 'Tampered' }, userBFingerprint),
 		(error) => error.status === 404
 	);
 });
 
 test('adds multiple owned assets without copying asset records and updates real dashboard counts', async () => {
 	const beforeAssets = await assetService.getAssets(userA.user.id);
-	const vault = await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId, newerAssetId] });
+	const vault = await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId, newerAssetId] }, userAFingerprint);
 	assert.equal(vault.assetCount, 2);
 	assert.deepEqual(new Set(vault.assets.map((asset) => asset.id)), new Set([assetId, newerAssetId]));
 	assert.equal((await assetService.getAssets(userA.user.id)).length, beforeAssets.length);
@@ -432,9 +482,98 @@ test('adds multiple owned assets without copying asset records and updates real 
 	assert.equal(summary.totalOrganizedAssets, 2);
 });
 
+test('server-side Vault grants protect assets, require every Vault, expire, lock manually, and clear on logout', async () => {
+	await vaultService.addAssets(userA.user.id, clientVaultReference, { assetIds: [assetId] }, userAFingerprint);
+
+	await vaultService.lockVault(userA.user.id, photographyVaultReference, userAFingerprint);
+	const lockedAsset = await assetService.getAsset(userA.user.id, assetId, userAFingerprint);
+	assert.equal(lockedAsset.vaultProtection.isLocked, true);
+	assert.equal(lockedAsset.contentUrl, null);
+	assert.equal(lockedAsset.width, null);
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference, userAFingerprint)).assets.length, 0);
+	for (const operation of [
+		() => assetService.assertAssetUnlocked(userA.user.id, assetId, userAFingerprint),
+		() => assetService.getAssetHash(userA.user.id, assetId, userAFingerprint),
+		() => assetService.getAssetMetadata(userA.user.id, assetId, userAFingerprint),
+	]) await assert.rejects(operation, (error) => error.status === 423);
+	await assert.rejects(
+		() => verificationService.verifyAsset(userA.user.id, { assetId, tokenFingerprint: userAFingerprint, file: createCheckFile('locked-verification.png') }),
+		(error) => error.status === 423
+	);
+	assertCheckDirectoryIsEmpty();
+	const ownershipResult = await assetService.checkAssetOwnership(userA.user.id, createCheckFile('locked-ownership.png'));
+	assert.equal(ownershipResult.matchType, 'exact');
+	assert.equal(ownershipResult.asset.filePath, undefined);
+	assert.equal(ownershipResult.asset.metadata, undefined);
+
+	await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint);
+	assert.equal((await vaultAccessService.assertAssetUnlocked(userA.user.id, assetId, userAFingerprint)).isLocked, false);
+	await vaultService.lockVault(userA.user.id, clientVaultReference, userAFingerprint);
+	await assert.rejects(() => assetService.assertAssetUnlocked(userA.user.id, assetId, userAFingerprint), (error) => error.status === 423);
+	await vaultService.unlockVault(userA.user.id, clientVaultReference, 'ClientVault123!', userAFingerprint);
+
+	process.env.VAULT_UNLOCK_TTL_SECONDS = '1';
+	await vaultService.lockVault(userA.user.id, photographyVaultReference, userAFingerprint);
+	await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint);
+	await new Promise((resolve) => setTimeout(resolve, 1100));
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference, userAFingerprint)).isLocked, true);
+	delete process.env.VAULT_UNLOCK_TTL_SECONDS;
+	await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint);
+
+	await vaultAccessService.revokeTokenAccess(userA.user.id, userAFingerprint);
+	await assert.rejects(() => assetService.assertAssetUnlocked(userA.user.id, assetId, userAFingerprint), (error) => error.status === 423);
+	const freshLogin = await authService.login({ email: 'asset-owner-a@example.test', password: 'StrongPass123!' });
+	assert.notEqual(tokenFingerprint(freshLogin.token), userAFingerprint);
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference, tokenFingerprint(freshLogin.token))).isLocked, true);
+	await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint);
+	await vaultService.unlockVault(userA.user.id, clientVaultReference, 'ClientVault123!', userAFingerprint);
+});
+
+test('password change and account-authenticated reset revoke every session without leaking credentials', async () => {
+	const secondLogin = await authService.login({ email: 'asset-owner-a@example.test', password: 'StrongPass123!' });
+	const secondFingerprint = tokenFingerprint(secondLogin.token);
+	await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', secondFingerprint);
+	const changed = await vaultService.changePassword(userA.user.id, photographyVaultReference, {
+		currentPassword: 'PhotoVault123!',
+		newPassword: 'ChangedPhoto123!',
+		confirmPassword: 'ChangedPhoto123!',
+		autoLockMinutes: 30,
+	}, userAFingerprint);
+	assert.equal(changed.isLocked, true);
+	assert.equal(changed.autoLockMinutes, 30);
+	assert.doesNotMatch(JSON.stringify(changed), /PhotoVault123|ChangedPhoto123|passwordHash|password_hash/);
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference, secondFingerprint)).isLocked, true);
+	await assert.rejects(() => vaultService.unlockVault(userA.user.id, photographyVaultReference, 'PhotoVault123!', userAFingerprint), (error) => error.status === 401);
+	assert.equal((await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'ChangedPhoto123!', userAFingerprint)).isLocked, false);
+	await assert.rejects(
+		() => vaultService.changePassword(userB.user.id, photographyVaultReference, { currentPassword: 'ChangedPhoto123!', newPassword: 'NoAccess123!', confirmPassword: 'NoAccess123!' }, userBFingerprint),
+		(error) => error.status === 404
+	);
+
+	await assert.rejects(
+		() => vaultService.resetPassword(userA.user.id, photographyVaultReference, { accountPassword: 'wrong-account-password', newPassword: 'ResetPhoto123!', confirmPassword: 'ResetPhoto123!' }, userAFingerprint),
+		(error) => error.status === 401
+	);
+	const reset = await vaultService.resetPassword(userA.user.id, photographyVaultReference, {
+		accountPassword: 'StrongPass123!',
+		newPassword: 'ResetPhoto123!',
+		confirmPassword: 'ResetPhoto123!',
+		autoLockMinutes: 5,
+	}, userAFingerprint);
+	assert.equal(reset.isLocked, true);
+	assert.equal(reset.autoLockMinutes, 5);
+	assert.doesNotMatch(JSON.stringify(reset), /StrongPass123|ResetPhoto123|passwordHash|password_hash/);
+	await assert.rejects(() => vaultService.unlockVault(userA.user.id, photographyVaultReference, 'ChangedPhoto123!', userAFingerprint), (error) => error.status === 401);
+	assert.equal((await vaultService.unlockVault(userA.user.id, photographyVaultReference, 'ResetPhoto123!', userAFingerprint)).isLocked, false);
+	await assert.rejects(
+		() => vaultService.resetPassword(userB.user.id, photographyVaultReference, { accountPassword: 'StrongPass123!', newPassword: 'NoAccess123!', confirmPassword: 'NoAccess123!' }, userBFingerprint),
+		(error) => error.status === 404
+	);
+});
+
 test('rejects duplicate Vault membership and foreign asset injection', async () => {
 	await assert.rejects(
-		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] }),
+		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] }, userAFingerprint),
 		(error) => error.status === 409
 	);
 	const foreignAsset = await assetRepository.createAsset({
@@ -449,33 +588,34 @@ test('rejects duplicate Vault membership and foreign asset injection', async () 
 	});
 	userBAssetId = foreignAsset.id;
 	await assert.rejects(
-		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [foreignAsset.id] }),
+		() => vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [foreignAsset.id] }, userAFingerprint),
 		(error) => error.status === 404
 	);
-	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference)).assetCount, 2);
+	assert.equal((await vaultService.getVault(userA.user.id, photographyVaultReference, userAFingerprint)).assetCount, 2);
 });
 
 test('removes only Vault membership while preserving asset, hashes, and verification reports', async () => {
 	const reportsBefore = await verificationService.getVerifications(userA.user.id);
-	const updated = await vaultService.removeAsset(userA.user.id, photographyVaultReference, assetId);
+	const updated = await vaultService.removeAsset(userA.user.id, photographyVaultReference, assetId, userAFingerprint);
 	assert.equal(updated.assets.some((asset) => asset.id === assetId), false);
 	assert.equal((await assetService.getAsset(userA.user.id, assetId)).id, assetId);
-	assert.ok((await assetService.getAssetHash(userA.user.id, assetId)).sha256Hash);
+	assert.ok((await assetService.getAssetHash(userA.user.id, assetId, userAFingerprint)).sha256Hash);
 	assert.equal((await verificationService.getVerifications(userA.user.id)).length, reportsBefore.length);
-	await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] });
+	await vaultService.addAssets(userA.user.id, photographyVaultReference, { assetIds: [assetId] }, userAFingerprint);
 });
 
 test('deletes a Vault and memberships without deleting contained assets or verification evidence', async () => {
-	await assert.rejects(() => vaultService.deleteVault(userB.user.id, photographyVaultReference), (error) => error.status === 404);
+	await assert.rejects(() => vaultService.deleteVault(userB.user.id, photographyVaultReference, userBFingerprint), (error) => error.status === 404);
 	const reportsBefore = await verificationService.getVerifications(userA.user.id);
-	await vaultService.deleteVault(userA.user.id, photographyVaultReference);
-	await assert.rejects(() => vaultService.getVault(userA.user.id, photographyVaultReference), (error) => error.status === 404);
+	await vaultService.deleteVault(userA.user.id, photographyVaultReference, userAFingerprint);
+	await assert.rejects(() => vaultService.getVault(userA.user.id, photographyVaultReference, userAFingerprint), (error) => error.status === 404);
 	assert.equal((await assetService.getAsset(userA.user.id, assetId)).id, assetId);
-	assert.ok((await assetService.getAssetHash(userA.user.id, assetId)).phash);
+	assert.ok((await assetService.getAssetHash(userA.user.id, assetId, userAFingerprint)).phash);
 	assert.equal((await verificationService.getVerifications(userA.user.id)).length, reportsBefore.length);
 });
 
 test('asset row deletion cascades Vault membership without leaving a broken relation', async () => {
+	const assetCountBefore = (await vaultService.getVault(userA.user.id, clientVaultReference, userAFingerprint)).assetCount;
 	const temporaryAsset = await assetRepository.createAsset({
 		ownerId: userA.user.id,
 		title: 'Temporary membership asset',
@@ -486,9 +626,9 @@ test('asset row deletion cascades Vault membership without leaving a broken rela
 		fileSize: 10,
 		mimeType: 'image/png',
 	});
-	await vaultService.addAssets(userA.user.id, clientVaultReference, { assetIds: [temporaryAsset.id] });
+	await vaultService.addAssets(userA.user.id, clientVaultReference, { assetIds: [temporaryAsset.id] }, userAFingerprint);
 	await new Promise((resolve, reject) => database.run('DELETE FROM assets WHERE id = ?', [temporaryAsset.id], (error) => error ? reject(error) : resolve()));
-	assert.equal((await vaultService.getVault(userA.user.id, clientVaultReference)).assetCount, 0);
+	assert.equal((await vaultService.getVault(userA.user.id, clientVaultReference, userAFingerprint)).assetCount, assetCountBefore);
 	assert.deepEqual(await vaultRepository.getExistingMembershipIds((await vaultRepository.getVaultByReferenceAndUserId(clientVaultReference, userA.user.id)).id, [temporaryAsset.id]), []);
 });
 

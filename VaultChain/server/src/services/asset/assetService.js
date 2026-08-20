@@ -7,6 +7,7 @@ const { findBestPhashMatch } = require('../hashing/phashComparisonService');
 const { generateSha256Hash } = require('../hashing/sha256Service');
 const { generatePhash } = require('../hashing/phashService');
 const { extractImageMetadata } = require('../metadata/metadataService');
+const vaultAccessService = require('../vault/vaultAccessService');
 
 function validateUploadInput({ title, category, file }) {
 	if (!title || !String(title).trim()) {
@@ -40,8 +41,8 @@ function validateAssetId(assetId) {
 	}
 }
 
-function toPublicAsset(asset) {
-	return {
+function toPublicAsset(asset, vaultProtection = { passwordProtected: false, isLocked: false, protectingVaults: [] }) {
+	const publicAsset = {
 		id: asset.id,
 		title: asset.title,
 		description: asset.description,
@@ -59,6 +60,16 @@ function toPublicAsset(asset) {
 		hasHash: asset.hasHash,
 		hasMetadata: asset.hasMetadata,
 		contentUrl: `/api/assets/${asset.id}/content`,
+		vaultProtection,
+	};
+	if (!vaultProtection.isLocked) return publicAsset;
+	return {
+		...publicAsset,
+		width: null,
+		height: null,
+		sha256: null,
+		phash: null,
+		contentUrl: null,
 	};
 }
 
@@ -119,14 +130,19 @@ async function getOwnedAssetOrThrow(userId, assetId) {
 	return asset;
 }
 
-async function getAssets(userId) {
+async function getAssets(userId, tokenFingerprint) {
 	if (!userId) throw createHttpError(401, 'Unauthorized');
 	const assets = await assetRepository.getAssetsByOwnerId(userId);
-	return assets.map(toPublicAsset);
+	return Promise.all(assets.map(async (asset) => toPublicAsset(
+		asset,
+		await vaultAccessService.getAssetProtection(userId, asset.id, tokenFingerprint)
+	)));
 }
 
-async function getAsset(userId, assetId) {
-	return toPublicAsset(await getOwnedAssetOrThrow(userId, assetId));
+async function getAsset(userId, assetId, tokenFingerprint) {
+	const asset = await getOwnedAssetOrThrow(userId, assetId);
+	const protection = await vaultAccessService.getAssetProtection(userId, assetId, tokenFingerprint);
+	return toPublicAsset(asset, protection);
 }
 
 async function uploadAsset(userId, payload) {
@@ -243,8 +259,9 @@ async function checkAssetOwnership(userId, file) {
 	}
 }
 
-async function getAssetMetadata(userId, assetId) {
+async function getAssetMetadata(userId, assetId, tokenFingerprint) {
 	await getOwnedAssetOrThrow(userId, assetId);
+	await vaultAccessService.assertAssetUnlocked(userId, assetId, tokenFingerprint);
 
 	const metadata = await assetRepository.getAssetMetadataByAssetId(assetId);
 
@@ -257,8 +274,9 @@ async function getAssetMetadata(userId, assetId) {
 	return metadata;
 }
 
-async function getAssetHash(userId, assetId) {
+async function getAssetHash(userId, assetId, tokenFingerprint) {
 	await getOwnedAssetOrThrow(userId, assetId);
+	await vaultAccessService.assertAssetUnlocked(userId, assetId, tokenFingerprint);
 
 	const hash = await assetRepository.getAssetHashByAssetId(assetId);
 
@@ -283,4 +301,5 @@ module.exports = {
 	getOwnedAssetOrThrow,
 	getAssetMetadata,
 	getAssetHash,
+	assertAssetUnlocked: vaultAccessService.assertAssetUnlocked,
 };

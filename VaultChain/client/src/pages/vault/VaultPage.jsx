@@ -23,6 +23,12 @@ export default function VaultPage() {
 		finally { setLoading(false); }
 	}
 	useEffect(() => { load(); }, []);
+	useEffect(() => {
+		const expirations = vaults.filter((vault) => !vault.isLocked && vault.unlockExpiresAt).map((vault) => new Date(vault.unlockExpiresAt).getTime());
+		if (!expirations.length) return undefined;
+		const timeout = window.setTimeout(load, Math.max(0, Math.min(...expirations) - Date.now()) + 250);
+		return () => window.clearTimeout(timeout);
+	}, [vaults]);
 	async function create(input) { const vault = await vaultService.createVault(input); setVaults((current) => [vault, ...current]); setStats((current) => current ? { ...current, totalVaults: current.totalVaults + 1 } : current); }
 	const statCards = [
 		{ label: 'Total Vaults', value: stats?.totalVaults ?? 0, helper: 'Private collections', icon: FolderLock, tone: 'blue' },

@@ -35,7 +35,7 @@ export default function VerificationPage() {
 
 	async function loadAssets() {
 		setLoadingAssets(true);
-		try { const nextAssets = await assetService.getAssets(); setAssets(nextAssets); if (location.state?.assetId) setSelectedAsset(nextAssets.find((asset) => asset.id === location.state.assetId) || null); }
+		try { const nextAssets = await assetService.getAssets(); setAssets(nextAssets); setSelectedAsset((current) => { const requestedId = current?.id || location.state?.assetId; return nextAssets.find((asset) => asset.id === requestedId && !asset.vaultProtection?.isLocked) || null; }); }
 		catch (loadError) { setError(loadError.message); }
 		finally { setLoadingAssets(false); }
 	}
@@ -48,6 +48,12 @@ export default function VerificationPage() {
 	}
 
 	useEffect(() => { loadAssets(); loadHistory(); }, []);
+	useEffect(() => {
+		const expirations = assets.map((asset) => asset.vaultProtection?.unlockExpiresAt).filter(Boolean).map((value) => new Date(value).getTime());
+		if (!expirations.length) return undefined;
+		const timeout = window.setTimeout(loadAssets, Math.max(0, Math.min(...expirations) - Date.now()) + 250);
+		return () => window.clearTimeout(timeout);
+	}, [assets]);
 	useEffect(() => {
 		if (!comparisonFile) { setComparisonPreviewUrl(''); setComparisonDimensions(null); return undefined; }
 		const url = URL.createObjectURL(comparisonFile);

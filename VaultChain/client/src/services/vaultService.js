@@ -24,7 +24,11 @@ async function getVault(reference) { return (await request(`/vaults/${encodeURIC
 async function createVault(input) { return (await request('/vaults', { method: 'POST', body: JSON.stringify(input) })).vault; }
 async function updateVault(reference, input) { return (await request(`/vaults/${encodeURIComponent(reference)}`, { method: 'PATCH', body: JSON.stringify(input) })).vault; }
 async function deleteVault(reference) { return request(`/vaults/${encodeURIComponent(reference)}`, { method: 'DELETE' }); }
+async function unlockVault(reference, password) { return (await request(`/vaults/${encodeURIComponent(reference)}/unlock`, { method: 'POST', body: JSON.stringify({ password }) })).vault; }
+async function lockVault(reference) { return (await request(`/vaults/${encodeURIComponent(reference)}/lock`, { method: 'POST', body: JSON.stringify({}) })).vault; }
+async function changePassword(reference, input) { return (await request(`/vaults/${encodeURIComponent(reference)}/change-password`, { method: 'POST', body: JSON.stringify(input) })).vault; }
+async function resetPassword(reference, input) { return (await request(`/vaults/${encodeURIComponent(reference)}/reset-password`, { method: 'POST', body: JSON.stringify(input) })).vault; }
 async function addAssets(reference, assetIds) { return (await request(`/vaults/${encodeURIComponent(reference)}/assets`, { method: 'POST', body: JSON.stringify({ assetIds }) })).vault; }
 async function removeAsset(reference, assetId) { return (await request(`/vaults/${encodeURIComponent(reference)}/assets/${assetId}`, { method: 'DELETE' })).vault; }
 
-export const vaultService = { getVaults, getVault, createVault, updateVault, deleteVault, addAssets, removeAsset };
+export const vaultService = { getVaults, getVault, createVault, updateVault, deleteVault, unlockVault, lockVault, changePassword, resetPassword, addAssets, removeAsset };

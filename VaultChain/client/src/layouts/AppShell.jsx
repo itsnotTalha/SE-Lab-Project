@@ -41,8 +41,8 @@ export default function AppShell() {
 	const [drawerOpen, setDrawerOpen] = useState(false);
 	const firstName = user?.fullName?.split(' ')[0] || 'Member';
 
-	function handleLogout() {
-		logout();
+	async function handleLogout() {
+		await logout();
 		navigate('/login', { replace: true });
 	}
 

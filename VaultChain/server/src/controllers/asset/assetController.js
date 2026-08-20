@@ -54,7 +54,7 @@ const checkAssetOwnership = asyncHandler(async (req, res) => {
 });
 
 const getAssets = asyncHandler(async (req, res) => {
-	const assets = await assetService.getAssets(req.user.id);
+	const assets = await assetService.getAssets(req.user.id, req.authTokenFingerprint);
 
 	res.status(200).json({
 		success: true,
@@ -63,7 +63,7 @@ const getAssets = asyncHandler(async (req, res) => {
 });
 
 const getAsset = asyncHandler(async (req, res) => {
-	const asset = await assetService.getAsset(req.user.id, Number(req.params.id));
+	const asset = await assetService.getAsset(req.user.id, Number(req.params.id), req.authTokenFingerprint);
 
 	res.status(200).json({
 		success: true,
@@ -73,6 +73,7 @@ const getAsset = asyncHandler(async (req, res) => {
 
 const getAssetContent = asyncHandler(async (req, res) => {
 	const asset = await assetService.getOwnedAssetOrThrow(req.user.id, Number(req.params.id));
+	await assetService.assertAssetUnlocked(req.user.id, asset.id, req.authTokenFingerprint);
 	const contentPath = path.resolve(uploadDirectory, path.basename(asset.fileName));
 
 	res.type(asset.mimeType || 'application/octet-stream');
@@ -81,7 +82,7 @@ const getAssetContent = asyncHandler(async (req, res) => {
 });
 
 const getAssetMetadata = asyncHandler(async (req, res) => {
-	const metadata = await assetService.getAssetMetadata(req.user.id, Number(req.params.id));
+	const metadata = await assetService.getAssetMetadata(req.user.id, Number(req.params.id), req.authTokenFingerprint);
 
 	res.status(200).json({
 		success: true,
@@ -90,7 +91,7 @@ const getAssetMetadata = asyncHandler(async (req, res) => {
 });
 
 const getAssetHash = asyncHandler(async (req, res) => {
-	const hash = await assetService.getAssetHash(req.user.id, Number(req.params.id));
+	const hash = await assetService.getAssetHash(req.user.id, Number(req.params.id), req.authTokenFingerprint);
 
 	res.status(200).json({
 		success: true,

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vaultchain-development-secret';
 
@@ -16,6 +17,7 @@ function authenticateToken(req, res, next) {
 	try {
 		const decoded = jwt.verify(token, JWT_SECRET);
 		req.user = decoded;
+		req.authTokenFingerprint = crypto.createHash('sha256').update(token).digest('hex');
 		next();
 	} catch (error) {
 		error.status = 401;

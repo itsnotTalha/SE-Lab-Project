@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const authRepository = require('../../repositories/authRepository');
@@ -22,6 +23,7 @@ function buildTokenPayload(user) {
 		id: user.id,
 		email: user.email,
 		role: user.role,
+		jti: crypto.randomUUID(),
 	};
 }
 
@@ -143,8 +145,15 @@ async function getAuthenticatedUser(userId) {
 	};
 }
 
+async function verifyAccountPassword(userId, password) {
+	const user = await authRepository.findUserById(userId);
+	if (!user) throw createHttpError(404, 'User not found');
+	return bcrypt.compare(String(password || ''), user.passwordHash);
+}
+
 module.exports = {
 	register,
 	login,
 	getAuthenticatedUser,
+	verifyAccountPassword,
 };
