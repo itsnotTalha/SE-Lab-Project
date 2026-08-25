@@ -4,12 +4,16 @@ const multer = require('multer');
 
 const uploadDirectory = process.env.UPLOAD_DIRECTORY || path.resolve(__dirname, '../uploads');
 const checkUploadDirectory = process.env.CHECK_UPLOAD_DIRECTORY || path.resolve(__dirname, '../temp');
+const documentUploadDirectory = process.env.DOCUMENT_UPLOAD_DIRECTORY || path.resolve(__dirname, '../documents');
 
 fs.mkdirSync(uploadDirectory, { recursive: true });
 fs.mkdirSync(checkUploadDirectory, { recursive: true });
+fs.mkdirSync(documentUploadDirectory, { recursive: true });
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const allowedDocumentMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+const allowedDocumentExtensions = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
 
 function createStorage(directory) {
 	return multer.diskStorage({
@@ -37,6 +41,17 @@ function fileFilter(req, file, callback) {
 	callback(null, true);
 }
 
+function documentFileFilter(req, file, callback) {
+	const extension = path.extname(file.originalname).toLowerCase();
+	if (!allowedDocumentMimeTypes.has(file.mimetype) || !allowedDocumentExtensions.has(extension)) {
+		const error = new Error('Only PDF, JPG, JPEG, and PNG documents are allowed');
+		error.status = 400;
+		callback(error, false);
+		return;
+	}
+	callback(null, true);
+}
+
 const uploadAssetFile = multer({
 	storage: createStorage(uploadDirectory),
 	fileFilter,
@@ -51,6 +66,12 @@ const checkAssetFile = multer({
 	limits: {
 		fileSize: 20 * 1024 * 1024,
 	},
+});
+
+const documentFile = multer({
+	storage: createStorage(documentUploadDirectory),
+	fileFilter: documentFileFilter,
+	limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 function handleSingleUpload(upload) {
@@ -77,6 +98,7 @@ function handleSingleUpload(upload) {
 
 const singleAssetUpload = handleSingleUpload(uploadAssetFile);
 const singleAssetCheckUpload = handleSingleUpload(checkAssetFile);
+const singleDocumentUpload = handleSingleUpload(documentFile);
 
 module.exports = {
 	uploadAssetFile,
@@ -84,4 +106,6 @@ module.exports = {
 	singleAssetCheckUpload,
 	uploadDirectory,
 	checkUploadDirectory,
+	singleDocumentUpload,
+	documentUploadDirectory,
 };

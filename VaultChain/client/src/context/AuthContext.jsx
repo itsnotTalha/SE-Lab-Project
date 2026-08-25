@@ -56,8 +56,18 @@ export function AuthProvider({ children }) {
 		}
 	}
 
+	async function updateProfile(profile) {
+		const updatedUser = await authService.updateProfile(profile);
+		setUser(updatedUser);
+		return updatedUser;
+	}
+
+	async function changePassword(passwords) {
+		return authService.changePassword(passwords);
+	}
+
 	return (
-		<AuthContext.Provider value={{ isAuthenticated, user, authLoading, login, register, logout }}>
+		<AuthContext.Provider value={{ isAuthenticated, user, authLoading, login, register, logout, updateProfile, changePassword }}>
 			{children}
 		</AuthContext.Provider>
 	);

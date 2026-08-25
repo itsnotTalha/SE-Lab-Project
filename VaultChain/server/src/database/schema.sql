@@ -75,8 +75,17 @@ CREATE TABLE IF NOT EXISTS documents (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL,
   asset_id INTEGER,
+  original_name TEXT NOT NULL,
+  stored_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  file_size INTEGER NOT NULL,
+  sha256_hash TEXT NOT NULL,
   page_count INTEGER,
-  language TEXT,
+  language TEXT DEFAULT 'eng',
+  ocr_status TEXT NOT NULL DEFAULT 'pending',
+  ocr_error TEXT,
+  ocr_processed_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE SET NULL
@@ -251,6 +260,7 @@ CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_block
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaults_user_id ON vaults(user_id);
 CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);

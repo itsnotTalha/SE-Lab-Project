@@ -104,8 +104,30 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'use
 	});
 }
 
+async function updateUserProfile(id, { fullName, email }) {
+	await run(
+		`UPDATE users
+		 SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		[fullName, email, id]
+	);
+
+	return findUserById(id);
+}
+
+async function updateUserPassword(id, passwordHash) {
+	await run(
+		`UPDATE users
+		 SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		[passwordHash, id]
+	);
+}
+
 module.exports = {
 	findUserByEmail,
 	findUserById,
 	createUserWithWallet,
+	updateUserProfile,
+	updateUserPassword,
 };

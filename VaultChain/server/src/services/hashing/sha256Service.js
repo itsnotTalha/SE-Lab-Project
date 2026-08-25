@@ -69,6 +69,25 @@ async function generateSha256Hash({ filePath, assetData = {}, metadata = {} }) {
 		.digest('hex');
 }
 
+async function generateFileSha256(filePath) {
+	if (!filePath) {
+		const error = new Error('Missing file path');
+		error.status = 400;
+		throw error;
+	}
+	try {
+		return crypto.createHash('sha256').update(await fs.readFile(filePath)).digest('hex');
+	} catch (error) {
+		if (error.code === 'ENOENT') {
+			const missingFileError = new Error('Uploaded file not found');
+			missingFileError.status = 404;
+			throw missingFileError;
+		}
+		throw error;
+	}
+}
+
 module.exports = {
 	generateSha256Hash,
+	generateFileSha256,
 };

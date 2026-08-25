@@ -702,6 +702,18 @@ test('assets remain available after a fresh login', async () => {
 	assert.equal(assets.some((asset) => asset.id === assetId), true);
 });
 
+test('manual wallet entries cannot forge marketplace purchase or sale activity', async () => {
+	const walletBefore = await walletRepository.getWalletByUserId(userC.user.id);
+	for (const type of ['purchase', 'sale']) {
+		await assert.rejects(
+			() => walletService.addTransaction(userC.user.id, { type, amount: 100, description: 'Forged marketplace entry' }),
+			(error) => error.status === 400 && /deposit or withdrawal/.test(error.message)
+		);
+	}
+	assert.equal((await walletRepository.getWalletByUserId(userC.user.id)).balance, walletBefore.balance);
+	assert.deepEqual(await walletService.getTransactions(userC.user.id), []);
+});
+
 test('marketplace creation requires ownership, unlocked Vault access, and one active listing per asset', async () => {
 	await assert.rejects(
 		() => marketplaceService.createListing(userA.user.id, userAFingerprint, { assetId: userBAssetId, title: 'Not mine', description: '', price: 25 }),
@@ -741,6 +753,30 @@ test('marketplace creation requires ownership, unlocked Vault access, and one ac
 		() => marketplaceService.getListingContent(listing.reference, userB.user.id, userBFingerprint),
 		(error) => error.status === 423
 	);
+});
+
+test('dashboard summary is user-scoped, complete, and returns bounded recent data newest first', async () => {
+	const [ownerSummary, otherSummary] = await Promise.all([
+		dashboardRepository.getSummary(userA.user.id),
+		dashboardRepository.getSummary(userB.user.id),
+	]);
+	assert.equal(ownerSummary.totalAssets, (await assetService.getAssets(userA.user.id)).length);
+	assert.equal(otherSummary.totalAssets, (await assetService.getAssets(userB.user.id)).length);
+	assert.equal(ownerSummary.totalVaults, (await vaultService.getVaults(userA.user.id, userAFingerprint)).length);
+	assert.equal(otherSummary.totalVaults, 0);
+	assert.equal(ownerSummary.activeListings, 1);
+	assert.equal(otherSummary.activeListings, 0);
+	assert.equal(ownerSummary.walletBalance, (await walletRepository.getWalletByUserId(userA.user.id)).balance);
+	assert.equal(ownerSummary.totalVerificationReports, (await verificationService.getVerifications(userA.user.id)).length);
+	assert.ok(ownerSummary.recentAssets.length <= 5);
+	assert.ok(ownerSummary.recentActivity.length <= 8);
+	assert.deepEqual(
+		ownerSummary.recentAssets.map((asset) => asset.id),
+		[...ownerSummary.recentAssets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b.id - a.id).map((asset) => asset.id)
+	);
+	assert.equal(ownerSummary.recentAssets.some((asset) => asset.id === userBAssetId), false);
+	assert.equal(JSON.stringify(ownerSummary).includes('Foreign asset'), false);
+	assert.equal(otherSummary.recentAssets.some((asset) => asset.id === userBAssetId), true);
 });
 
 test('purchase validation prevents self-purchase and insufficient-credit partial changes', async () => {
@@ -796,8 +832,23 @@ test('purchase atomically transfers ownership, balances, Vault membership, and p
 	await assert.rejects(() => marketplaceService.purchaseListing(userC.user.id, listing.reference), (error) => error.status === 409);
 	const buyerTransactions = await walletService.getTransactions(userB.user.id);
 	const sellerTransactions = await walletService.getTransactions(userA.user.id);
-	assert.ok(buyerTransactions.some((transaction) => transaction.type === 'purchase' && transaction.referenceId === receipt.transactionReference));
-	assert.ok(sellerTransactions.some((transaction) => transaction.type === 'sale' && transaction.referenceId === receipt.transactionReference));
+	const purchaseTransaction = buyerTransactions.find((transaction) => transaction.type === 'purchase' && transaction.referenceId === receipt.transactionReference);
+	const saleTransaction = sellerTransactions.find((transaction) => transaction.type === 'sale' && transaction.referenceId === receipt.transactionReference);
+	assert.deepEqual(
+		{ amount: purchaseTransaction?.amount, description: purchaseTransaction?.description, hasTimestamp: Boolean(purchaseTransaction?.createdAt) },
+		{ amount: 125, description: 'Marketplace purchase: Owner A asset', hasTimestamp: true }
+	);
+	assert.deepEqual(
+		{ amount: saleTransaction?.amount, description: saleTransaction?.description, hasTimestamp: Boolean(saleTransaction?.createdAt) },
+		{ amount: 125, description: 'Marketplace sale: Owner A asset', hasTimestamp: true }
+	);
+	const [buyerDashboard, sellerDashboard] = await Promise.all([
+		dashboardRepository.getSummary(userB.user.id),
+		dashboardRepository.getSummary(userA.user.id),
+	]);
+	assert.ok(buyerDashboard.recentActivity.some((activity) => activity.type === 'purchase' && activity.reference === receipt.transactionReference && activity.amount === 125));
+	assert.ok(sellerDashboard.recentActivity.some((activity) => activity.type === 'sale' && activity.reference === receipt.transactionReference && activity.amount === 125));
+	assert.equal(sellerDashboard.activeListings, 0);
 	const ownership = await assetService.checkAssetOwnership(userB.user.id, createCheckFile('buyer-ownership.png'));
 	assert.equal(ownership.asset.owner.isCurrentUser, true);
 	assert.equal(ownership.asset.id, assetId);

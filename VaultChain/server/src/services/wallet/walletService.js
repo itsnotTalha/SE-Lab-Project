@@ -2,6 +2,7 @@ const walletRepository = require('../../repositories/walletRepository');
 
 const CREDIT_TYPES = new Set(['deposit', 'sale']);
 const DEBIT_TYPES = new Set(['withdrawal', 'purchase']);
+const USER_TRANSACTION_TYPES = new Set(['deposit', 'withdrawal']);
 
 async function getWalletOrThrow(userId) {
 	const wallet = await walletRepository.getWalletByUserId(userId);
@@ -26,8 +27,8 @@ async function getTransactions(userId) {
 }
 
 function validateTransactionInput({ type, amount }) {
-	if (!CREDIT_TYPES.has(type) && !DEBIT_TYPES.has(type)) {
-		const error = new Error('Type must be one of deposit, withdrawal, purchase, sale');
+	if (!USER_TRANSACTION_TYPES.has(type)) {
+		const error = new Error('Type must be one of deposit or withdrawal');
 		error.status = 400;
 		throw error;
 	}

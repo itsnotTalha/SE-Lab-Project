@@ -8,6 +8,7 @@ import AssetsPage from './src/pages/assets/AssetsPage';
 import LoginPage from './src/pages/auth/LoginPage';
 import RegisterPage from './src/pages/auth/RegisterPage';
 import DashboardPage from './src/pages/dashboard/DashboardPage';
+import DocumentsPage from './src/pages/documents/DocumentsPage';
 import LandingPage from './src/pages/landing/LandingPage';
 import ListingDetails from './src/pages/marketplace/ListingDetails';
 import MarketplacePage from './src/pages/marketplace/MarketplacePage';
@@ -33,6 +34,7 @@ function AppRoutes() {
 			<Route element={<ProtectedRoute />}>
 				<Route element={<AppShell />}>
 					<Route path="/dashboard" element={<DashboardPage />} />
+					<Route path="/documents" element={<DocumentsPage />} />
 					<Route path="/assets" element={<AssetsPage />} />
 					<Route path="/verification" element={<VerificationPage />} />
 					<Route path="/vault" element={<VaultPage />} />

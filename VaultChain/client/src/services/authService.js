@@ -59,6 +59,24 @@ async function getCurrentUser() {
 	};
 }
 
+async function updateProfile({ fullName, email }) {
+	const data = await request('/auth/profile', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+		body: JSON.stringify({ fullName, email }),
+	});
+
+	return data.user;
+}
+
+async function changePassword({ currentPassword, newPassword }) {
+	return request('/auth/password', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+		body: JSON.stringify({ currentPassword, newPassword }),
+	});
+}
+
 async function logout() {
 	const token = getToken();
 	try {
@@ -88,6 +106,8 @@ export const authService = {
 	register,
 	logout,
 	getCurrentUser,
+	updateProfile,
+	changePassword,
 	getCurrentUserId,
 	getToken,
 	isAuthenticated: () => Boolean(getToken()),

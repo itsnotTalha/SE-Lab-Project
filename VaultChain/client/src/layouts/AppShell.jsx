@@ -14,7 +14,7 @@ const primaryNav = [
 	{ label: 'Assets', to: '/assets', icon: Images },
 	{ label: 'Verification', to: '/verification', icon: ScanSearch },
 	{ label: 'Vault', to: '/vault', icon: LockKeyhole },
-	{ label: 'Documents', icon: FileText, soon: true },
+	{ label: 'Documents', to: '/documents', icon: FileText },
 	{ label: 'Wallet', to: '/wallet', icon: WalletCards },
 	{ label: 'Marketplace', to: '/marketplace', icon: Store },
 ];

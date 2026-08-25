@@ -99,6 +99,25 @@ async function migrateMarketplaceOwnership() {
   await exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_ownership_transaction_reference ON ownership_history(transaction_reference)');
 }
 
+async function migrateDocuments() {
+  const columns = await all('PRAGMA table_info(documents)');
+  const additions = [
+    ['original_name', 'TEXT'],
+    ['stored_name', 'TEXT'],
+    ['file_path', 'TEXT'],
+    ['mime_type', 'TEXT'],
+    ['file_size', 'INTEGER'],
+    ['sha256_hash', 'TEXT'],
+    ['ocr_status', "TEXT NOT NULL DEFAULT 'pending'"],
+    ['ocr_error', 'TEXT'],
+    ['ocr_processed_at', 'DATETIME'],
+  ];
+  for (const [name, definition] of additions) {
+    if (!columns.some((column) => column.name === name)) await run(`ALTER TABLE documents ADD COLUMN ${name} ${definition}`);
+  }
+  await exec('CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id)');
+}
+
 async function initializeDatabase() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -109,6 +128,7 @@ async function initializeDatabase() {
       await migrateVerificationReports();
       await migrateVaultPasswords();
       await migrateMarketplaceOwnership();
+      await migrateDocuments();
     })();
   }
 
