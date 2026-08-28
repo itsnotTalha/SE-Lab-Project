@@ -1,0 +1,36 @@
+.summary-card {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 18px;
+    color: white;
+    transition: 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 0 25px rgba(56,189,248,0.3);
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-title span {
+    font-size: 25px;
+}
+
+.card-title h3 {
+    color: #cbd5e1;
+}
+
+.summary-card h2 {
+    color: #38bdf8;
+    font-size: 34px;
+    margin: 15px 0;
+}
+
+.summary-card p {
+    color: #94a3b8;
+}

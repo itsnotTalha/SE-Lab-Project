@@ -1,0 +1,87 @@
+.verification-page{
+
+    padding:30px;
+
+}
+
+
+.verify-box{
+
+    margin-top:30px;
+    background:white;
+    padding:40px;
+    border-radius:15px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+
+}
+
+
+.upload-area{
+
+    text-align:center;
+
+}
+
+
+.upload-area input{
+
+    margin:20px;
+
+}
+
+
+
+.upload-area button{
+
+    display:block;
+    margin:auto;
+
+    background:#2563eb;
+    color:white;
+
+    border:none;
+    padding:12px 30px;
+
+    border-radius:10px;
+    cursor:pointer;
+
+}
+
+
+
+.verification-result{
+
+    margin-top:40px;
+
+}
+
+
+
+.result-card{
+
+    background:white;
+
+    padding:20px;
+
+    border-radius:12px;
+
+    display:flex;
+    justify-content:space-between;
+
+    margin-top:15px;
+
+}
+
+
+
+.blockchain-info{
+
+    background:white;
+
+    padding:25px;
+
+    margin-top:30px;
+
+    border-radius:15px;
+
+}

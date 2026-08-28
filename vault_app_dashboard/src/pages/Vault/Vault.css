@@ -1,0 +1,109 @@
+.vault-page{
+
+    padding:30px;
+
+}
+
+
+.subtitle{
+
+    color:#777;
+    margin-bottom:30px;
+
+}
+
+
+
+.vault-stats{
+
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+
+}
+
+
+
+.vault-card{
+
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+
+}
+
+
+
+.vault-card h2{
+
+    font-size:32px;
+    margin:10px 0;
+
+}
+
+
+
+.file-section{
+
+    margin-top:40px;
+
+}
+
+
+
+.section-header{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+}
+
+
+
+.section-header button{
+
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    cursor:pointer;
+
+}
+
+
+
+.file-card{
+
+    background:white;
+    margin-top:15px;
+    padding:20px;
+    border-radius:12px;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+
+}
+
+
+
+.verified{
+
+    color:green;
+    font-weight:bold;
+
+}
+
+
+
+.pending{
+
+    color:orange;
+    font-weight:bold;
+
+}

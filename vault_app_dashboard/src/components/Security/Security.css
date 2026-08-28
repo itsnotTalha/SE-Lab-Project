@@ -1,0 +1,25 @@
+.security-card {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 16px;
+    margin-top: 30px;
+    color: white;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+}
+
+.security-card h2 {
+    color: #38bdf8;
+    margin-bottom: 20px;
+}
+
+.security-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    color: #cbd5e1;
+    border-bottom: 1px solid #334155;
+}
+
+.security-item span {
+    color: #22c55e;
+}

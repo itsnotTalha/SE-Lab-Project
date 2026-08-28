@@ -1,0 +1,17 @@
+.documents-table{
+    width:100%;
+    border-collapse:collapse;
+    background:#111827;
+    color:white;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.documents-table th{
+    background:#1f2937;
+    color:#d1d5db;
+}
+
+.documents-table td{
+    border-bottom:1px solid #374151;
+}

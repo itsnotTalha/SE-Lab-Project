@@ -1,0 +1,24 @@
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #020617;
+}
+
+.main-area {
+    flex: 1;
+}
+
+.dashboard-content {
+    padding: 30px;
+}
+
+.dashboard-content h1 {
+    color: white;
+    margin-bottom: 30px;
+}
+
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}

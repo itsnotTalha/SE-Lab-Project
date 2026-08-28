@@ -1,0 +1,22 @@
+.navbar {
+    height: 70px;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    border-bottom: 1px solid #1e293b;
+}
+
+.navbar h2 {
+    color: #38bdf8;
+    margin: 0;
+}
+
+.profile {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 18px;
+}
