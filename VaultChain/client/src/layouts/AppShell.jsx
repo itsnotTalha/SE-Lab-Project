@@ -1,88 +1,67 @@
 import {
-	Bell, FileText, Images, LayoutDashboard, LockKeyhole, LogOut, Menu,
-	ScanSearch, Search, Settings, Store, UserRound, WalletCards, X,
+	Activity, BarChart3, CircleDollarSign, FileText, Images, LayoutDashboard,
+	LockKeyhole, PlusCircle, ScanSearch, Search, Store, WalletCards,
 } from 'lucide-react';
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import BrandLogo from '../components/ui/BrandLogo';
-import StatusBadge from '../components/ui/StatusBadge';
+import Navbar from '../components/layout/Navbar';
+import Sidebar from '../components/layout/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
-const primaryNav = [
-	{ label: 'Overview', to: '/dashboard', icon: LayoutDashboard },
-	{ label: 'Assets', to: '/assets', icon: Images },
-	{ label: 'Verification', to: '/verification', icon: ScanSearch },
-	{ label: 'Vault', to: '/vault', icon: LockKeyhole },
-	{ label: 'Documents', to: '/documents', icon: FileText },
-	{ label: 'Wallet', to: '/wallet', icon: WalletCards },
-	{ label: 'Marketplace', to: '/marketplace', icon: Store },
+const navigation = [
+	{ section: 'Workspace', label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+	{ section: 'Workspace', label: 'My Assets', to: '/assets', icon: Images },
+	{ section: 'Workspace', label: 'Upload', to: '/upload', icon: PlusCircle },
+	{ section: 'Workspace', label: 'Verification Center', to: '/verification', icon: ScanSearch },
+	{ section: 'Workspace', label: 'Vaults', to: '/vault', icon: LockKeyhole },
+	{ section: 'Insights', label: 'Analytics', to: '/analytics', icon: BarChart3 },
+	{ section: 'Insights', label: 'Earnings', to: '/earnings', icon: CircleDollarSign },
+	{ section: 'Insights', label: 'Activity History', to: '/activity', icon: Activity },
+	{ section: 'More', label: 'Documents', to: '/documents', icon: FileText },
+	{ section: 'More', label: 'Marketplace', to: '/marketplace', icon: Store },
+	{ section: 'More', label: 'Wallet', to: '/wallet', icon: WalletCards },
 ];
-
-function SidebarItem({ item, onNavigate }) {
-	const Icon = item.icon;
-	if (item.soon) {
-		return (
-			<button type="button" className="sidebar-link sidebar-link--disabled" disabled title={`${item.label} is coming soon`}>
-				<Icon size={17} /><span>{item.label}</span><span className="sidebar-link__soon">Soon</span>
-			</button>
-		);
-	}
-	return (
-		<NavLink to={item.to} onClick={onNavigate} className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}>
-			<Icon size={17} /><span>{item.label}</span>
-		</NavLink>
-	);
-}
 
 export default function AppShell() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { user, logout } = useAuth();
+	const { theme, toggleTheme } = useTheme();
 	const [drawerOpen, setDrawerOpen] = useState(false);
+	const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('vaultchain-sidebar') === 'collapsed');
+	const [searchOpen, setSearchOpen] = useState(false);
+	const [query, setQuery] = useState('');
 	const firstName = user?.fullName?.split(' ')[0] || 'Member';
+	const results = useMemo(() => navigation.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())), [query]);
 
-	async function handleLogout() {
-		await logout();
-		navigate('/login', { replace: true });
+	useEffect(() => {
+		function onKeyDown(event) {
+			if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearchOpen(true); }
+			if (event.key === 'Escape') setSearchOpen(false);
+		}
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, []);
+
+	function toggleCollapsed() {
+		setCollapsed((current) => {
+			window.localStorage.setItem('vaultchain-sidebar', current ? 'expanded' : 'collapsed');
+			return !current;
+		});
 	}
 
-	return (
-		<div className="app-shell">
-			<button type="button" aria-label="Close navigation" className={`app-shell__scrim ${drawerOpen ? 'is-open' : ''}`} onClick={() => setDrawerOpen(false)} />
-			<aside className={`sidebar ${drawerOpen ? 'is-open' : ''}`}>
-				<div className="sidebar__brand">
-					<BrandLogo />
-					<button type="button" className="icon-button sidebar__close" aria-label="Close menu" onClick={() => setDrawerOpen(false)}><X size={18} /></button>
-				</div>
-				<div className="sidebar__workspace">
-					<span className="sidebar__workspace-icon">V</span>
-					<div><strong>Personal vault</strong><span>Secure workspace</span></div>
-					<StatusBadge tone="success">Live</StatusBadge>
-				</div>
-				<nav className="sidebar__nav" aria-label="Application navigation">
-					<span className="sidebar__label">Workspace</span>
-					{primaryNav.map((item) => <SidebarItem key={item.label} item={item} onNavigate={() => setDrawerOpen(false)} />)}
-				</nav>
-				<div className="sidebar__bottom">
-					<button type="button" className="sidebar-link sidebar-link--disabled" disabled title="Settings are coming soon"><Settings size={17} /><span>Settings</span><span className="sidebar-link__soon">Soon</span></button>
-					<SidebarItem item={{ label: 'Profile', to: '/profile', icon: UserRound }} onNavigate={() => setDrawerOpen(false)} />
-					<button type="button" className="sidebar-link" onClick={handleLogout}><LogOut size={17} /><span>Log out</span></button>
-				</div>
-			</aside>
+	async function handleLogout() { await logout(); navigate('/login', { replace: true }); }
 
-			<div className="app-shell__body">
-				<header className="topbar">
-					<button type="button" className="icon-button topbar__menu" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}><Menu size={19} /></button>
-					<div className="topbar__search"><Search size={15} /><span>Search workspace</span><kbd>⌘ K</kbd></div>
-					<div className="topbar__actions">
-						<button type="button" className="icon-button" aria-label="Notifications" title="Notifications are coming soon"><Bell size={17} /></button>
-						<NavLink to="/profile" className="topbar__profile" aria-label="Open profile">
-							<span>{firstName.charAt(0).toUpperCase()}</span><div><strong>{firstName}</strong><small>{user?.role || 'Member'}</small></div>
-						</NavLink>
-					</div>
-				</header>
-				<main className="app-content"><Outlet /></main>
-			</div>
+	return <div className={`app-shell ${collapsed ? 'app-shell--collapsed' : ''}`}>
+		<button type="button" aria-label="Close navigation" className={`app-shell__scrim ${drawerOpen ? 'is-open' : ''}`} onClick={() => setDrawerOpen(false)}/>
+		<Sidebar navigation={navigation} open={drawerOpen} collapsed={collapsed} onClose={() => setDrawerOpen(false)} onCollapse={toggleCollapsed} onLogout={handleLogout}/>
+		<div className="app-shell__body">
+			<Navbar firstName={firstName} role={user?.role} theme={theme} onMenu={() => setDrawerOpen(true)} onSearch={() => setSearchOpen(true)} onToggleTheme={toggleTheme}/>
+			<main className="app-content"><AnimatePresence mode="wait"><motion.div className="page-transition" key={location.pathname} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: .18 }}><Outlet/></motion.div></AnimatePresence></main>
 		</div>
-	);
+		<AnimatePresence>{searchOpen ? <motion.div className="command-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><button className="command-menu__backdrop" onClick={() => setSearchOpen(false)} aria-label="Close search"/><motion.div className="command-menu__panel" initial={{ scale: .98, y: -8 }} animate={{ scale: 1, y: 0 }}><div className="command-menu__input"><Search size={18}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Where do you want to go?"/><kbd>esc</kbd></div><div className="command-menu__results">{results.map((item) => { const Icon = item.icon; return <button type="button" key={item.to} onClick={() => { navigate(item.to); setSearchOpen(false); setQuery(''); }}><span><Icon size={17}/></span><div><strong>{item.label}</strong><small>{item.section}</small></div></button>; })}</div></motion.div></motion.div> : null}</AnimatePresence>
+	</div>;
 }

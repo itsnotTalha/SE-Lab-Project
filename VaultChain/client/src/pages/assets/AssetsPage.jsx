@@ -22,6 +22,7 @@ export default function AssetsPage() {
 	const [query, setQuery] = useState('');
 	const [filter, setFilter] = useState('all');
 	const [view, setView] = useState('grid');
+	const [sort, setSort] = useState('newest');
 	const [uploadOpen, setUploadOpen] = useState(false);
 	const [selected, setSelected] = useState(null);
 	const [previewAsset, setPreviewAsset] = useState(null);
@@ -51,8 +52,12 @@ export default function AssetsPage() {
 			const matchesQuery = !normalizedQuery || [asset.title, asset.fileName, asset.category, String(asset.id)]
 				.some((value) => String(value || '').toLowerCase().includes(normalizedQuery));
 			return matchesType && matchesQuery;
+		}).sort((first, second) => {
+			if (sort === 'oldest') return new Date(first.createdAt) - new Date(second.createdAt);
+			if (sort === 'title') return String(first.title || '').localeCompare(String(second.title || ''));
+			return new Date(second.createdAt) - new Date(first.createdAt);
 		});
-	}, [assets, filter, query]);
+	}, [assets, filter, query, sort]);
 
 	async function handleUploaded(response) {
 		await loadAssets();
@@ -80,6 +85,7 @@ export default function AssetsPage() {
 			<div className="assets-toolbar">
 				<label className="search-field"><Search size={15}/><span className="sr-only">Search assets</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search assets by title, filename, or ID" /></label>
 				<div className="assets-toolbar__filters" aria-label="Asset filters"><button type="button" className={`filter-chip ${filter === 'all' ? 'is-active' : ''}`} onClick={() => setFilter('all')}>All assets</button><button type="button" className={`filter-chip ${filter === 'image' ? 'is-active' : ''}`} onClick={() => setFilter('image')}><Image size={13}/> Images</button></div>
+				<label className="assets-sort"><span className="sr-only">Sort assets</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option></select></label>
 				<div className="view-switch" aria-label="Asset view"><button type="button" className={view === 'grid' ? 'is-active' : ''} onClick={() => setView('grid')} aria-label="Grid view"><Grid2X2 size={15}/></button><button type="button" className={view === 'list' ? 'is-active' : ''} onClick={() => setView('list')} aria-label="List view"><List size={16}/></button></div>
 			</div>
 

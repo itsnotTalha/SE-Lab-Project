@@ -1,11 +1,11 @@
 import { ArrowUpRight } from 'lucide-react';
 
-export default function StatCard({ label, value, helper, icon: Icon, tone = 'blue', pending = false }) {
+export default function StatCard({ label, value, helper, trend, icon: Icon, tone = 'blue', pending = false }) {
 	return (
 		<article className={`stat-card stat-card--${tone}`}>
 			<div className="stat-card__icon">{Icon ? <Icon size={19} /> : null}</div>
 			<div>
-				<p>{label}</p>
+				<p>{label}{trend ? <span className="stat-card__trend">{trend}</span> : null}</p>
 				<strong>{pending ? <span className="skeleton skeleton--value" /> : value}</strong>
 				<span>{helper}</span>
 			</div>

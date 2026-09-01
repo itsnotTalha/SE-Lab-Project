@@ -1,4 +1,5 @@
 import { ArrowUpRight, Eye, Fingerprint, LockKeyhole } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../ui/StatusBadge';
 import AssetThumbnail from './AssetThumbnail';
 
@@ -9,6 +10,7 @@ function formatFileSize(bytes) {
 }
 
 export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }) {
+	const navigate = useNavigate();
 	const dimensions = asset.width && asset.height ? `${asset.width} × ${asset.height}` : null;
 	const uploadedAt = asset.createdAt ? new Date(asset.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 	const locked = asset.vaultProtection?.isLocked;
@@ -17,7 +19,7 @@ export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }
 		<article className={`asset-card asset-card--${view}`}>
 			<div className="asset-card__visual">
 				<AssetThumbnail asset={asset} />
-				{locked ? <StatusBadge tone="warning"><LockKeyhole size={10}/> Locked</StatusBadge> : asset.hasHash ? <StatusBadge tone="info"><Fingerprint size={10} /> Hash generated</StatusBadge> : null}
+				{locked ? <StatusBadge tone="warning"><LockKeyhole size={10}/> Locked</StatusBadge> : asset.hasHash ? <StatusBadge tone="success"><Fingerprint size={10} /> Verified identity</StatusBadge> : null}
 			</div>
 			<div className="asset-card__body">
 				<div className="asset-card__heading">
@@ -31,7 +33,7 @@ export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }
 					<span>{dimensions || asset.mimeType || 'File'}</span>
 					<span>{formatFileSize(asset.fileSize) || uploadedAt || 'Stored asset'}</span>
 				</div>
-				<div className="asset-card__footer">{locked ? <span className="asset-card__locked-message"><LockKeyhole size={12}/> Protected by Vault — Unlock to access</span> : <><span>{uploadedAt ? `Uploaded ${uploadedAt}` : 'Upload date unavailable'}</span><div><button type="button" className="text-button" onClick={() => onPreview?.(asset)} aria-label={`Preview ${asset.title}`}><Eye size={13}/> Preview</button><button type="button" className="text-button" onClick={() => onInspect?.(asset)} aria-label={`Inspect ${asset.title}`}>Inspect asset</button></div></>}</div>
+				<div className="asset-card__footer">{locked ? <span className="asset-card__locked-message"><LockKeyhole size={12}/> Protected by Vault — Unlock to access</span> : <><span>{uploadedAt ? `Uploaded ${uploadedAt}` : 'Upload date unavailable'}</span><div><button type="button" className="text-button" onClick={() => onPreview?.(asset)} aria-label={`Preview ${asset.title}`}><Eye size={13}/> Preview</button><button type="button" className="text-button" onClick={() => navigate(`/assets/${asset.id}/inspect`)} aria-label={`Inspect ${asset.title}`}>Inspect asset</button></div></>}</div>
 			</div>
 		</article>
 	);

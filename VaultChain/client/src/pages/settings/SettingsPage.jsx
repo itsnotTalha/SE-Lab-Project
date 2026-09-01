@@ -1,0 +1,19 @@
+import { Bell, Check, Database, Eye, Laptop, LockKeyhole, Moon, Palette, ShieldCheck, Sun } from 'lucide-react';
+import { useState } from 'react';
+
+import Button from '../../components/ui/Button';
+import PageHeader from '../../components/ui/PageHeader';
+import SectionCard from '../../components/ui/SectionCard';
+import Toast from '../../components/ui/Toast';
+import { useTheme } from '../../context/ThemeContext';
+
+export default function SettingsPage() {
+	const { theme, setTheme } = useTheme();
+	const [saved, setSaved] = useState('');
+	const [preferences, setPreferences] = useState({ verification: true, vault: true, earnings: false, compact: false });
+	function toggle(key) { setPreferences((current) => ({ ...current, [key]: !current[key] })); }
+	function save() { window.localStorage.setItem('vaultchain-preferences', JSON.stringify(preferences)); setSaved('Workspace preferences saved.'); window.setTimeout(() => setSaved(''), 2400); }
+	return <><PageHeader eyebrow="Workspace preferences" title="Settings" description="Control appearance, notifications, verification behavior, and account security."/><div className="settings-grid"><SectionCard title="Appearance" description="Choose how VaultChain looks across this browser."><div className="theme-picker"><button type="button" className={theme === 'light' ? 'is-active' : ''} onClick={() => setTheme('light')}><span><Sun size={20}/></span><strong>Light</strong><small>Clean enterprise canvas</small>{theme === 'light' ? <Check size={15}/> : null}</button><button type="button" className={theme === 'dark' ? 'is-active' : ''} onClick={() => setTheme('dark')}><span><Moon size={20}/></span><strong>Dark</strong><small>Low-light glass surfaces</small>{theme === 'dark' ? <Check size={15}/> : null}</button><button type="button" onClick={() => setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')}><span><Laptop size={20}/></span><strong>System</strong><small>Match this device</small></button></div></SectionCard><SectionCard title="Notifications" description="Decide which evidence changes need your attention."><div className="settings-list"><Setting icon={ShieldCheck} title="Verification completed" text="When a new technical report is ready" checked={preferences.verification} onChange={() => toggle('verification')}/><Setting icon={LockKeyhole} title="Vault security" text="Unlock, access, and protection changes" checked={preferences.vault} onChange={() => toggle('vault')}/><Setting icon={Bell} title="Earnings updates" text="Sales and wallet balance changes" checked={preferences.earnings} onChange={() => toggle('earnings')}/></div></SectionCard><SectionCard title="Data & privacy" description="How your evidence and session are handled."><div className="privacy-list"><div><Database size={17}/><p><strong>Technical evidence</strong><small>Hashes and metadata stay linked to your authenticated account.</small></p></div><div><Eye size={17}/><p><strong>Preview access</strong><small>Protected vault assets require an active unlock session.</small></p></div><div><Palette size={17}/><p><strong>Local preferences</strong><small>Theme and interface choices are stored in this browser.</small></p></div></div></SectionCard><SectionCard title="Security status" description="Account-level protection overview"><div className="settings-security"><span><ShieldCheck size={26}/></span><div><strong>Protection is active</strong><p>Authenticated API access and password-protected vaults are available.</p></div></div><Button onClick={save}>Save preferences</Button></SectionCard></div><Toast message={saved} onClose={() => setSaved('')}/></>;
+}
+
+function Setting({ icon: Icon, title, text, checked, onChange }) { return <label className="setting-row"><span><Icon size={17}/></span><p><strong>{title}</strong><small>{text}</small></p><input type="checkbox" checked={checked} onChange={onChange}/><i/></label>; }
