@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { exec } = require('./database');
+const { migrateDocumentVaultSchema } = require('./migrations/documentVaultMigration');
 
 let initializationPromise = null;
 
@@ -11,6 +12,7 @@ async function initializeDatabase() {
       const schema = await fs.readFile(schemaPath, 'utf8');
 
       await exec(schema);
+      await migrateDocumentVaultSchema();
     })();
   }
 

@@ -77,6 +77,15 @@ CREATE TABLE IF NOT EXISTS documents (
   asset_id INTEGER,
   page_count INTEGER,
   language TEXT,
+  title TEXT,
+  description TEXT,
+  category TEXT,
+  file_name TEXT,
+  file_path TEXT,
+  file_size INTEGER,
+  mime_type TEXT,
+  status TEXT DEFAULT 'uploaded',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE SET NULL
@@ -89,8 +98,32 @@ CREATE TABLE IF NOT EXISTS ocr_results (
   extracted_text TEXT,
   confidence REAL,
   semantic_hash TEXT,
+  engine TEXT,
+  language TEXT,
+  pages_processed INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
+-- document_verifications table
+CREATE TABLE IF NOT EXISTS document_verifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  document_id INTEGER NOT NULL,
+  verified_by INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  similarity REAL,
+  changes_detected INTEGER DEFAULT 0,
+  comparison_source TEXT,
+  reference_document_id INTEGER,
+  baseline_semantic_hash TEXT,
+  current_semantic_hash TEXT,
+  engine TEXT,
+  confidence REAL,
+  details_json TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY(verified_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(reference_document_id) REFERENCES documents(id) ON DELETE SET NULL
 );
 
 -- verification_reports table
@@ -167,6 +200,13 @@ CREATE TABLE IF NOT EXISTS vault_items (
   title TEXT NOT NULL,
   encrypted_path TEXT NOT NULL,
   encryption_algorithm TEXT,
+  description TEXT,
+  original_name TEXT,
+  mime_type TEXT,
+  original_size INTEGER,
+  encrypted_size INTEGER,
+  checksum TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -193,3 +233,7 @@ CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_block
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id);
+CREATE INDEX IF NOT EXISTS idx_ocr_results_document_id ON ocr_results(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_verifications_document_id ON document_verifications(document_id);
+CREATE INDEX IF NOT EXISTS idx_vault_items_owner_id ON vault_items(owner_id);

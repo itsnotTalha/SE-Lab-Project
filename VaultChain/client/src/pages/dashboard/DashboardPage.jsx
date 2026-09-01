@@ -379,9 +379,15 @@ export default function DashboardPage() {
 						<Link to="/assets" style={pageStyles.navLink}>
 							Assets
 						</Link>
-						<Link to="/profile" style={pageStyles.navLink}>
-							Profile
-						</Link>
+					<Link to="/profile" style={pageStyles.navLink}>
+						Profile
+					</Link>
+					<Link to="/documents" style={pageStyles.navLink}>
+						Documents
+					</Link>
+					<Link to="/vault" style={pageStyles.navLink}>
+						Secure Vault
+					</Link>
 					</nav>
 				</header>
 
