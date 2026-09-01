@@ -118,6 +118,16 @@ async function migrateDocuments() {
   await exec('CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id)');
 }
 
+async function migrateAdminPlatform() {
+  const userColumns = await all('PRAGMA table_info(users)');
+  if (!userColumns.some((column) => column.name === 'status')) {
+    await run("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+  }
+  await run("UPDATE users SET role = UPPER(role) WHERE role IS NOT NULL");
+  await run("UPDATE users SET role = 'USER' WHERE role IS NULL OR role NOT IN ('SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN', 'USER')");
+  await run("INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES ('marketplace_commission_rate', '0.05')");
+}
+
 async function initializeDatabase() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -129,6 +139,7 @@ async function initializeDatabase() {
       await migrateVaultPasswords();
       await migrateMarketplaceOwnership();
       await migrateDocuments();
+      await migrateAdminPlatform();
     })();
   }
 

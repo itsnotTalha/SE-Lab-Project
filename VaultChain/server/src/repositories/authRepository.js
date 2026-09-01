@@ -37,6 +37,7 @@ function mapUserRow(row) {
 		fullName: row.full_name,
 		email: row.email,
 		role: row.role,
+		status: row.status,
 		passwordHash: row.password_hash,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
@@ -45,7 +46,7 @@ function mapUserRow(row) {
 
 async function findUserByEmail(email) {
 	const row = await get(
-		`SELECT id, full_name, email, password_hash, role, created_at, updated_at
+		`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
 		 FROM users
 		 WHERE email = ?
 		 LIMIT 1`,
@@ -57,7 +58,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
 	const row = await get(
-		`SELECT id, full_name, email, password_hash, role, created_at, updated_at
+		`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
 		 FROM users
 		 WHERE id = ?
 		 LIMIT 1`,
@@ -67,7 +68,7 @@ async function findUserById(id) {
 	return mapUserRow(row);
 }
 
-async function createUserWithWallet({ fullName, email, passwordHash, role = 'user' }) {
+async function createUserWithWallet({ fullName, email, passwordHash, role = 'USER' }) {
 	return serializeTransaction(async () => {
 		await run('BEGIN TRANSACTION');
 
@@ -84,7 +85,7 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'use
 			await run('COMMIT');
 
 			const createdUser = await get(
-				`SELECT id, full_name, email, password_hash, role, created_at, updated_at
+				`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
 				 FROM users
 				 WHERE id = ?
 				 LIMIT 1`,

@@ -1,6 +1,6 @@
 import {
 	Activity, BarChart3, CircleDollarSign, FileText, Images, LayoutDashboard,
-	LockKeyhole, PlusCircle, ScanSearch, Search, Store, WalletCards,
+	LockKeyhole, PlusCircle, ScanSearch, Search, ShieldCheck, Store, WalletCards,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,7 +35,9 @@ export default function AppShell() {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const firstName = user?.fullName?.split(' ')[0] || 'Member';
-	const results = useMemo(() => navigation.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())), [query]);
+	const adminRoles = ['SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN'];
+	const visibleNavigation = useMemo(() => adminRoles.includes(String(user?.role || '').toUpperCase()) ? [...navigation, { section: 'More', label: 'Admin Console', to: '/admin/dashboard', icon: ShieldCheck }] : navigation, [user?.role]);
+	const results = useMemo(() => visibleNavigation.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())), [query, visibleNavigation]);
 
 	useEffect(() => {
 		function onKeyDown(event) {
@@ -57,7 +59,7 @@ export default function AppShell() {
 
 	return <div className={`app-shell ${collapsed ? 'app-shell--collapsed' : ''}`}>
 		<button type="button" aria-label="Close navigation" className={`app-shell__scrim ${drawerOpen ? 'is-open' : ''}`} onClick={() => setDrawerOpen(false)}/>
-		<Sidebar navigation={navigation} open={drawerOpen} collapsed={collapsed} onClose={() => setDrawerOpen(false)} onCollapse={toggleCollapsed} onLogout={handleLogout}/>
+		<Sidebar navigation={visibleNavigation} open={drawerOpen} collapsed={collapsed} onClose={() => setDrawerOpen(false)} onCollapse={toggleCollapsed} onLogout={handleLogout}/>
 		<div className="app-shell__body">
 			<Navbar firstName={firstName} role={user?.role} theme={theme} onMenu={() => setDrawerOpen(true)} onSearch={() => setSearchOpen(true)} onToggleTheme={toggleTheme}/>
 			<main className="app-content"><AnimatePresence mode="wait"><motion.div className="page-transition" key={location.pathname} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: .18 }}><Outlet/></motion.div></AnimatePresence></main>

@@ -807,8 +807,10 @@ test('purchase atomically transfers ownership, balances, Vault membership, and p
 	assert.match(receipt.transactionReference, /^TX-[A-F0-9]{6}$/);
 	assert.equal(receipt.asset.reference, `VC-A${String(assetId).padStart(6, '0')}`);
 	assert.equal(receipt.price, 125);
+	assert.equal(receipt.platformFee, 6.25);
+	assert.equal(receipt.sellerAmount, 118.75);
 	assert.equal(receipt.buyerBalance, 375);
-	assert.equal((await walletRepository.getWalletByUserId(userA.user.id)).balance, 125);
+	assert.equal((await walletRepository.getWalletByUserId(userA.user.id)).balance, 118.75);
 	assert.equal((await walletRepository.getWalletByUserId(userB.user.id)).balance, 375);
 	const assetAfter = await assetRepository.getAssetById(assetId);
 	assert.equal(assetAfter.ownerId, userB.user.id);
@@ -840,14 +842,14 @@ test('purchase atomically transfers ownership, balances, Vault membership, and p
 	);
 	assert.deepEqual(
 		{ amount: saleTransaction?.amount, description: saleTransaction?.description, hasTimestamp: Boolean(saleTransaction?.createdAt) },
-		{ amount: 125, description: 'Marketplace sale: Owner A asset', hasTimestamp: true }
+		{ amount: 118.75, description: 'Marketplace sale payout after 5% platform fee: Owner A asset', hasTimestamp: true }
 	);
 	const [buyerDashboard, sellerDashboard] = await Promise.all([
 		dashboardRepository.getSummary(userB.user.id),
 		dashboardRepository.getSummary(userA.user.id),
 	]);
 	assert.ok(buyerDashboard.recentActivity.some((activity) => activity.type === 'purchase' && activity.reference === receipt.transactionReference && activity.amount === 125));
-	assert.ok(sellerDashboard.recentActivity.some((activity) => activity.type === 'sale' && activity.reference === receipt.transactionReference && activity.amount === 125));
+	assert.ok(sellerDashboard.recentActivity.some((activity) => activity.type === 'sale' && activity.reference === receipt.transactionReference && activity.amount === 118.75));
 	assert.equal(sellerDashboard.activeListings, 0);
 	const ownership = await assetService.checkAssetOwnership(userB.user.id, createCheckFile('buyer-ownership.png'));
 	assert.equal(ownership.asset.owner.isCurrentUser, true);

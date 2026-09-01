@@ -5,7 +5,8 @@
 	"scripts": {
 		"start": "node src/server.js",
 		"dev": "node src/server.js",
-		"test": "node --test tests/*.test.js"
+		"test": "node --test tests/*.test.js",
+		"promote-admin": "node scripts/promoteAdmin.js"
 	},
 	"dependencies": {
 		"@tesseract.js-data/eng": "^1.0.0",

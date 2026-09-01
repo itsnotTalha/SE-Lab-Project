@@ -2,10 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 import ProtectedRoute from './src/components/common/ProtectedRoute';
+import RoleGuard from './src/components/admin/RoleGuard';
 import LoadingState from './src/components/ui/LoadingState';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/layouts/AppShell';
+import AdminShell from './src/layouts/AdminShell';
 
 const AssetsPage = lazy(() => import('./src/pages/assets/AssetsPage'));
 const AssetInspectPage = lazy(() => import('./src/pages/assets/AssetInspectPage'));
@@ -26,6 +28,17 @@ const VerificationPage = lazy(() => import('./src/pages/verification/Verificatio
 const VaultDetailPage = lazy(() => import('./src/pages/vault/VaultDetailPage'));
 const VaultPage = lazy(() => import('./src/pages/vault/VaultPage'));
 const WalletPage = lazy(() => import('./src/pages/wallet/WalletPage'));
+const AdminDashboardPage = lazy(() => import('./src/pages/admin/AdminDashboardPage'));
+const AdminRevenuePage = lazy(() => import('./src/pages/admin/AdminRevenuePage'));
+const AdminMarketplacePage = lazy(() => import('./src/pages/admin/AdminMarketplacePage'));
+const AdminTransactionsPage = lazy(() => import('./src/pages/admin/AdminTransactionsPage'));
+const AdminUsersPage = lazy(() => import('./src/pages/admin/AdminUsersPage'));
+const AdminAssetsPage = lazy(() => import('./src/pages/admin/AdminAssetsPage'));
+const AdminVerificationPage = lazy(() => import('./src/pages/admin/AdminVerificationPage'));
+const AdminAnalyticsPage = lazy(() => import('./src/pages/admin/AdminAnalyticsPage'));
+const AdminSecurityPage = lazy(() => import('./src/pages/admin/AdminSecurityPage'));
+const AdminLogsPage = lazy(() => import('./src/pages/admin/AdminLogsPage'));
+const AdminSettingsPage = lazy(() => import('./src/pages/admin/AdminSettingsPage'));
 
 function PublicOnlyRoute({ children }) {
 	const { isAuthenticated, authLoading } = useAuth();
@@ -58,6 +71,20 @@ function AppRoutes() {
 					<Route path="/wallet" element={<WalletPage />} />
 					<Route path="/marketplace" element={<MarketplacePage />} />
 					<Route path="/marketplace/:id" element={<ListingDetails />} />
+				</Route>
+				<Route path="/admin" element={<RoleGuard><AdminShell /></RoleGuard>}>
+					<Route index element={<Navigate to="/admin/dashboard" replace />} />
+					<Route path="dashboard" element={<AdminDashboardPage />} />
+					<Route path="revenue" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminRevenuePage /></RoleGuard>} />
+					<Route path="marketplace" element={<AdminMarketplacePage />} />
+					<Route path="transactions" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminTransactionsPage /></RoleGuard>} />
+					<Route path="users" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminUsersPage /></RoleGuard>} />
+					<Route path="assets" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminAssetsPage /></RoleGuard>} />
+					<Route path="verification" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminVerificationPage /></RoleGuard>} />
+					<Route path="analytics" element={<AdminAnalyticsPage />} />
+					<Route path="security" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR']}><AdminSecurityPage /></RoleGuard>} />
+					<Route path="logs" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminLogsPage /></RoleGuard>} />
+					<Route path="settings" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminSettingsPage /></RoleGuard>} />
 				</Route>
 			</Route>
 			<Route path="*" element={<Navigate to="/" replace />} />

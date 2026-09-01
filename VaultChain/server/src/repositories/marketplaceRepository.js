@@ -119,13 +119,17 @@ async function purchaseListing({ reference, buyerId, transactionReference }) {
 			if (Number(buyerWallet.balance) < Number(listing.price)) {
 				throw purchaseError(400, 'Insufficient VaultChain Credits', 'INSUFFICIENT_BALANCE');
 			}
+			const feeSetting = await get("SELECT setting_value FROM platform_settings WHERE setting_key = 'marketplace_commission_rate' LIMIT 1");
+			const commissionRate = Math.max(0, Math.min(1, Number(feeSetting?.setting_value ?? 0.05)));
+			const platformFee = Math.round(Number(listing.price) * commissionRate * 100) / 100;
+			const sellerAmount = Math.round((Number(listing.price) - platformFee) * 100) / 100;
 
 			const debit = await run(
 				'UPDATE wallets SET balance = ROUND(balance - ?, 2) WHERE id = ? AND balance >= ?',
 				[listing.price, buyerWallet.id, listing.price]
 			);
 			if (debit.changes !== 1) throw purchaseError(400, 'Insufficient VaultChain Credits', 'INSUFFICIENT_BALANCE');
-			await run('UPDATE wallets SET balance = ROUND(balance + ?, 2) WHERE id = ?', [listing.price, sellerWallet.id]);
+			await run('UPDATE wallets SET balance = ROUND(balance + ?, 2) WHERE id = ?', [sellerAmount, sellerWallet.id]);
 
 			const ownership = await run(
 				'UPDATE assets SET owner_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_id = ?',
@@ -152,6 +156,12 @@ async function purchaseListing({ reference, buyerId, transactionReference }) {
 				[listing.asset_id, listing.seller_id, buyerId, listing.id, listing.price, transactionReference]
 			);
 			await run(
+				`INSERT INTO marketplace_transactions
+					(transaction_id, asset_id, listing_id, seller_id, buyer_id, sale_amount, platform_fee, seller_amount, status)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')`,
+				[transactionReference, listing.asset_id, listing.id, listing.seller_id, buyerId, listing.price, platformFee, sellerAmount]
+			);
+			await run(
 				`INSERT INTO wallet_transactions (wallet_id, type, amount, description, reference_id)
 				 VALUES (?, 'purchase', ?, ?, ?)`,
 				[buyerWallet.id, listing.price, `Marketplace purchase: ${listing.asset_title}`, transactionReference]
@@ -159,7 +169,7 @@ async function purchaseListing({ reference, buyerId, transactionReference }) {
 			await run(
 				`INSERT INTO wallet_transactions (wallet_id, type, amount, description, reference_id)
 				 VALUES (?, 'sale', ?, ?, ?)`,
-				[sellerWallet.id, listing.price, `Marketplace sale: ${listing.asset_title}`, transactionReference]
+				[sellerWallet.id, sellerAmount, `Marketplace sale payout after ${Math.round(commissionRate * 10000) / 100}% platform fee: ${listing.asset_title}`, transactionReference]
 			);
 
 			await run('COMMIT');
@@ -172,7 +182,7 @@ async function purchaseListing({ reference, buyerId, transactionReference }) {
 			return {
 				transactionReference, listingReference: reference, assetId: listing.asset_id,
 				assetTitle: listing.asset_title, previousOwnerId: listing.seller_id,
-				newOwnerId: buyerId, price: listing.price, completedAt: completed.sold_at,
+				newOwnerId: buyerId, price: listing.price, platformFee, sellerAmount, completedAt: completed.sold_at,
 				buyerBalance: balances.buyer_balance, sellerBalance: balances.seller_balance,
 			};
 		} catch (error) {

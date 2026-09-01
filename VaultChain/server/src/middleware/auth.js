@@ -26,4 +26,17 @@ function authenticateToken(req, res, next) {
 	}
 }
 
-module.exports = { authenticateToken };
+function authorizeRoles(...roles) {
+	const allowed = roles.map((role) => String(role).toUpperCase());
+	return (req, res, next) => {
+		if (!req.user || !allowed.includes(String(req.user.role || '').toUpperCase())) {
+			const error = new Error('You do not have permission to perform this action');
+			error.status = 403;
+			next(error);
+			return;
+		}
+		next();
+	};
+}
+
+module.exports = { authenticateToken, authorizeRoles };

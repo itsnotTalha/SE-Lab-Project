@@ -55,6 +55,7 @@ async function getCurrentUser() {
 		fullName: data.user.fullName || data.user.full_name,
 		email: data.user.email,
 		role: data.user.role,
+		status: data.user.status,
 		createdAt: data.user.createdAt || data.user.created_at,
 	};
 }

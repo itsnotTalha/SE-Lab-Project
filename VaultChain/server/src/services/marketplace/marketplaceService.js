@@ -176,9 +176,12 @@ async function purchaseListing(userId, reference) {
 		previousOwner: publicOwnerReference(receipt.previousOwnerId),
 		newOwner: publicOwnerReference(receipt.newOwnerId),
 		price: receipt.price,
+		platformFee: receipt.platformFee,
+		sellerAmount: receipt.sellerAmount,
 		currency: 'VaultChain Credits',
 		completedAt: receipt.completedAt,
 		buyerBalance: receipt.buyerBalance,
+		sellerBalance: receipt.sellerBalance,
 	};
 }
 

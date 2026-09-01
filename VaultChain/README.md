@@ -1,5 +1,17 @@
 # VaultChain
 
+## Admin control center
+
+VaultChain includes a role-protected admin workspace at `/admin/dashboard` with revenue, marketplace, transaction, user, asset, verification, growth, security, audit-log, and platform-settings views.
+
+To grant an existing account access, run this from the repository root:
+
+```bash
+npm run promote-admin --workspace=server -- admin@example.com SUPER_ADMIN
+```
+
+Supported admin roles are `SUPER_ADMIN`, `MODERATOR`, `FINANCE_ADMIN`, and `VERIFICATION_ADMIN`. The default marketplace commission is 5% and is stored in `platform_settings` under `marketplace_commission_rate`.
+
 VaultChain is a full-stack web app for registering digital assets, organizing them in private Vaults, and comparing image fingerprints. The current build covers authentication, protected asset uploads and previews, SHA-256 and perceptual hashing, image metadata extraction, verification reports, and private organizational collections.
 
 ## What is implemented now

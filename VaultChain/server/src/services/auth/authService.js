@@ -23,6 +23,7 @@ function buildTokenPayload(user) {
 		id: user.id,
 		email: user.email,
 		role: user.role,
+		status: user.status,
 		jti: crypto.randomUUID(),
 	};
 }
@@ -33,6 +34,7 @@ function toPublicUser(user) {
 		fullName: user.fullName,
 		email: user.email,
 		role: user.role,
+		status: user.status,
 		createdAt: user.createdAt,
 		updatedAt: user.updatedAt,
 	};
@@ -146,6 +148,9 @@ async function login(payload) {
 	if (!isPasswordValid) {
 		throw createHttpError(401, 'Invalid email or password');
 	}
+	if (user.status === 'suspended') {
+		throw createHttpError(403, 'This account has been suspended');
+	}
 
 	return {
 		user: toPublicUser(user),
@@ -165,6 +170,7 @@ async function getAuthenticatedUser(userId) {
 		full_name: user.fullName,
 		email: user.email,
 		role: user.role,
+		status: user.status,
 		created_at: user.createdAt,
 	};
 }

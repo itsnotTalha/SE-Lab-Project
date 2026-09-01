@@ -179,14 +179,16 @@ test('complete authenticated asset, verification, Vault, marketplace, wallet, an
 	}), 200).receipt;
 	assert.match(receipt.transactionReference, /^TX-[A-F0-9]{6}$/);
 	assert.equal(receipt.price, 125);
+	assert.equal(receipt.platformFee, 6.25);
+	assert.equal(receipt.sellerAmount, 118.75);
 	assert.equal(receipt.buyerBalance, 375);
 
 	assert.equal(expectStatus(await api('/wallet', { token: buyerToken }), 200).wallet.balance, 375);
-	assert.equal(expectStatus(await api('/wallet', { token: ownerToken }), 200).wallet.balance, 125);
+	assert.equal(expectStatus(await api('/wallet', { token: ownerToken }), 200).wallet.balance, 118.75);
 	const buyerTransactions = expectStatus(await api('/wallet/transactions', { token: buyerToken }), 200).transactions;
 	const ownerTransactions = expectStatus(await api('/wallet/transactions', { token: ownerToken }), 200).transactions;
 	assert.ok(buyerTransactions.some((entry) => entry.type === 'purchase' && entry.referenceId === receipt.transactionReference && entry.amount === 125));
-	assert.ok(ownerTransactions.some((entry) => entry.type === 'sale' && entry.referenceId === receipt.transactionReference && entry.amount === 125));
+	assert.ok(ownerTransactions.some((entry) => entry.type === 'sale' && entry.referenceId === receipt.transactionReference && entry.amount === 118.75));
 	assert.equal(expectStatus(await api(`/marketplace/listings/${listing.reference}`, { token: ownerToken }), 200).listing.status, 'sold');
 	assert.equal(expectStatus(await api('/assets', { token: ownerToken }), 200).assets.some((asset) => asset.id === assetId), false);
 	assert.equal(expectStatus(await api('/assets', { token: buyerToken }), 200).assets.some((asset) => asset.id === assetId), true);
@@ -195,7 +197,7 @@ test('complete authenticated asset, verification, Vault, marketplace, wallet, an
 	const buyerDashboard = expectStatus(await api('/dashboard/summary', { token: buyerToken }), 200).summary;
 	assert.deepEqual(
 		{ assets: ownerDashboard.totalAssets, vaults: ownerDashboard.totalVaults, listings: ownerDashboard.activeListings, verifications: ownerDashboard.totalVerificationReports, balance: ownerDashboard.walletBalance },
-		{ assets: 0, vaults: 1, listings: 0, verifications: 0, balance: 125 }
+		{ assets: 0, vaults: 1, listings: 0, verifications: 0, balance: 118.75 }
 	);
 	assert.deepEqual(
 		{ assets: buyerDashboard.totalAssets, vaults: buyerDashboard.totalVaults, listings: buyerDashboard.activeListings, verifications: buyerDashboard.totalVerificationReports, balance: buyerDashboard.walletBalance },

@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
   full_name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT DEFAULT 'user',
+  role TEXT NOT NULL DEFAULT 'USER' CHECK(role IN ('SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN', 'USER')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'suspended', 'review')),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -150,6 +151,45 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- settled marketplace sales and VaultChain commission ledger
+CREATE TABLE IF NOT EXISTS marketplace_transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transaction_id TEXT NOT NULL UNIQUE,
+  asset_id INTEGER NOT NULL,
+  listing_id INTEGER,
+  seller_id INTEGER NOT NULL,
+  buyer_id INTEGER NOT NULL,
+  sale_amount REAL NOT NULL,
+  platform_fee REAL NOT NULL DEFAULT 0,
+  seller_amount REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'completed' CHECK(status IN ('pending', 'completed', 'refunded', 'failed')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE RESTRICT,
+  FOREIGN KEY(listing_id) REFERENCES marketplace_listings(id) ON DELETE SET NULL,
+  FOREIGN KEY(seller_id) REFERENCES users(id) ON DELETE RESTRICT,
+  FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  details_json TEXT,
+  ip_address TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS platform_settings (
+  setting_key TEXT PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_by INTEGER,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- ownership_history table
 CREATE TABLE IF NOT EXISTS ownership_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -258,6 +298,12 @@ CREATE INDEX IF NOT EXISTS idx_verification_reports_asset_id ON verification_rep
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_asset_id ON blockchain_blocks(asset_id);
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_blocks(block_index);
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
+CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_created_at ON marketplace_transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_status ON marketplace_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_seller ON marketplace_transactions(seller_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_buyer ON marketplace_transactions(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_admin ON admin_activity_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_created_at ON admin_activity_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id);
