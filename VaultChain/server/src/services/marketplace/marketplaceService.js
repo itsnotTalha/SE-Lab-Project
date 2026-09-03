@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const assetRepository = require('../../repositories/assetRepository');
 const marketplaceRepository = require('../../repositories/marketplaceRepository');
 const vaultAccessService = require('../vault/vaultAccessService');
+const settingsRepository = require('../../repositories/settingsRepository');
 
 const LISTING_REFERENCE = /^ML-[A-F0-9]{6}$/;
 
@@ -36,10 +37,11 @@ function validateText(value, label, maximum, required = true) {
 	return normalized || null;
 }
 
-function validatePrice(price) {
+async function validatePrice(price) {
 	const number = Number(price);
-	if (!Number.isFinite(number) || number <= 0 || number > 1000000000) {
-		throw httpError(400, 'Price must be a positive number');
+	const minimum = await settingsRepository.getNumericSetting('minimum_listing_price', 1);
+	if (!Number.isFinite(number) || number < minimum || number > 1000000000) {
+		throw httpError(400, `Price must be at least ${minimum}`);
 	}
 	if (Math.abs(number * 100 - Math.round(number * 100)) > 1e-8) throw httpError(400, 'Price may have at most two decimal places');
 	return number;
@@ -113,7 +115,7 @@ async function createListing(userId, tokenFingerprint, { assetId, title, descrip
 			sellerId: userId,
 			title: validateText(title, 'Title', 120),
 			description: validateText(description, 'Description', 1000, false),
-			price: validatePrice(price),
+			price: await validatePrice(price),
 		});
 		return toPublicListing(listing, userId, tokenFingerprint);
 	} catch (error) {
@@ -136,7 +138,7 @@ async function updateListing(userId, reference, payload, tokenFingerprint) {
 	if (listing.sellerId !== userId) throw httpError(404, 'Listing not found');
 	if (listing.status !== 'active') throw httpError(409, 'Only active listings can be updated');
 	const result = await marketplaceRepository.updateActiveListing(listing.reference, userId, {
-		price: payload.price == null ? null : validatePrice(payload.price),
+		price: payload.price == null ? null : await validatePrice(payload.price),
 		title: payload.title == null ? null : validateText(payload.title, 'Title', 120),
 		description: payload.description == null ? null : validateText(payload.description, 'Description', 1000, false),
 	});

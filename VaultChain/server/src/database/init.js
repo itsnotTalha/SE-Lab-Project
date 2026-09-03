@@ -126,6 +126,16 @@ async function migrateAdminPlatform() {
   await run("UPDATE users SET role = UPPER(role) WHERE role IS NOT NULL");
   await run("UPDATE users SET role = 'USER' WHERE role IS NULL OR role NOT IN ('SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN', 'USER')");
   await run("INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES ('marketplace_commission_rate', '0.05')");
+  await run("INSERT OR IGNORE INTO platform_settings (setting_key, setting_value) VALUES ('minimum_listing_price', '1')");
+  await run(`INSERT OR IGNORE INTO marketplace_transactions
+    (transaction_id, asset_id, listing_id, seller_id, buyer_id, sale_amount, platform_fee, seller_amount, status, created_at)
+    SELECT oh.transaction_reference, oh.asset_id, oh.listing_id, oh.previous_owner, oh.new_owner, oh.price,
+      ROUND(oh.price * CAST((SELECT setting_value FROM platform_settings WHERE setting_key = 'marketplace_commission_rate') AS REAL), 2),
+      ROUND(oh.price - (oh.price * CAST((SELECT setting_value FROM platform_settings WHERE setting_key = 'marketplace_commission_rate') AS REAL)), 2),
+      'completed', oh.transferred_at
+    FROM ownership_history oh
+    WHERE oh.transfer_type = 'marketplace_sale' AND oh.transaction_reference IS NOT NULL
+      AND oh.previous_owner IS NOT NULL AND oh.new_owner IS NOT NULL AND oh.price IS NOT NULL`);
 }
 
 async function initializeDatabase() {

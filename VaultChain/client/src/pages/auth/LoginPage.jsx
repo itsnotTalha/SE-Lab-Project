@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import Button from '../../components/ui/Button';
+import { defaultRouteForRole } from '../../components/admin/PermissionManager';
 import { useAuth } from '../../context/AuthContext';
 import AuthLayout from '../../layouts/AuthLayout';
 
@@ -22,8 +23,8 @@ export default function LoginPage() {
 		if (!email.trim() || !password) { setError('Enter your email and password to continue.'); return; }
 		setLoading(true);
 		try {
-			await login({ email: email.trim(), password });
-			navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+			const authenticatedUser = await login({ email: email.trim(), password });
+			navigate(location.state?.from?.pathname || defaultRouteForRole(authenticatedUser.role), { replace: true });
 		} catch (submitError) { setError(submitError.message); }
 		finally { setLoading(false); }
 	}

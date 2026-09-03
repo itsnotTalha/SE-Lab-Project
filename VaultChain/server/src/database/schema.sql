@@ -290,16 +290,21 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 CREATE INDEX IF NOT EXISTS idx_assets_owner_id ON assets(owner_id);
 CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
+CREATE INDEX IF NOT EXISTS idx_assets_created_at ON assets(created_at);
 CREATE INDEX IF NOT EXISTS idx_asset_hashes_sha256_hash ON asset_hashes(sha256_hash);
 CREATE INDEX IF NOT EXISTS idx_asset_hashes_phash ON asset_hashes(phash);
 CREATE INDEX IF NOT EXISTS idx_verification_reports_asset_id ON verification_reports(asset_id);
+CREATE INDEX IF NOT EXISTS idx_verification_reports_created_at ON verification_reports(created_at);
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_asset_id ON blockchain_blocks(asset_id);
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_blocks(block_index);
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
+CREATE INDEX IF NOT EXISTS idx_marketplace_listings_created_at ON marketplace_listings(created_at);
 CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_created_at ON marketplace_transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_status ON marketplace_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_status_created_at ON marketplace_transactions(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_seller ON marketplace_transactions(seller_id);
 CREATE INDEX IF NOT EXISTS idx_marketplace_transactions_buyer ON marketplace_transactions(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_admin ON admin_activity_logs(admin_id);

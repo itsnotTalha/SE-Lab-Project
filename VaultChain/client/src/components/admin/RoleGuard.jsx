@@ -3,9 +3,7 @@ import { ShieldAlert } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
 import LoadingState from '../ui/LoadingState';
-import { normalizeRole } from './PermissionManager';
-
-export const ADMIN_ROLES = ['SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN'];
+import { ADMIN_ROLES, normalizeRole } from './PermissionManager';
 
 export default function RoleGuard({ roles = ADMIN_ROLES, children }) {
 	const { user, authLoading } = useAuth();
@@ -17,4 +15,3 @@ export default function RoleGuard({ roles = ADMIN_ROLES, children }) {
 	}
 	return children;
 }
-

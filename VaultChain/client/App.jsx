@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 
 import ProtectedRoute from './src/components/common/ProtectedRoute';
 import RoleGuard from './src/components/admin/RoleGuard';
+import { defaultRouteForRole } from './src/components/admin/PermissionManager';
 import LoadingState from './src/components/ui/LoadingState';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
@@ -41,9 +42,9 @@ const AdminLogsPage = lazy(() => import('./src/pages/admin/AdminLogsPage'));
 const AdminSettingsPage = lazy(() => import('./src/pages/admin/AdminSettingsPage'));
 
 function PublicOnlyRoute({ children }) {
-	const { isAuthenticated, authLoading } = useAuth();
+	const { isAuthenticated, user, authLoading } = useAuth();
 	if (authLoading) return <LoadingState fullScreen label="Securing your workspace" />;
-	if (!authLoading && isAuthenticated) return <Navigate to="/dashboard" replace />;
+	if (!authLoading && isAuthenticated) return <Navigate to={defaultRouteForRole(user?.role)} replace />;
 	return children;
 }
 

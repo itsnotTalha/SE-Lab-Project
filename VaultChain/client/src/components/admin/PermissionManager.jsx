@@ -1,3 +1,5 @@
+export const ADMIN_ROLES = ['SUPER_ADMIN', 'MODERATOR', 'FINANCE_ADMIN', 'VERIFICATION_ADMIN'];
+
 const ROLE_PERMISSIONS = {
 	SUPER_ADMIN: ['*'],
 	MODERATOR: ['reports.view', 'reports.manage', 'disputes.manage', 'security.view', 'assets.view'],
@@ -7,6 +9,14 @@ const ROLE_PERMISSIONS = {
 
 export function normalizeRole(role) {
 	return String(role || 'USER').toUpperCase();
+}
+
+export function isAdminRole(role) {
+	return ADMIN_ROLES.includes(normalizeRole(role));
+}
+
+export function defaultRouteForRole(role) {
+	return isAdminRole(role) ? '/admin/dashboard' : '/dashboard';
 }
 
 export function hasPermission(role, permission) {
@@ -21,4 +31,3 @@ export function permissionsFor(role) {
 export default function PermissionManager({ role, permission, fallback = null, children }) {
 	return hasPermission(role, permission) ? children : fallback;
 }
-

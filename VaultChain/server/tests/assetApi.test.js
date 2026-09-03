@@ -165,15 +165,15 @@ after(async () => {
 	fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
-test('authentication middleware rejects missing credentials and accepts a valid JWT', () => {
+test('authentication middleware rejects missing credentials and accepts a valid JWT', async () => {
 	let missingTokenError;
-	authenticateToken({ headers: {} }, {}, (error) => { missingTokenError = error; });
+	await new Promise((resolve) => authenticateToken({ headers: {} }, {}, (error) => { missingTokenError = error; resolve(); }));
 	assert.equal(missingTokenError.status, 401);
 	assert.equal(missingTokenError.message, 'Unauthorized');
 
 	const request = { headers: { authorization: `Bearer ${userA.token}` } };
 	let validTokenError;
-	authenticateToken(request, {}, (error) => { validTokenError = error; });
+	await new Promise((resolve) => authenticateToken(request, {}, (error) => { validTokenError = error; resolve(); }));
 	assert.equal(validTokenError, undefined);
 	assert.equal(request.user.id, userA.user.id);
 	assert.equal(request.authTokenFingerprint, userAFingerprint);

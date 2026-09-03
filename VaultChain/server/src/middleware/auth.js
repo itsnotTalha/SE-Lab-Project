@@ -1,9 +1,11 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+const authRepository = require('../repositories/authRepository');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'vaultchain-development-secret';
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
 	const authorizationHeader = req.headers.authorization || '';
 	const [scheme, token] = authorizationHeader.split(' ');
 
@@ -14,14 +16,42 @@ function authenticateToken(req, res, next) {
 		return;
 	}
 
+	let decoded;
 	try {
-		const decoded = jwt.verify(token, JWT_SECRET);
-		req.user = decoded;
-		req.authTokenFingerprint = crypto.createHash('sha256').update(token).digest('hex');
-		next();
+		decoded = jwt.verify(token, JWT_SECRET);
 	} catch (error) {
 		error.status = 401;
 		error.message = 'Invalid or expired token';
+		next(error);
+		return;
+	}
+
+	try {
+		const currentUser = await authRepository.findUserById(decoded.id);
+		if (!currentUser) {
+			const error = new Error('Account no longer exists');
+			error.status = 401;
+			throw error;
+		}
+		if (currentUser.status === 'suspended') {
+			const error = new Error('This account has been suspended');
+			error.status = 403;
+			throw error;
+		}
+
+		// Identity comes from the signed token; mutable authorization state comes
+		// from the database so promotions, demotions, and suspensions take effect
+		// without waiting for the JWT to expire.
+		req.user = {
+			...decoded,
+			id: currentUser.id,
+			email: currentUser.email,
+			role: currentUser.role,
+			status: currentUser.status,
+		};
+		req.authTokenFingerprint = crypto.createHash('sha256').update(token).digest('hex');
+		next();
+	} catch (error) {
 		next(error);
 	}
 }
