@@ -11,5 +11,30 @@ const defaultSteps = [
 ];
 
 export default function VerificationTimeline({ steps = defaultSteps, activeStep = steps.length, compact = false, totalTime }) {
-	return <div className={`verification-timeline ${compact ? 'is-compact' : ''}`}>{steps.map((step, index) => { const Icon = step.icon; const complete = index < activeStep; const active = index === activeStep; const timing = totalTime && index === steps.length - 1 ? `${(totalTime / 1000).toFixed(2)}s total` : step.time; return <motion.div className={`verification-timeline__step ${complete ? 'is-complete' : ''} ${active ? 'is-active' : ''}`} key={step.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .07 }}><span className="verification-timeline__connector"/><span className="verification-timeline__icon">{complete ? <Check size={15}/> : <Icon size={16}/>}</span><div><strong>{step.title}</strong><p>{step.description}</p></div><div className="verification-timeline__result"><strong>{complete ? step.result : active ? 'Processing' : 'Queued'}</strong><span>{complete ? timing : '—'}</span></div></motion.div>; })}</div>;
+	return (
+		<div className={`verification-timeline ${compact ? 'is-compact' : ''}`} role="list" aria-label="Verification steps">
+			{steps.map((step, index) => {
+				const Icon = step.icon;
+				const complete = index < activeStep;
+				const active = index === activeStep;
+				const timing = totalTime && index === steps.length - 1 ? `${(totalTime / 1000).toFixed(2)}s total` : step.time;
+				return (
+					<motion.div
+						className={`verification-timeline__step ${complete ? 'is-complete' : ''} ${active ? 'is-active' : ''}`}
+						key={step.title}
+						role="listitem"
+						aria-current={active ? 'step' : undefined}
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: index * .07 }}
+					>
+						<span className="verification-timeline__connector" aria-hidden="true"/>
+						<span className="verification-timeline__icon" aria-hidden="true">{complete ? <Check size={18}/> : <Icon size={18}/>}</span>
+						<div><strong>{step.title}</strong><p>{step.description}</p></div>
+						<div className="verification-timeline__result"><strong>{complete ? step.result : active ? 'Processing' : 'Queued'}</strong><span>{complete ? timing : '—'}</span></div>
+					</motion.div>
+				);
+			})}
+		</div>
+	);
 }

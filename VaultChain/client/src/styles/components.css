@@ -5,7 +5,7 @@
 .brand-logo__mark svg:first-child path:last-child { fill: none; stroke: #dff9ff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .brand-logo__mark > svg:last-child { position: absolute; right: 0; bottom: 2px; padding: 2px; border-radius: 50%; color: var(--primary); background: var(--surface); }
 .brand-logo__text { font-size: 1.04rem; }
-.button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 11px; padding: 0 17px; font-weight: 650; font-size: .875rem; text-decoration: none; cursor: pointer; transition: transform .18s, box-shadow .18s, border-color .18s, background .18s; }
+.button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 11px; padding: 0 17px; font-weight: 650; font-size: .875rem; text-decoration: none; cursor: pointer; transition: transform .18s, box-shadow .18s, border-color .18s, background .18s; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
 .button:disabled { cursor: not-allowed; opacity: .58; }
 .button--primary { color: #031017; background: linear-gradient(135deg, #7ae8ff, var(--primary)); box-shadow: 0 8px 26px rgba(35,188,232,.16); }
@@ -16,7 +16,7 @@
 .button--ghost:hover { color: var(--text); background: rgba(255,255,255,.04); }
 .button--danger { color: #ffc5cb; background: rgba(255,107,122,.1); border-color: rgba(255,107,122,.22); }
 .button--lg { min-height: 48px; padding-inline: 21px; border-radius: 13px; }
-.button--sm { min-height: 36px; padding-inline: 12px; font-size: .8rem; }
+.button--sm { min-height: 40px; padding-inline: 13px; font-size: .8rem; }
 .status-badge { display: inline-flex; align-items: center; width: max-content; border-radius: 999px; padding: 5px 9px; border: 1px solid var(--border); color: var(--text-secondary); background: rgba(255,255,255,.03); font-size: .68rem; line-height: 1; font-weight: 650; }
 .status-badge--success { color: #91edc9; background: rgba(66,214,157,.09); border-color: rgba(66,214,157,.2); }
 .status-badge--warning { color: #f8d39b; background: rgba(244,184,96,.09); border-color: rgba(244,184,96,.2); }

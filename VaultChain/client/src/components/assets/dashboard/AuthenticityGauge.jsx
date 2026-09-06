@@ -26,10 +26,10 @@ export default function AuthenticityGauge({ score = 0, label = 'Authenticity Sco
 
 	return (
 		<motion.div className="authenticity-gauge" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}>
-			<div className="gauge-container" style={{ background: level.bgGradient }}>
-				<svg className="gauge-ring" viewBox="0 0 120 120">
+			<div className="gauge-container" style={{ '--gauge-color': level.color, '--gauge-surface': level.bgGradient }} role="img" aria-label={`${label}: ${score}%, ${getScoreLevel(score).text}`}>
+				<svg className="gauge-ring" viewBox="0 0 120 120" aria-hidden="true">
 					{/* Background circle */}
-					<circle cx="60" cy="60" r="45" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+					<circle cx="60" cy="60" r="45" fill="none" stroke="var(--border-strong)" strokeWidth="8" />
 					{/* Progress circle */}
 					<motion.circle
 						cx="60"
