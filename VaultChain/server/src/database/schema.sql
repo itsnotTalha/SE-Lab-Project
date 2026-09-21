@@ -102,6 +102,22 @@ CREATE TABLE IF NOT EXISTS ocr_results (
   FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
 );
 
+-- document_verifications table
+CREATE TABLE IF NOT EXISTS document_verifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  document_id INTEGER NOT NULL,
+  reference_document_id INTEGER NOT NULL,
+  semantic_hash_match INTEGER,
+  similarity_score REAL,
+  status TEXT NOT NULL CHECK(status IN ('original', 'modified', 'unknown')),
+  report_json TEXT NOT NULL DEFAULT '{}',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY(reference_document_id) REFERENCES documents(id) ON DELETE CASCADE
+);
+
 -- verification_reports table
 CREATE TABLE IF NOT EXISTS verification_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -261,6 +277,8 @@ CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listin
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id);
+CREATE INDEX IF NOT EXISTS idx_document_verifications_user_document ON document_verifications(user_id, document_id);
+CREATE INDEX IF NOT EXISTS idx_document_verifications_reference_document ON document_verifications(reference_document_id);
 CREATE INDEX IF NOT EXISTS idx_vaults_user_id ON vaults(user_id);
 CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);
