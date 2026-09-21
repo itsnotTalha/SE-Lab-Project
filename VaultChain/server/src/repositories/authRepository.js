@@ -1,17 +1,4 @@
-const { database } = require('../database/database');
-
-function run(sql, params = []) {
-	return new Promise((resolve, reject) => {
-		database.run(sql, params, function onRun(error) {
-			if (error) {
-				reject(error);
-				return;
-			}
-
-			resolve(this);
-		});
-	});
-}
+const { database, withTransaction } = require('../database/database');
 
 function get(sql, params = []) {
 	return new Promise((resolve, reject) => {
@@ -67,10 +54,10 @@ async function findUserById(id) {
 }
 
 async function createUserWithWallet({ fullName, email, passwordHash, role = 'user' }) {
-	await run('BEGIN TRANSACTION');
-
-	try {
-		const userResult = await run(
+	// Runs through the shared transaction queue so it cannot interleave with
+	// another transaction on this connection, such as a marketplace settlement.
+	return withTransaction(async (client) => {
+		const userResult = await client.run(
 			`INSERT INTO users (full_name, email, password_hash, role)
 			 VALUES (?, ?, ?, ?)`,
 			[fullName, email, passwordHash, role]
@@ -78,10 +65,9 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'use
 
 		const userId = userResult.lastID;
 
-		await run('INSERT INTO wallets (user_id, balance) VALUES (?, ?)', [userId, 0]);
-		await run('COMMIT');
+		await client.run('INSERT INTO wallets (user_id, balance) VALUES (?, ?)', [userId, 0]);
 
-		const createdUser = await get(
+		const createdUser = await client.get(
 			`SELECT id, full_name, email, password_hash, role, created_at, updated_at
 			 FROM users
 			 WHERE id = ?
@@ -90,15 +76,7 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'use
 		);
 
 		return mapUserRow(createdUser);
-	} catch (error) {
-		try {
-			await run('ROLLBACK');
-		} catch (rollbackError) {
-			void rollbackError;
-		}
-
-		throw error;
-	}
+	});
 }
 
 module.exports = {
