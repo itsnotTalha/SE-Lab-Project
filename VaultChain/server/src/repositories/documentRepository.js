@@ -1,5 +1,6 @@
 const { database } = require('../database/database');
 const { serializeTransaction } = require('../database/transactionQueue');
+const { createSemanticHash } = require('../utils/semanticHash');
 
 function run(sql, params = []) {
 	return new Promise((resolve, reject) => database.run(sql, params, function onRun(error) {
@@ -19,7 +20,7 @@ const DOCUMENT_SELECT = `
 	SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 		d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
 		d.ocr_error, d.ocr_processed_at, d.created_at,
-		o.extracted_text, o.confidence
+		o.extracted_text, o.confidence, o.semantic_hash
 	FROM documents d
 	LEFT JOIN ocr_results o ON o.document_id = d.id`;
 
@@ -40,7 +41,11 @@ function mapRow(row, includeText = true) {
 		ocrError: row.ocr_error,
 		ocrProcessedAt: row.ocr_processed_at,
 		createdAt: row.created_at,
-		...(includeText ? { extractedText: row.extracted_text, confidence: row.confidence } : {}),
+		...(includeText ? {
+			extractedText: row.extracted_text,
+			confidence: row.confidence,
+			semanticHash: row.semantic_hash,
+		} : {}),
 	};
 }
 
@@ -109,15 +114,17 @@ async function setOcrStatus(id, ownerId, status, error = null) {
 }
 
 async function saveOcrResult(id, ownerId, { text, confidence, pageCount, language = 'eng' }) {
+	const semanticHash = createSemanticHash(text);
 	return serializeTransaction(async () => {
 		await run('BEGIN TRANSACTION');
 		try {
 			await run(
-				`INSERT INTO ocr_results (document_id, extracted_text, confidence, created_at)
-				 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+				`INSERT INTO ocr_results (document_id, extracted_text, confidence, semantic_hash, created_at)
+				 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
 				 ON CONFLICT(document_id) DO UPDATE SET
-				 extracted_text = excluded.extracted_text, confidence = excluded.confidence, created_at = CURRENT_TIMESTAMP`,
-				[id, text, confidence]
+				 extracted_text = excluded.extracted_text, confidence = excluded.confidence,
+				 semantic_hash = excluded.semantic_hash, created_at = CURRENT_TIMESTAMP`,
+				[id, text, confidence, semanticHash]
 			);
 			const result = await run(
 				`UPDATE documents SET ocr_status = 'completed', ocr_error = NULL,
