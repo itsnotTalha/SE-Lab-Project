@@ -8,16 +8,23 @@ import VerificationResult from './VerificationResult';
 export default function DocumentVerificationModal({ document, documents, open, onClose, onVerified }) {
 	const [referenceDocumentId, setReferenceDocumentId] = useState('');
 	const [verification, setVerification] = useState(null);
+	const [history, setHistory] = useState(null);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
 	const references = useMemo(() => documents.filter((candidate) => candidate.id !== document?.id), [document?.id, documents]);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open || !document) return;
 		setReferenceDocumentId('');
 		setVerification(null);
+		setHistory(null);
 		setError('');
 		setLoading(false);
+		let active = true;
+		documentService.getReport(document.id)
+			.then((result) => { if (active) setHistory(result); })
+			.catch(() => { if (active) setHistory([]); });
+		return () => { active = false; };
 	}, [open, document?.id]);
 
 	if (!open || !document) return null;
@@ -33,6 +40,7 @@ export default function DocumentVerificationModal({ document, documents, open, o
 		try {
 			const result = await documentService.verify(document.id, Number(referenceDocumentId));
 			setVerification(result);
+			setHistory((current) => [result, ...(current || [])]);
 			onVerified?.(result);
 		} catch (verificationError) {
 			setError(verificationError.message);
@@ -53,6 +61,7 @@ export default function DocumentVerificationModal({ document, documents, open, o
 					<footer><Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button><Button type="submit" icon={FileCheck2} disabled={loading || references.length === 0}>{loading ? 'Verifying…' : 'Verify'}</Button></footer>
 				</form>}
 				{verification ? <footer><Button variant="secondary" onClick={() => { setVerification(null); setReferenceDocumentId(''); }}>Compare again</Button><Button onClick={onClose}>Done</Button></footer> : null}
+				{history?.length ? <section><h3>Verification history</h3><div className="document-list">{history.map((entry) => <div className="document-item" key={entry.id}><div className="document-item__identity"><strong>{entry.referenceDocumentName}</strong><small>{new Date(entry.createdAt).toLocaleString()}</small></div><VerificationResult verification={entry} compact/></div>)}</div></section> : null}
 			</div>
 		</section>
 	</div>;
