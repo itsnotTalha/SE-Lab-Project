@@ -18,9 +18,24 @@ async function request(path, options = {}) {
 	return data;
 }
 
-async function getListings() {
-	const data = await request('/marketplace/listings');
-	return data.listings;
+function buildQuery(filters = {}) {
+	const params = new URLSearchParams();
+
+	for (const [key, value] of Object.entries(filters)) {
+		if (value !== '' && value != null) {
+			params.set(key, value);
+		}
+	}
+
+	const query = params.toString();
+
+	return query ? `?${query}` : '';
+}
+
+async function getListings(filters) {
+	const data = await request(`/marketplace/listings${buildQuery(filters)}`);
+
+	return { listings: data.listings, pagination: data.pagination };
 }
 
 async function getListingById(id) {
@@ -28,20 +43,35 @@ async function getListingById(id) {
 	return data.listing;
 }
 
-async function createListing({ assetId, listingType, price }) {
+async function getMyListings() {
+	const data = await request('/marketplace/listings/mine');
+	return data.listings;
+}
+
+async function getListableAssets() {
+	const data = await request('/marketplace/listable-assets');
+	return data.assets;
+}
+
+async function getTrades() {
+	const data = await request('/marketplace/trades');
+	return data.trades;
+}
+
+async function createListing({ assetId, listingType, price, description }) {
 	const data = await request('/marketplace/listings', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ assetId, listingType, price }),
+		body: JSON.stringify({ assetId, listingType, price, description }),
 	});
 	return data.listing;
 }
 
-async function updateListing(id, { price, status }) {
+async function updateListing(id, { price, status, description }) {
 	const data = await request(`/marketplace/listings/${id}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ price, status }),
+		body: JSON.stringify({ price, status, description }),
 	});
 	return data.listing;
 }
@@ -53,10 +83,21 @@ async function deleteListing(id) {
 	return data.listing;
 }
 
+async function buyListing(id) {
+	const data = await request(`/marketplace/listings/${id}/buy`, {
+		method: 'POST',
+	});
+	return data.purchase;
+}
+
 export const marketplaceService = {
 	getListings,
 	getListingById,
+	getMyListings,
+	getListableAssets,
+	getTrades,
 	createListing,
 	updateListing,
 	deleteListing,
+	buyListing,
 };
