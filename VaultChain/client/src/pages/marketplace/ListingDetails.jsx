@@ -247,6 +247,43 @@ function formatCredits(amount) {
 	return `${Number(amount).toLocaleString()} Credits`;
 }
 
+/** SQLite timestamps are UTC but carry no zone marker, so one is added. */
+function parseTimestamp(value) {
+	if (!value) {
+		return null;
+	}
+
+	return new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
+}
+
+function formatTimeLeft(endsAt) {
+	const end = parseTimestamp(endsAt);
+
+	if (!end) {
+		return null;
+	}
+
+	const remaining = end.getTime() - Date.now();
+
+	if (remaining <= 0) {
+		return 'Ended';
+	}
+
+	const minutes = Math.floor(remaining / 60000);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+
+	if (days > 0) {
+		return `${days}d ${hours % 24}h left`;
+	}
+
+	if (hours > 0) {
+		return `${hours}h ${minutes % 60}m left`;
+	}
+
+	return `${Math.max(1, minutes)}m left`;
+}
+
 function describeTransfer(entry) {
 	if (entry.transferType === 'upload') {
 		return `${entry.newOwnerName || `User ${entry.newOwner}`} uploaded this asset`;
@@ -277,6 +314,9 @@ export default function ListingDetails() {
 	const [buying, setBuying] = useState(false);
 	const [purchase, setPurchase] = useState(null);
 	const [actionError, setActionError] = useState('');
+	const [bidAmount, setBidAmount] = useState('');
+	const [bidding, setBidding] = useState(false);
+	const [bidMessage, setBidMessage] = useState('');
 
 	async function loadListing() {
 		setLoading(true);
@@ -311,7 +351,12 @@ export default function ListingDetails() {
 
 	const isOwner = listing && currentUserId != null && listing.sellerId === currentUserId;
 	const isActive = listing && listing.status === 'active';
-	const canAfford = balance == null || (listing && balance >= listing.price);
+	const isAuction = listing && listing.listingType === 'auction';
+	const isFractional = listing && listing.listingType === 'fractional';
+	// A fractional listing prices one share, so the amount actually charged is
+	// the whole block.
+	const totalPrice = listing ? (isFractional ? listing.price * listing.shareCount : listing.price) : 0;
+	const canAfford = balance == null || (listing && balance >= totalPrice);
 
 	async function handleUpdatePrice(event) {
 		event.preventDefault();
@@ -338,6 +383,36 @@ export default function ListingDetails() {
 		} catch (error) {
 			setActionError(error.message);
 			setRemoving(false);
+		}
+	}
+
+	async function handleBid(event) {
+		event.preventDefault();
+		setBidding(true);
+		setActionError('');
+		setBidMessage('');
+
+		try {
+			const result = await marketplaceService.placeBid(id, Number(bidAmount));
+			setBidMessage(result.message);
+			setBalance(result.wallet.balance);
+			setBidAmount('');
+			await loadListing();
+		} catch (error) {
+			setActionError(error.message);
+		} finally {
+			setBidding(false);
+		}
+	}
+
+	async function handleCancelAuction() {
+		setActionError('');
+
+		try {
+			await marketplaceService.cancelAuction(id);
+			await loadListing();
+		} catch (error) {
+			setActionError(error.message);
 		}
 	}
 
@@ -396,7 +471,32 @@ export default function ListingDetails() {
 
 				<h1 style={pageStyles.title}>{listing.assetTitle}</h1>
 				<span style={isActive ? pageStyles.badge : pageStyles.neutralBadge}>{listing.status}</span>
-				<p style={pageStyles.price}>{formatCredits(listing.price)}</p>
+				<span style={{ ...pageStyles.neutralBadge, marginLeft: '8px' }}>{listing.listingType}</span>
+
+				{isAuction ? (
+					<>
+						<p style={pageStyles.price}>
+							{formatCredits(listing.currentBid ?? listing.startingPrice)}
+						</p>
+						<p style={pageStyles.muted}>
+							{listing.currentBid
+								? `Highest bid of ${listing.bidCount} bid${listing.bidCount === 1 ? '' : 's'}`
+								: 'Starting price — no bids yet'}
+							{isActive ? ` — ${formatTimeLeft(listing.endsAt)}` : ''}
+						</p>
+					</>
+				) : isFractional ? (
+					<>
+						<p style={pageStyles.price}>{formatCredits(totalPrice)}</p>
+						<p style={pageStyles.muted}>
+							{listing.shareCount} shares at {formatCredits(listing.price)} each
+							{listing.fractional ? ` — ${listing.shareCount} of ${listing.fractional.totalShares} total` : ''}
+						</p>
+					</>
+				) : (
+					<p style={pageStyles.price}>{formatCredits(listing.price)}</p>
+				)}
+
 				{listing.description ? <p style={pageStyles.muted}>{listing.description}</p> : null}
 
 				<div style={pageStyles.meta}>
@@ -429,6 +529,76 @@ export default function ListingDetails() {
 						</div>
 					) : null}
 				</div>
+
+				{isAuction ? (
+					<div style={pageStyles.section}>
+						<h2 style={pageStyles.sectionTitle}>Bids</h2>
+						<div style={pageStyles.meta}>
+							<div style={pageStyles.metaRow}>
+								<span style={pageStyles.metaLabel}>Starting price</span>
+								<span>{formatCredits(listing.startingPrice)}</span>
+							</div>
+							{listing.reservePrice ? (
+								<div style={pageStyles.metaRow}>
+									<span style={pageStyles.metaLabel}>Reserve</span>
+									<span>
+										{formatCredits(listing.reservePrice)}
+										{listing.currentBid >= listing.reservePrice ? ' (met)' : ' (not yet met)'}
+									</span>
+								</div>
+							) : null}
+							<div style={pageStyles.metaRow}>
+								<span style={pageStyles.metaLabel}>Ends at</span>
+								<span>{parseTimestamp(listing.endsAt)?.toLocaleString() || '—'}</span>
+							</div>
+						</div>
+
+						{listing.bids?.length ? (
+							<ul style={{ ...pageStyles.timeline, marginTop: '14px' }}>
+								{listing.bids.map((bid) => (
+									<li key={bid.id} style={pageStyles.timelineItem}>
+										<div>
+											{formatCredits(bid.amount)} by{' '}
+											{bid.bidderId === currentUserId ? 'you' : bid.bidderName}
+										</div>
+										<div style={pageStyles.timelineMeta}>
+											{bid.status === 'held'
+												? 'Leading — funds held'
+												: bid.status === 'won'
+													? 'Won the auction'
+													: bid.status === 'outbid'
+														? 'Outbid — funds returned'
+														: 'Returned'}
+											{' — '}
+											{bid.createdAt}
+										</div>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p style={{ ...pageStyles.muted, marginTop: '12px' }}>No bids have been placed yet.</p>
+						)}
+					</div>
+				) : null}
+
+				{listing.fractional ? (
+					<div style={pageStyles.section}>
+						<h2 style={pageStyles.sectionTitle}>Share register</h2>
+						<p style={pageStyles.timelineMeta}>
+							This asset is split into {listing.fractional.totalShares} shares.
+						</p>
+						<ul style={{ ...pageStyles.timeline, marginTop: '12px' }}>
+							{listing.holdings.map((holding) => (
+								<li key={holding.userId} style={pageStyles.timelineItem}>
+									<div>
+										{holding.userId === currentUserId ? 'You' : holding.userName} — {holding.shares}{' '}
+										share{holding.shares === 1 ? '' : 's'} ({holding.percentage}%)
+									</div>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
 
 				<div style={pageStyles.section}>
 					<h2 style={pageStyles.sectionTitle}>Authenticity</h2>
@@ -517,15 +687,33 @@ export default function ListingDetails() {
 
 				{purchase ? (
 					<div style={pageStyles.success}>
-						<strong>Purchase complete.</strong> You now own &quot;{purchase.listing.assetTitle}&quot; for{' '}
-						{formatCredits(purchase.price)}. Your balance is {formatCredits(purchase.wallet.balance)}, and the
-						transfer is recorded in ledger block #{purchase.block.id}.
+						<strong>Purchase complete.</strong>{' '}
+						{purchase.shareCount
+							? `You now hold ${purchase.shareCount} shares of "${purchase.listing.assetTitle}"`
+							: `You now own "${purchase.listing.assetTitle}"`}{' '}
+						for {formatCredits(purchase.price)}. Your balance is {formatCredits(purchase.wallet.balance)}, and
+						the transfer is recorded in ledger block #{purchase.block.id}.
+						{purchase.consolidated ? ' You now hold every share, so the asset is whole again.' : ''}
 					</div>
 				) : null}
 
+				{bidMessage ? <div style={pageStyles.success}>{bidMessage}</div> : null}
+
 				{isOwner ? (
 					<>
-						{isActive ? (
+						{isActive && isAuction ? (
+							<div style={pageStyles.actions}>
+								<div style={pageStyles.note}>
+									This is your auction. It settles automatically when it ends, paying you the winning bid.
+									An auction with live bids cannot be changed or cancelled.
+								</div>
+								{listing.bidCount === 0 ? (
+									<button type="button" onClick={handleCancelAuction} style={pageStyles.dangerButton}>
+										Cancel auction
+									</button>
+								) : null}
+							</div>
+						) : isActive ? (
 							<>
 								<form onSubmit={handleUpdatePrice} style={pageStyles.form}>
 									<label style={pageStyles.field}>
@@ -565,24 +753,64 @@ export default function ListingDetails() {
 					<div style={pageStyles.note}>
 						This listing is {listing.status} and is no longer available to buy.
 					</div>
+				) : isAuction ? (
+					<form onSubmit={handleBid} style={pageStyles.form}>
+						<label style={pageStyles.field}>
+							<span style={pageStyles.label}>
+								Your bid — at least {formatCredits(listing.minimumBid ?? listing.startingPrice)}
+							</span>
+							<input
+								type="number"
+								min={listing.minimumBid ?? listing.startingPrice}
+								step="0.01"
+								value={bidAmount}
+								onChange={(event) => setBidAmount(event.target.value)}
+								style={pageStyles.input}
+								placeholder={String(listing.minimumBid ?? listing.startingPrice)}
+								required
+							/>
+						</label>
+						<p style={{ ...pageStyles.muted, margin: 0, fontSize: '0.88rem' }}>
+							Placing a bid holds the amount in your wallet so it is committed to this auction. If someone
+							outbids you, it is returned immediately.
+						</p>
+						<button type="submit" style={pageStyles.buyButton} disabled={bidding}>
+							{bidding ? 'Placing bid...' : 'Place bid'}
+						</button>
+						{balance != null ? (
+							<p style={{ ...pageStyles.muted, margin: 0, fontSize: '0.88rem' }}>
+								Your available balance is {formatCredits(balance)}.
+							</p>
+						) : null}
+					</form>
 				) : confirmingPurchase ? (
 					<div style={pageStyles.confirmPanel}>
 						<strong>Confirm your purchase</strong>
+						{isFractional ? (
+							<div style={pageStyles.metaRow}>
+								<span style={pageStyles.metaLabel}>Shares</span>
+								<span>
+									{listing.shareCount} at {formatCredits(listing.price)} each
+								</span>
+							</div>
+						) : null}
 						<div style={pageStyles.metaRow}>
-							<span style={pageStyles.metaLabel}>Price</span>
-							<span>{formatCredits(listing.price)}</span>
+							<span style={pageStyles.metaLabel}>Total</span>
+							<span>{formatCredits(totalPrice)}</span>
 						</div>
 						{balance != null ? (
 							<div style={pageStyles.metaRow}>
 								<span style={pageStyles.metaLabel}>Balance after purchase</span>
-								<span>{formatCredits(balance - listing.price)}</span>
+								<span>{formatCredits(balance - totalPrice)}</span>
 							</div>
 						) : null}
 						<p style={{ ...pageStyles.muted, margin: 0, fontSize: '0.88rem' }}>
-							Your wallet will be charged and ownership of this asset will transfer to you immediately.
+							{isFractional
+								? 'Your wallet will be charged and the shares will be transferred to you immediately.'
+								: 'Your wallet will be charged and ownership of this asset will transfer to you immediately.'}
 						</p>
 						<button type="button" onClick={handleBuy} style={pageStyles.buyButton} disabled={buying}>
-							{buying ? 'Completing purchase...' : `Pay ${formatCredits(listing.price)}`}
+							{buying ? 'Completing purchase...' : `Pay ${formatCredits(totalPrice)}`}
 						</button>
 						<button
 							type="button"
@@ -601,7 +829,9 @@ export default function ListingDetails() {
 							style={pageStyles.buyButton}
 							disabled={!canAfford}
 						>
-							Buy for {formatCredits(listing.price)}
+							{isFractional
+								? `Buy ${listing.shareCount} shares for ${formatCredits(totalPrice)}`
+								: `Buy for ${formatCredits(totalPrice)}`}
 						</button>
 						{!canAfford ? (
 							<div style={pageStyles.warning}>

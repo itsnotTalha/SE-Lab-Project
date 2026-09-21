@@ -278,11 +278,55 @@ const EMPTY_FILTERS = {
 	minPrice: '',
 	maxPrice: '',
 	category: '',
+	listingType: '',
 	sort: 'newest',
+};
+
+const LISTING_TYPE_LABELS = {
+	sale: 'Sale',
+	auction: 'Auction',
+	fractional: 'Shares',
 };
 
 function formatCredits(amount) {
 	return `${Number(amount).toLocaleString()} Credits`;
+}
+
+/** SQLite timestamps are UTC but carry no zone marker, so one is added. */
+function parseTimestamp(value) {
+	if (!value) {
+		return null;
+	}
+
+	return new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
+}
+
+function formatTimeLeft(endsAt) {
+	const end = parseTimestamp(endsAt);
+
+	if (!end) {
+		return null;
+	}
+
+	const remaining = end.getTime() - Date.now();
+
+	if (remaining <= 0) {
+		return 'Ending now';
+	}
+
+	const minutes = Math.floor(remaining / 60000);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+
+	if (days > 0) {
+		return `${days}d ${hours % 24}h left`;
+	}
+
+	if (hours > 0) {
+		return `${hours}h ${minutes % 60}m left`;
+	}
+
+	return `${Math.max(1, minutes)}m left`;
 }
 
 export default function MarketplacePage() {
@@ -306,10 +350,22 @@ export default function MarketplacePage() {
 	const [trades, setTrades] = useState([]);
 
 	const [assetId, setAssetId] = useState('');
+	const [listingType, setListingType] = useState('sale');
 	const [price, setPrice] = useState('');
 	const [description, setDescription] = useState('');
+	const [startingPrice, setStartingPrice] = useState('');
+	const [reservePrice, setReservePrice] = useState('');
+	const [minBidIncrement, setMinBidIncrement] = useState('');
+	const [endsAt, setEndsAt] = useState('');
+	const [shareCount, setShareCount] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState('');
+
+	const [splitAssetId, setSplitAssetId] = useState('');
+	const [totalShares, setTotalShares] = useState('100');
+	const [splitting, setSplitting] = useState(false);
+	const [splitError, setSplitError] = useState('');
+	const [splitMessage, setSplitMessage] = useState('');
 
 	const loadListings = useCallback(async () => {
 		setLoading(true);
@@ -384,15 +440,35 @@ export default function MarketplacePage() {
 		setSubmitError('');
 
 		try {
-			await marketplaceService.createListing({
+			const payload = {
 				assetId: Number(assetId),
-				listingType: 'sale',
-				price: Number(price),
+				listingType,
 				description: description.trim() || undefined,
-			});
+			};
+
+			if (listingType === 'auction') {
+				payload.startingPrice = Number(startingPrice);
+				payload.reservePrice = reservePrice ? Number(reservePrice) : undefined;
+				payload.minBidIncrement = minBidIncrement ? Number(minBidIncrement) : undefined;
+				// datetime-local gives local wall-clock time; convert to a real
+				// instant so the server and client agree on when it ends.
+				payload.endsAt = new Date(endsAt).toISOString();
+			} else if (listingType === 'fractional') {
+				payload.shareCount = Number(shareCount);
+				payload.price = Number(price);
+			} else {
+				payload.price = Number(price);
+			}
+
+			await marketplaceService.createListing(payload);
 			setAssetId('');
 			setPrice('');
 			setDescription('');
+			setStartingPrice('');
+			setReservePrice('');
+			setMinBidIncrement('');
+			setEndsAt('');
+			setShareCount('');
 			await Promise.all([loadListings(), loadSideData()]);
 		} catch (error) {
 			setSubmitError(error.message);
@@ -401,8 +477,37 @@ export default function MarketplacePage() {
 		}
 	}
 
-	const availableAssets = listableAssets.filter((asset) => asset.listable);
+	async function handleSplit(event) {
+		event.preventDefault();
+		setSplitting(true);
+		setSplitError('');
+		setSplitMessage('');
+
+		try {
+			const result = await marketplaceService.fractionalizeAsset(
+				Number(splitAssetId),
+				Number(totalShares)
+			);
+			setSplitMessage(result.message);
+			setSplitAssetId('');
+			await loadSideData();
+		} catch (error) {
+			setSplitError(error.message);
+		} finally {
+			setSplitting(false);
+		}
+	}
+
+	// A share offer is made by a shareholder, who need not still be the asset's
+	// owner of record, so fractional listings draw on a different set of assets
+	// than whole-asset listings do.
+	const availableAssets =
+		listingType === 'fractional'
+			? listableAssets.filter((asset) => asset.fractionalized && asset.myShares > 0)
+			: listableAssets.filter((asset) => asset.listable);
 	const blockedAssets = listableAssets.filter((asset) => !asset.listable);
+	const splittableAssets = listableAssets.filter((asset) => asset.canFractionalize);
+	const selectedAsset = listableAssets.find((asset) => String(asset.id) === String(assetId));
 
 	return (
 		<div style={pageStyles.page}>
@@ -432,10 +537,25 @@ export default function MarketplacePage() {
 				<section style={pageStyles.card}>
 					<h2 style={pageStyles.panelTitle}>List an asset</h2>
 					<p style={pageStyles.panelText}>
-						Choose one of your assets to offer at a fixed price. Assets that are already listed, or that failed
-						verification, cannot be listed again.
+						Sell an asset outright, run an auction for it, or offer a block of shares in an asset you have split.
+						Assets that are already listed, or that failed verification, cannot be listed again.
 					</p>
 					<form onSubmit={handleSubmit} style={pageStyles.form}>
+						<label style={pageStyles.field}>
+							<span style={pageStyles.label}>Listing type</span>
+							<select
+								value={listingType}
+								onChange={(event) => {
+									setListingType(event.target.value);
+									setAssetId('');
+								}}
+								style={pageStyles.input}
+							>
+								<option value="sale">Fixed-price sale</option>
+								<option value="auction">Auction</option>
+								<option value="fractional">Shares in a split asset</option>
+							</select>
+						</label>
 						<label style={pageStyles.field}>
 							<span style={pageStyles.label}>Asset</span>
 							<select
@@ -445,28 +565,117 @@ export default function MarketplacePage() {
 								required
 							>
 								<option value="">
-									{availableAssets.length === 0 ? 'No assets available to list' : 'Select an asset'}
+									{availableAssets.length === 0
+										? listingType === 'fractional'
+											? 'No split assets with shares you hold'
+											: 'No assets available to list'
+										: 'Select an asset'}
 								</option>
 								{availableAssets.map((asset) => (
 									<option key={asset.id} value={asset.id}>
 										#{asset.id} — {asset.title}
+										{listingType === 'fractional' ? ` (you hold ${asset.myShares}/${asset.totalShares})` : ''}
 									</option>
 								))}
 							</select>
 						</label>
-						<label style={pageStyles.field}>
-							<span style={pageStyles.label}>Price (Credits)</span>
-							<input
-								type="number"
-								min="0.01"
-								step="0.01"
-								value={price}
-								onChange={(event) => setPrice(event.target.value)}
-								style={pageStyles.input}
-								placeholder="1500"
-								required
-							/>
-						</label>
+
+						{listingType === 'auction' ? (
+							<>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Starting price (Credits)</span>
+									<input
+										type="number"
+										min="0.01"
+										step="0.01"
+										value={startingPrice}
+										onChange={(event) => setStartingPrice(event.target.value)}
+										style={pageStyles.input}
+										placeholder="100"
+										required
+									/>
+								</label>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Reserve price (optional)</span>
+									<input
+										type="number"
+										min="0.01"
+										step="0.01"
+										value={reservePrice}
+										onChange={(event) => setReservePrice(event.target.value)}
+										style={pageStyles.input}
+										placeholder="Minimum you will accept"
+									/>
+								</label>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Bid increment (optional)</span>
+									<input
+										type="number"
+										min="0.01"
+										step="0.01"
+										value={minBidIncrement}
+										onChange={(event) => setMinBidIncrement(event.target.value)}
+										style={pageStyles.input}
+										placeholder="1"
+									/>
+								</label>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Ends at</span>
+									<input
+										type="datetime-local"
+										value={endsAt}
+										onChange={(event) => setEndsAt(event.target.value)}
+										style={pageStyles.input}
+										required
+									/>
+								</label>
+							</>
+						) : listingType === 'fractional' ? (
+							<>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Shares to offer</span>
+									<input
+										type="number"
+										min="1"
+										step="1"
+										max={selectedAsset ? selectedAsset.myShares : undefined}
+										value={shareCount}
+										onChange={(event) => setShareCount(event.target.value)}
+										style={pageStyles.input}
+										placeholder="25"
+										required
+									/>
+								</label>
+								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Price per share (Credits)</span>
+									<input
+										type="number"
+										min="0.01"
+										step="0.01"
+										value={price}
+										onChange={(event) => setPrice(event.target.value)}
+										style={pageStyles.input}
+										placeholder="10"
+										required
+									/>
+								</label>
+							</>
+						) : (
+							<label style={pageStyles.field}>
+								<span style={pageStyles.label}>Price (Credits)</span>
+								<input
+									type="number"
+									min="0.01"
+									step="0.01"
+									value={price}
+									onChange={(event) => setPrice(event.target.value)}
+									style={pageStyles.input}
+									placeholder="1500"
+									required
+								/>
+							</label>
+						)}
+
 						<label style={pageStyles.field}>
 							<span style={pageStyles.label}>Note for buyers (optional)</span>
 							<input
@@ -480,13 +689,69 @@ export default function MarketplacePage() {
 						<button type="submit" style={pageStyles.button} disabled={submitting || availableAssets.length === 0}>
 							{submitting ? 'Creating...' : 'Create listing'}
 						</button>
+						{listingType === 'fractional' && shareCount && price ? (
+							<div style={pageStyles.info}>
+								A buyer takes the whole block: {shareCount} shares for{' '}
+								{formatCredits(Number(shareCount) * Number(price))}.
+							</div>
+						) : null}
 						{submitError ? <div style={pageStyles.error}>{submitError}</div> : null}
-						{blockedAssets.length > 0 ? (
+						{blockedAssets.length > 0 && listingType !== 'fractional' ? (
 							<div style={pageStyles.info}>
 								Not listable right now:{' '}
 								{blockedAssets.map((asset) => `#${asset.id} ${asset.title} (${asset.reason})`).join(', ')}
 							</div>
 						) : null}
+					</form>
+				</section>
+
+				<section style={pageStyles.card}>
+					<h2 style={pageStyles.panelTitle}>Split an asset into shares</h2>
+					<p style={pageStyles.panelText}>
+						Divide an asset into shares so it can be co-owned. You keep every share until you offer some for
+						sale. While other people hold shares, the asset can no longer be sold whole.
+					</p>
+					<form onSubmit={handleSplit} style={pageStyles.form}>
+						<label style={pageStyles.field}>
+							<span style={pageStyles.label}>Asset</span>
+							<select
+								value={splitAssetId}
+								onChange={(event) => setSplitAssetId(event.target.value)}
+								style={pageStyles.input}
+								required
+							>
+								<option value="">
+									{splittableAssets.length === 0 ? 'No assets available to split' : 'Select an asset'}
+								</option>
+								{splittableAssets.map((asset) => (
+									<option key={asset.id} value={asset.id}>
+										#{asset.id} — {asset.title}
+									</option>
+								))}
+							</select>
+						</label>
+						<label style={pageStyles.field}>
+							<span style={pageStyles.label}>Total shares</span>
+							<input
+								type="number"
+								min="2"
+								max="10000"
+								step="1"
+								value={totalShares}
+								onChange={(event) => setTotalShares(event.target.value)}
+								style={pageStyles.input}
+								required
+							/>
+						</label>
+						<button
+							type="submit"
+							style={pageStyles.button}
+							disabled={splitting || splittableAssets.length === 0}
+						>
+							{splitting ? 'Splitting...' : 'Split into shares'}
+						</button>
+						{splitError ? <div style={pageStyles.error}>{splitError}</div> : null}
+						{splitMessage ? <div style={pageStyles.info}>{splitMessage}</div> : null}
 					</form>
 				</section>
 
@@ -561,6 +826,19 @@ export default function MarketplacePage() {
 									/>
 								</label>
 								<label style={pageStyles.field}>
+									<span style={pageStyles.label}>Listing type</span>
+									<select
+										value={filters.listingType}
+										onChange={(event) => setFilters({ ...filters, listingType: event.target.value })}
+										style={pageStyles.input}
+									>
+										<option value="">All types</option>
+										<option value="sale">Fixed-price sales</option>
+										<option value="auction">Auctions</option>
+										<option value="fractional">Share offers</option>
+									</select>
+								</label>
+								<label style={pageStyles.field}>
 									<span style={pageStyles.label}>Sort by</span>
 									<select
 										value={filters.sort}
@@ -596,16 +874,48 @@ export default function MarketplacePage() {
 											<div key={listing.id} style={pageStyles.listingCard}>
 												<div style={pageStyles.badgeRow}>
 													<span style={pageStyles.badge}>{listing.status}</span>
-													{isMine ? <span style={pageStyles.mineBadge}>Your listing</span> : null}
+													<span style={pageStyles.mineBadge}>
+														{LISTING_TYPE_LABELS[listing.listingType] || listing.listingType}
+													</span>
+													{isMine ? <span style={pageStyles.soldBadge}>Yours</span> : null}
 												</div>
 												<h3 style={pageStyles.listingTitle}>{listing.assetTitle}</h3>
 												<p style={pageStyles.listingMeta}>Seller: {listing.sellerName}</p>
 												{listing.assetCategory ? (
 													<p style={pageStyles.listingMeta}>Category: {listing.assetCategory}</p>
 												) : null}
-												<p style={pageStyles.listingPrice}>{formatCredits(listing.price)}</p>
+
+												{listing.listingType === 'auction' ? (
+													<>
+														<p style={pageStyles.listingPrice}>
+															{formatCredits(listing.currentBid ?? listing.startingPrice)}
+														</p>
+														<p style={pageStyles.listingMeta}>
+															{listing.currentBid
+																? `Current bid — ${listing.bidCount} bid${listing.bidCount === 1 ? '' : 's'}`
+																: 'Starting price — no bids yet'}
+														</p>
+														<p style={pageStyles.listingMeta}>{formatTimeLeft(listing.endsAt)}</p>
+													</>
+												) : listing.listingType === 'fractional' ? (
+													<>
+														<p style={pageStyles.listingPrice}>
+															{formatCredits(listing.price * listing.shareCount)}
+														</p>
+														<p style={pageStyles.listingMeta}>
+															{listing.shareCount} shares at {formatCredits(listing.price)} each
+														</p>
+													</>
+												) : (
+													<p style={pageStyles.listingPrice}>{formatCredits(listing.price)}</p>
+												)}
+
 												<Link to={`/marketplace/${listing.id}`} style={pageStyles.viewLink}>
-													{isMine ? 'Manage' : 'View and buy'}
+													{isMine
+														? 'Manage'
+														: listing.listingType === 'auction'
+															? 'View and bid'
+															: 'View and buy'}
 												</Link>
 											</div>
 										);

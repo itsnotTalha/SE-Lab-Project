@@ -58,13 +58,43 @@ async function getTrades() {
 	return data.trades;
 }
 
-async function createListing({ assetId, listingType, price, description }) {
+async function createListing(payload) {
 	const data = await request('/marketplace/listings', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ assetId, listingType, price, description }),
+		body: JSON.stringify(payload),
 	});
 	return data.listing;
+}
+
+async function placeBid(id, amount) {
+	return request(`/marketplace/listings/${id}/bids`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ amount }),
+	});
+}
+
+async function getBids(id) {
+	const data = await request(`/marketplace/listings/${id}/bids`);
+	return data.bids;
+}
+
+async function cancelAuction(id) {
+	const data = await request(`/marketplace/listings/${id}/cancel`, { method: 'POST' });
+	return data.listing;
+}
+
+async function fractionalizeAsset(assetId, totalShares) {
+	return request(`/marketplace/assets/${assetId}/fractionalize`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ totalShares }),
+	});
+}
+
+async function getShares(assetId) {
+	return request(`/marketplace/assets/${assetId}/shares`);
 }
 
 async function updateListing(id, { price, status, description }) {
@@ -100,4 +130,9 @@ export const marketplaceService = {
 	updateListing,
 	deleteListing,
 	buyListing,
+	placeBid,
+	getBids,
+	cancelAuction,
+	fractionalizeAsset,
+	getShares,
 };
