@@ -1,4 +1,7 @@
+const { withTransaction } = require('../../database/database');
 const assetRepository = require('../../repositories/assetRepository');
+const ownershipRepository = require('../../repositories/ownershipRepository');
+const blockchainService = require('../blockchain/blockchainService');
 const { generateSha256Hash } = require('../hashing/sha256Service');
 const { generatePhash } = require('../hashing/phashService');
 const { extractImageMetadata } = require('../metadata/metadataService');
@@ -82,6 +85,26 @@ async function uploadAsset(userId, payload) {
 	const phashRecord = await assetRepository.updateAssetPhash({
 		assetId: asset.id,
 		phash,
+	});
+
+	// The first ownership record, so an asset's marketplace timeline starts at
+	// the upload rather than at its first sale.
+	await withTransaction(async (client) => {
+		const block = await blockchainService.mineBlock(
+			{ assetId: asset.id, ownerId: userId, action: 'asset_upload' },
+			client
+		);
+
+		await ownershipRepository.createHistoryEntry(
+			{
+				assetId: asset.id,
+				previousOwner: null,
+				newOwner: userId,
+				transferType: 'upload',
+				blockchainBlockId: block.id,
+			},
+			client
+		);
 	});
 
 	return {
