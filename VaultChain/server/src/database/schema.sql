@@ -130,6 +130,13 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   price REAL,
   description TEXT,
   status TEXT DEFAULT 'active',
+  -- auction listings
+  starting_price REAL,
+  reserve_price REAL,
+  min_bid_increment REAL,
+  ends_at DATETIME,
+  -- fractional listings: share_count shares offered at `price` each
+  share_count INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   sold_at DATETIME,
@@ -151,6 +158,29 @@ CREATE TABLE IF NOT EXISTS ownership_history (
   FOREIGN KEY(previous_owner) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY(new_owner) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY(blockchain_block_id) REFERENCES blockchain_blocks(id) ON DELETE SET NULL
+);
+
+-- auction_bids table
+CREATE TABLE IF NOT EXISTS auction_bids (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id INTEGER NOT NULL,
+  bidder_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  -- held: funds are debited and committed to this bid
+  -- outbid / released: funds returned, won: funds used to settle the sale
+  status TEXT DEFAULT 'held',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(listing_id) REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  FOREIGN KEY(bidder_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- fractional_assets table: records that an asset has been split, and into how
+-- many shares. fractional_ownership then records who holds those shares.
+CREATE TABLE IF NOT EXISTS fractional_assets (
+  asset_id INTEGER PRIMARY KEY,
+  total_shares INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
 
 -- fractional_ownership table
@@ -200,6 +230,8 @@ CREATE INDEX IF NOT EXISTS idx_marketplace_listings_seller_id ON marketplace_lis
 -- Indexes that depend on columns added after the first release live in
 -- migrations/001_marketplace_settlement.js, because this file also runs
 -- against databases whose marketplace_listings table predates those columns.
+CREATE INDEX IF NOT EXISTS idx_auction_bids_listing_id ON auction_bids(listing_id);
+CREATE INDEX IF NOT EXISTS idx_fractional_ownership_asset_id ON fractional_ownership(asset_id);
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);

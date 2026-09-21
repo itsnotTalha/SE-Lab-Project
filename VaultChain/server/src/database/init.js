@@ -2,7 +2,10 @@ const fs = require('fs').promises;
 const path = require('path');
 const { exec } = require('./database');
 
-const migrations = [require('./migrations/001_marketplace_settlement')];
+const migrations = [
+  require('./migrations/001_marketplace_settlement'),
+  require('./migrations/002_auctions_and_fractional'),
+];
 
 let initializationPromise = null;
 
