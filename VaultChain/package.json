@@ -7,7 +7,8 @@
 		"server"
 	],
 	"scripts": {
-		"dev": "concurrently -n server,client -c blue,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\""
+		"dev": "concurrently -n server,client -c blue,green \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+		"test": "node --test tests/**/*.test.js"
 	},
 	"devDependencies": {
 		"concurrently": "^9.2.4"
