@@ -82,7 +82,13 @@ async function extractDocumentText({ filePath, mimeType }) {
 		return { ...result, pageCount: 1, language: 'eng' };
 	}
 	const pageCount = await pdfPageCount(filePath);
-	const embeddedText = await pdfText(filePath);
+	let embeddedText = '';
+	try {
+		embeddedText = await pdfText(filePath);
+	} catch {
+		// Some deployments do not provide pdftotext. Render and OCR the PDF instead.
+		embeddedText = '';
+	}
 	if (embeddedText.length >= 10) {
 		return { text: embeddedText, confidence: null, pageCount, language: 'eng' };
 	}
