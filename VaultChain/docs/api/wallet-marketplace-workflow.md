@@ -109,10 +109,11 @@ predicting the new balance client-side.
 
 **1. `POST /api/marketplace/listings` (create a listing)**
 
-- `marketplaceService.createListing` validates the price (`> 0`, at most two
-  decimals, below a ceiling) and the listing type. Only `sale` is accepted:
-  `auction` and `rent` are roadmap items, and allowing them would create
-  listings no buyer could ever complete.
+- `marketplaceService.createListing` validates the price and routes on the
+  listing type. Three are supported — `sale` (fixed price), `auction` and
+  `fractional` (a block of shares) — each validated by its own builder.
+  `rent` is rejected: it is not in the project proposal and nothing implements
+  rental terms.
 - `assertOwnsAsset` fetches the asset via `assetRepository.getAssetById` and
   throws **403** if `asset.ownerId !== req.user.id` — you cannot list
   something you do not own, enforced server-side regardless of what the
@@ -122,10 +123,13 @@ predicting the new balance client-side.
   no report yet is still listable, because the Verification module does not
   produce reports yet; setting `REQUIRE_VERIFIED_LISTINGS=true` tightens this
   to "must be verified original" once it does.
-- An asset may only have one active listing. The service checks for one, and a
-  partial unique index on `marketplace_listings(asset_id) WHERE status =
-  'active'` enforces it in the database, so two simultaneous requests cannot
-  both slip through the check.
+- An asset may only have one active **whole-asset** listing, enforced by a
+  partial unique index so two simultaneous requests cannot both slip through
+  the service check. Share offers are different: several co-owners may each be
+  selling their own shares at once, so a second index limits them to one active
+  offer *per seller* instead.
+- A whole-asset sale or auction is blocked while anyone else holds shares in
+  the asset, since it would sell other people's property.
 
 **2. `GET /api/marketplace/listings` (browse)**
 
@@ -191,6 +195,54 @@ rolls back the balances, the ownership and the listing status together.
 Both wallet rows carry `reference_id = "listing:<id>"`, so a trade can be
 reconstructed from either side later.
 
+**7. `POST /api/marketplace/listings/:id/bids` (bid on an auction)**
+
+Bidding commits money rather than merely promising it. Placing a bid debits the
+bidder straight away and records a `bid_hold` row; being outbid credits it back
+as `bid_release`. That is what stops an auction closing on a winner who has
+since spent the money, and stops one balance backing two bids at once.
+
+```
+withTransaction:
+  listing is an open auction, not ended, not the bidder's own   → 409 / 400
+  release any earlier hold this bidder has on this auction
+      (so raising your own bid only costs the difference)
+  bid >= startingPrice, and >= highest + minBidIncrement        → 400
+  balance covers the bid                                        → 402
+  debit bidder                  → wallet_transactions 'bid_hold'
+  release the previous leader   → wallet_transactions 'bid_release'
+  INSERT auction_bids (status 'held')
+COMMIT
+```
+
+**8. Auction settlement**
+
+There is no scheduler in this app, so `settleExpiredAuctions()` runs before
+listings are browsed or opened. It is idempotent, so calling it often is
+harmless, and it means a finished auction is never shown as still open.
+
+For each expired auction, in one transaction: the highest held bid that meets
+the reserve wins. Its hold is released and immediately charged as a `purchase`
+— netting to zero, but leaving a ledger where each row's amount matches what it
+actually did — the seller is paid, ownership transfers, a block is mined, and
+the listing is marked sold at the winning bid rather than the starting price.
+If no bid meets the reserve, every remaining hold is returned and the listing
+becomes `closed`.
+
+**9. Fractional ownership**
+
+`POST /api/marketplace/assets/:assetId/fractionalize` splits an asset into
+2–10,000 shares and gives them all to the owner. The asset keeps its
+`owner_id`, which now means custodian of record; the share register in
+`fractional_ownership` becomes the authoritative account of who owns what.
+
+A `fractional` listing offers a block of `share_count` shares at `price` each.
+Buying one moves shares and money in a single transaction, writes an
+ownership-history entry and mines a block, exactly like a whole-asset sale. A
+buyer takes the whole block — partial fills are not supported. If a buyer ends
+up holding every share, they become the owner of record and the asset can be
+sold whole again.
+
 **Client side:** `MarketplacePage.jsx` handles browse, search/filter/sort,
 creating a listing from a dropdown of the user's listable assets, plus "My
 listings" and "Trade history" tabs. `ListingDetails.jsx` shows the
@@ -215,7 +267,12 @@ tampered client cannot bypass it.
 | GET | `/api/marketplace/listings/:id` | required | Any status, with trust evidence |
 | PATCH | `/api/marketplace/listings/:id` | required | Seller only, active only |
 | DELETE | `/api/marketplace/listings/:id` | required | Seller only, soft delete |
-| POST | `/api/marketplace/listings/:id/buy` | required | Atomic settlement |
+| POST | `/api/marketplace/listings/:id/buy` | required | Atomic settlement (sale or share offer) |
+| POST | `/api/marketplace/listings/:id/bids` | required | Place a bid; funds are held |
+| GET | `/api/marketplace/listings/:id/bids` | required | Bid history |
+| POST | `/api/marketplace/listings/:id/cancel` | required | Seller, auctions with no bids |
+| POST | `/api/marketplace/assets/:assetId/fractionalize` | required | Split into shares |
+| GET | `/api/marketplace/assets/:assetId/shares` | required | Share register |
 | GET | `/api/marketplace/listable-assets` | required | Owned assets + why each is blocked |
 | GET | `/api/marketplace/trades` | required | Caller's completed purchases and sales |
 | GET | `/api/ownership/history/:assetId` | required | Ownership timeline |
@@ -228,21 +285,24 @@ tampered client cannot bypass it.
 
 ## Tests
 
-`npm test` from the repository root runs `tests/marketplace.test.js` against a
-temporary SQLite file. It covers the ownership and price rules, the
-verification gate, search/filter/sort/paging, the full settlement, the
-concurrent-buyer race, rollback when a mid-settlement step fails, the wallet
-restrictions and ledger tamper detection.
+`npm test` from the repository root runs `tests/marketplace.test.js` and
+`tests/auctions-fractional.test.js` against a temporary SQLite file — 53 tests.
+They cover the ownership and price rules, the verification gate,
+search/filter/sort/paging, the full settlement, the concurrent-buyer race,
+rollback when a mid-settlement step fails, the wallet restrictions, ledger
+tamper detection, bidding and fund holds, auction settlement with and without a
+reserve, splitting assets, share trading, and the co-ownership rules.
 
 ## Remaining scope
 
-- **Auctions and rentals.** Rejected at creation until bidding and rental
-  terms exist.
+- **Rentals.** Not in the project proposal; rejected at creation.
 - **Asset previews.** Listings are text-only. Serving image previews needs a
   file endpoint that works with `<img>` while still respecting the vault's
   access rules, which belongs to the Assets module.
 - **Platform fee.** `MARKETPLACE_FEE_PERCENT` is plumbed through settlement but
   defaults to `0`, because there is no platform wallet to credit a fee to yet.
-- **Fractional ownership.** The table exists; splitting and trading shares does
-  not.
+- **Scheduled auction close.** Auctions settle when the marketplace is next
+  read rather than at the instant they expire.
+- **Partial fills.** A share offer is bought whole, and shares are fixed-price
+  rather than auctionable.
 - **Refunds and disputes.** A completed sale is final.

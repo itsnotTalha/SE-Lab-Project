@@ -194,14 +194,20 @@ Marketplace
 
 GET /api/marketplace/listings
 - List active marketplace listings.
-- Supports search, minPrice, maxPrice, category, sort, page, limit.
-- Returns a pagination block.
+- Supports search, minPrice, maxPrice, category, listingType, sort,
+  page, limit. Returns a pagination block.
+- Settles any auction whose time has expired before returning.
 - Status: implemented
 
 POST /api/marketplace/listings
 - Create marketplace listing.
-- Fixed-price sale only. Requires ownership, a passing (or absent)
-  verification result, and no existing active listing for the asset.
+- Three listing types:
+  - sale       : fixed price for the whole asset
+  - auction    : startingPrice, endsAt, optional reservePrice and
+                 minBidIncrement
+  - fractional : shareCount shares at `price` each
+- Requires ownership (or held shares, for a fractional offer), a passing
+  (or absent) verification result, and no conflicting active listing.
 - Status: implemented
 
 GET /api/marketplace/listings/:id
@@ -236,15 +242,44 @@ GET /api/marketplace/trades
 - Caller's completed purchases and sales.
 - Status: implemented
 
+Auctions
+
+POST /api/marketplace/listings/:id/bids
+- Place a bid on an auction.
+- Debits and holds the bid amount, returning the previous leader's funds.
+- Status: implemented
+
+GET /api/marketplace/listings/:id/bids
+- Return the bid history for an auction.
+- Status: implemented
+
+POST /api/marketplace/listings/:id/cancel
+- Seller ends an auction early. Only allowed while it has no bids.
+- Status: implemented
+
+Auction settlement
+- Not an endpoint. Auctions settle automatically when the marketplace is
+  next read, paying the highest bid that meets the reserve and returning
+  every other held bid.
+- Status: implemented
+
 Fractional Ownership
 
-POST /api/fractional/create
-- Create fractional ownership.
-- Status: planned
+POST /api/marketplace/assets/:assetId/fractionalize
+- Split an asset into 2-10000 shares. The owner receives all of them.
+- Replaces the sketched POST /api/fractional/create.
+- Status: implemented
 
-GET /api/fractional/:assetId
-- Return ownership shares.
-- Status: planned
+GET /api/marketplace/assets/:assetId/shares
+- Return the share register: who holds how many shares, and what percent.
+- Replaces the sketched GET /api/fractional/:assetId.
+- Status: implemented
+
+Trading shares
+- Uses the normal listing endpoints with listingType 'fractional'.
+- A buyer takes the whole offered block; partial fills are not supported.
+- A whole-asset sale is blocked while anyone else holds shares.
+- Status: implemented
 
 Wallet
 
@@ -328,11 +363,14 @@ Blockchain
 
 Marketplace
 
-- Auctions
-- Bidding
 - Royalties
 - NFT Minting
 - Crypto Payments
+- Rentals
+- Partial fills on share offers, and auctions for shares
+
+(Auctions and bidding were listed here in an early draft, but the project
+proposal places them inside the Marketplace module. They are implemented.)
 
 AI Features
 
@@ -348,13 +386,14 @@ Sprint Summary
 Sprint 1: Authentication, JWT, Protected Routes, Dashboard Summary
 Sprint 2: Image Upload, SHA-256, pHash, Metadata Extraction, Duplicate Detection, Verification Reports
 Sprint 3: OCR, Document Verification, AES-256 Secure Vault
-Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Fractional Ownership, Wallet Integration, Final UI Polish
+Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Auctions, Fractional Ownership, Wallet Integration, Final UI Polish
 
 Notes
 
 - Sprint 1 (auth, health, dashboard) and Sprint 2 (upload, hashing, metadata)
-  are implemented, along with the Sprint 4 Marketplace, Ownership, Blockchain
-  and Wallet endpoints.
+  are implemented, along with the whole Sprint 4 Marketplace module: listings,
+  purchase, ownership transfer, blockchain, wallet, auctions and fractional
+  ownership.
 - Still outstanding: verification reports, documents and OCR, the encrypted
   vault, and fractional ownership.
 - Two endpoints in this file are intentionally omitted rather than pending:

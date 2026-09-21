@@ -1,6 +1,6 @@
 # VaultChain
 
-VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build covers authentication, the first protected user experience, authenticated asset uploads, SHA-256 hashing for uploaded assets, pHash generation for uploaded images, image metadata extraction, and a complete marketplace where assets can be listed and bought, with ownership transfer and a tamper-evident ledger.
+VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build covers authentication, the first protected user experience, authenticated asset uploads, SHA-256 hashing for uploaded assets, pHash generation for uploaded images, image metadata extraction, and the complete Marketplace with Fractional Ownership module: listing, purchasing, transferring and auctioning assets with verified provenance, plus splitting assets into shares for transparent co-ownership.
 
 ## What is implemented now
 
@@ -18,6 +18,8 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
   - `/api/wallet`, `/api/wallet/transactions`
   - `/api/marketplace/listings` (browse, create, detail, edit, remove, buy)
   - `/api/marketplace/listings/mine`, `/api/marketplace/listable-assets`, `/api/marketplace/trades`
+  - `/api/marketplace/listings/:id/bids` (place a bid, bid history), `/api/marketplace/listings/:id/cancel`
+  - `/api/marketplace/assets/:assetId/fractionalize`, `/api/marketplace/assets/:assetId/shares`
   - `/api/ownership/history/:assetId`
   - `/api/blockchain/blocks`, `/api/blockchain/assets/:assetId`, `/api/blockchain/verify`
 - SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
@@ -31,11 +33,13 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 - The marketplace lets an owner list an asset at a fixed price, and lets any other signed-in user buy it with their wallet balance. Browse supports search, price and category filters, sorting, and paging, and the listing page shows the asset's verification result, hashes, metadata, ownership timeline, and ledger blocks.
 - A purchase is settled in one database transaction: both wallet balances, both wallet ledger rows, the asset's owner, the ownership history entry, the blockchain block, and the listing status are written together or not at all. Two buyers racing for the same listing produce exactly one sale, and the other buyer is never charged.
 - Ownership changes are recorded in `ownership_history` and appended to a hash-chained ledger in `blockchain_blocks`, which `GET /api/blockchain/verify` re-checks block by block.
-- `purchase` and `sale` wallet entries can only be created by a completed marketplace trade, so a user cannot credit themselves a sale that never happened.
+- Assets can be auctioned with a starting price, an optional reserve, a bid increment and an end time. Placing a bid commits the money: the amount is held from the bidder's wallet and returned the moment they are outbid, so an auction can never close on a winner who can no longer pay. When the time is up, the auction settles to the highest bid that meets the reserve; if none does, every held bid is returned and the listing closes unsold.
+- An asset can be split into shares for transparent co-ownership. Shareholders offer blocks of shares at a price per share, several co-owners can be selling at once, and the share register shows who holds what percentage. While anyone else holds shares the asset cannot be sold whole, and a holder who acquires every share becomes its owner of record again.
+- `purchase`, `sale`, `bid_hold` and `bid_release` wallet entries can only be created by the marketplace, so a user cannot credit themselves a sale or a refund that never happened.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage. Authentication, the dashboard, asset upload with hashing, duplicate protection and metadata, the wallet, and the full marketplace (list, browse, buy, transfer ownership, ledger) are working. Verification reports, documents and OCR, the encrypted vault, and fractional ownership are still planned.
+The app is beyond the initial skeleton stage. Authentication, the dashboard, asset upload with hashing, duplicate protection and metadata, the wallet, and the full Marketplace with Fractional Ownership module (list, browse, buy, auction, split into shares, transfer ownership, ledger) are working. Verification reports, documents and OCR, and the encrypted vault are still planned.
 
 ## Tests
 
@@ -43,7 +47,7 @@ The app is beyond the initial skeleton stage. Authentication, the dashboard, ass
 npm test
 ```
 
-Runs `tests/marketplace.test.js` with Node's built-in test runner against a temporary SQLite file, so it needs no extra dependencies and does not touch the development database. It covers the listing rules, the verification gate, browse and paging, the full purchase settlement, the concurrent-buyer race, rollback when a mid-settlement step fails, the wallet restrictions, and ledger tamper detection.
+Runs `tests/marketplace.test.js` and `tests/auctions-fractional.test.js` with Node's built-in test runner against a temporary SQLite file, so they need no extra dependencies and never touch the development database. 53 tests cover the listing rules, the verification gate, browse and paging, the full purchase settlement, the concurrent-buyer race, rollback when a mid-settlement step fails, the wallet restrictions, ledger tamper detection, bidding and fund holds, auction settlement with and without a reserve, splitting assets, share trading, and the co-ownership rules.
 
 ## Tech Stack
 
@@ -77,6 +81,7 @@ cd client && npm run dev
 
 - Build the Verification module so verification reports exist; the marketplace already reads them and can be switched to require a passing report by setting `REQUIRE_VERIFIED_LISTINGS=true`.
 - Serve asset image previews so marketplace listings are not text-only.
+- Close auctions on a schedule rather than when the marketplace is next read.
 - Expand the dashboard with richer analytics and recent activity views.
 - Replace placeholder profile pages with working features.
 - Add authenticated API routes for document verification and vault management.

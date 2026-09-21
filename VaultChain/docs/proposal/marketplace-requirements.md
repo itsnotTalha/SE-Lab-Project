@@ -6,11 +6,17 @@
 | **Project** | VaultChain — digital asset authentication, ownership, and trading |
 | **Document type** | Software Requirements Specification (module scope) |
 | **Status** | v2 — updated after the module was implemented |
-| **Sources** | Repository state on branch `login_signup` (`api.txt`, `schema.sql`, Marketplace/Wallet code, `docs/api/wallet-marketplace-workflow.md`) |
+| **Sources** | Project proposal slide 7/13, "Marketplace with Fractional Ownership"; repository state on branch `login_signup` |
 
-> **Traceability note.** The Canva proposal could not be read when this was written
-> (Canva returned HTTP 403 / "Unsupported client"). Requirements below are derived from the
-> repository roadmap and implemented code. Section 12 lists what to confirm against the proposal.
+> **Traceability note.** The proposal defines this module as **Marketplace with Fractional
+> Ownership**, covering: *List Asset, Purchase Asset, Transfer Asset, Verified Provenance* under
+> Asset Management, and *Asset Auction* (create auctions, set rules, enable fair bidding) plus
+> *Fractional Ownership* (split an asset into shares, manage co-ownership transparently) under
+> Advanced Features. All six are implemented.
+>
+> This corrects an earlier draft of this document. `api.txt` listed auctions, bidding and
+> fractional ownership under "Future Enhancements", so v1 of this spec treated them as
+> out of scope. The proposal puts them **inside** the module, so they are in scope and built.
 
 ---
 
@@ -30,19 +36,26 @@ paying, and the sale leaves a tamper-evident ownership trail.
 
 ### 1.3 Scope
 
-**In scope (MVP)**
-- Creating, browsing, viewing, editing, and removing listings
-- Purchasing a listed asset using in-app wallet balance
-- Atomic settlement: wallet debit/credit, ownership change, ownership history, ledger block
-- Showing authenticity evidence and ownership history on a listing
-- Marketplace-related wallet transaction records
-- Search, filter, and sort of listings
+**In scope** (the six capabilities named on proposal slide 7)
+- **List Asset** — creating, browsing, viewing, editing, and removing listings
+- **Purchase Asset** — buying with in-app wallet balance
+- **Transfer Asset** — atomic settlement: wallet debit/credit, ownership change, ownership
+  history, ledger block
+- **Verified Provenance** — authenticity evidence and the ownership timeline on every listing
+- **Asset Auction** — creating auctions with a starting price, optional reserve, bid increment
+  and end time; fair bidding with committed funds; automatic settlement to the highest
+  qualifying bid
+- **Fractional Ownership** — splitting an asset into shares, trading blocks of shares, and a
+  transparent share register
 
-**Out of scope for MVP** (roadmap "Future Enhancements": `api.txt`)
-- Auctions and bidding, royalties, NFT minting, crypto payments
+Supporting: search, filter and sort of listings; marketplace wallet transaction records.
+
+**Out of scope** (roadmap "Future Enhancements": `api.txt`)
+- Royalties, NFT minting, crypto payments
 - Real payment gateways or fiat deposits
 - Notifications, admin moderation console, full-text search engine
 - External blockchains (Ethereum, Polygon, etc.)
+- Rentals — in the original API sketch but not in the proposal
 
 **Dependent modules**
 
@@ -53,13 +66,18 @@ paying, and the sale leaves a tamper-evident ownership trail.
 | Verification | Latest verification result for an asset |
 | Wallet | Balance check, debit, credit, transaction history |
 | Ownership + Blockchain | Ownership transfer, ownership history, block mining |
-| Fractional Ownership | Listing/selling shares (stretch goal, see FR-MKT-40s) |
+| Fractional Ownership | Splitting assets and trading shares (see §3.6) |
 
 ### 1.4 Definitions
 
 | Term | Meaning |
 |---|---|
-| Listing | An offer by a seller to sell one asset at a price |
+| Listing | An offer by a seller: a fixed-price sale, an auction, or a block of shares |
+| Auction | A listing that collects bids until its end time, then sells to the best qualifying bid |
+| Reserve price | The minimum an auction must reach, or nothing is sold |
+| Held funds | A bid's money, debited when the bid is placed and returned if it is outbid |
+| Share | One unit of a fractionalised asset; the share register records who holds what |
+| Share offer | A fractional listing: a block of shares at a price per share |
 | Seller | The current owner of the asset who created the listing |
 | Buyer | An authenticated user, other than the seller, who purchases a listing |
 | Settlement | The single atomic step that moves money and ownership on purchase |
@@ -95,10 +113,14 @@ A user is Seller and Buyer at different times; there is no separate account type
 | Wallet balance, history, settlement-only transaction types | Implemented | `/api/wallet`, `/api/wallet/transactions` |
 | Marketplace UI (browse, tabs, buy with confirmation, trust panel) | Implemented | `MarketplacePage.jsx`, `ListingDetails.jsx` |
 | Automated tests for the rules above | Implemented | `tests/marketplace.test.js` (`npm test`) |
+| **Asset auctions** (bidding, reserve, auto-settlement) | Implemented | `POST /listings/:id/bids`, `auctionService` |
+| **Fractional ownership** (split, share offers, register) | Implemented | `/assets/:assetId/fractionalize`, `fractionalService` |
 | Asset image previews on listings | Not implemented | Needs an auth-compatible file endpoint (Assets module) |
-| Auctions, rentals, fractional ownership | Not implemented | Rejected at creation until built |
+| Rentals | Not implemented | Not in the proposal; rejected at creation |
 | Platform fee destination | Not implemented | `MARKETPLACE_FEE_PERCENT` defaults to 0; no platform wallet |
 | Idempotency key on purchase | Not implemented | Double-submit is guarded by the status claim, not by a key |
+| Partial fills on a share offer | Not implemented | A buyer takes the whole offered block |
+| Scheduled auction close | Not implemented | Auctions settle when the marketplace is next read |
 
 Everything below labeled **Gap** is work still to do.
 
@@ -170,16 +192,47 @@ This is VaultChain's differentiator, so it is a core marketplace requirement, no
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
-| FR-MKT-36 | MVP supports `sale` (fixed price) listings only. | M | ✅ |
-| FR-MKT-37 | `auction`/`bidding` and `rent` shall be rejected or hidden until implemented, to avoid listings that cannot be fulfilled. | M | ✅ |
+| FR-MKT-36 | The system shall support `sale`, `auction` and `fractional` listing types. | M | ✅ |
+| FR-MKT-37 | `rent` shall be rejected: it is absent from the proposal and nothing implements rental terms. | M | ✅ |
 
-### 3.6 Fractional ownership (stretch)
+### 3.6 Asset auctions
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
-| FR-MKT-40 | An owner may split an asset into shares (`POST /api/fractional/create`) and list shares for sale. | C | ⬜ |
-| FR-MKT-41 | Share purchases shall move shares between holders atomically and keep `sum(percentage) = 100`. | C | ⬜ |
-| FR-MKT-42 | A whole-asset sale shall be blocked while shares are held by other users, unless all holders consent. | C | ⬜ |
+| FR-MKT-50 | An owner shall be able to auction an asset with a starting price, an end time, an optional reserve price and an optional minimum bid increment. | M | ✅ |
+| FR-MKT-51 | The system shall reject an auction with no end time, an end time in the past, a run shorter than 1 minute or longer than 30 days, or a reserve below the starting price. | M | ✅ |
+| FR-MKT-52 | Any signed-in user other than the seller shall be able to bid on an open auction. | M | ✅ |
+| FR-MKT-53 | A bid shall be rejected below the starting price, or below the current highest bid plus the increment. | M | ✅ |
+| FR-MKT-54 | Placing a bid shall commit the funds: the amount is debited and recorded as `bid_hold`, so the same balance cannot back two bids or be spent elsewhere. | M | ✅ |
+| FR-MKT-55 | Being outbid shall return the funds immediately (`bid_release`). | M | ✅ |
+| FR-MKT-56 | A bidder raising their own bid shall only need the difference, not the full new amount. | S | ✅ |
+| FR-MKT-57 | A bid shall be rejected once the auction has ended (409) or if the bidder cannot cover it (402). | M | ✅ |
+| FR-MKT-58 | When an auction ends, it shall settle to the highest held bid that meets the reserve, transferring ownership and paying the seller in one transaction. | M | ✅ |
+| FR-MKT-59 | If no bid meets the reserve, or none were placed, every held bid shall be returned and the listing closed unsold. | M | ✅ |
+| FR-MKT-60 | An auction with live bids shall not be editable, removable or cancellable. | M | ✅ |
+| FR-MKT-61 | The seller shall be able to cancel an auction that has attracted no bids. | S | ✅ |
+| FR-MKT-62 | An auction shall not be purchasable outright. | M | ✅ |
+| FR-MKT-63 | Listing details shall show the current bid, bid count, reserve state, time remaining and the full bid history. | M | ✅ |
+| FR-MKT-64 | A sold auction shall record the winning bid as its price, not the starting price. | M | ✅ |
+
+### 3.7 Fractional ownership
+
+| ID | Requirement | Pri | Status |
+|---|---|---|---|
+| FR-MKT-40 | An owner shall be able to split an asset into between 2 and 10,000 shares, receiving all of them. | M | ✅ |
+| FR-MKT-41 | An asset shall not be split twice, split by a non-owner, or split while it has an active listing. | M | ✅ |
+| FR-MKT-42 | A shareholder shall be able to offer a block of shares at a price per share. | M | ✅ |
+| FR-MKT-43 | A share offer shall be rejected if the seller does not hold that many shares, or if the asset was never split. | M | ✅ |
+| FR-MKT-44 | Buying a share offer shall move shares and money in one transaction, recording an ownership-history entry and a ledger block. | M | ✅ |
+| FR-MKT-45 | Share percentages shall always reflect shares held over total shares, and a holder left with none shall drop off the register. | M | ✅ |
+| FR-MKT-46 | Several co-owners shall be able to hold active share offers for the same asset at once, but each holder only one. | M | ✅ |
+| FR-MKT-47 | A whole-asset sale or auction shall be blocked while anyone else holds shares. | M | ✅ |
+| FR-MKT-48 | A holder who acquires every share shall become the asset's owner of record, making it sellable whole again. | S | ✅ |
+| FR-MKT-49 | The listing page shall show the share register: who holds how many shares and what percentage. | M | ✅ |
+
+> **Simplification.** A share offer is bought as a whole block; partial fills are not supported.
+> Shares are traded at a fixed price, not auctioned.
+
 
 ---
 
@@ -196,7 +249,12 @@ This is VaultChain's differentiator, so it is a core marketplace requirement, no
 | BR-07 | Listings are never hard-deleted; removal sets `status = 'removed'` to preserve audit history. |
 | BR-08 | Listing status lifecycle: `active → sold` (system) or `active → removed` (seller). `sold` and `removed` are terminal; relisting creates a new row. |
 | BR-09 | Every ownership change produces an `ownership_history` row and a ledger block. |
-| BR-10 | A platform fee, if any, is a configurable percentage taken from the seller's proceeds and recorded as its own transaction line. *(Open question.)* |
+| BR-10 | A platform fee, if any, is a configurable percentage taken from the seller's proceeds. `MARKETPLACE_FEE_PERCENT` defaults to 0 because there is no platform wallet to credit. |
+| BR-11 | Bidding commits money. A bid debits the bidder immediately and is returned the moment they are outbid or the auction ends without them winning, so an auction can never close on a winner who cannot pay. |
+| BR-12 | An auction's terms are fixed once it has a live bid; it cannot be edited, removed or cancelled. |
+| BR-13 | Auctions settle to the highest held bid that meets the reserve. With no qualifying bid the listing closes unsold and every hold is returned. |
+| BR-14 | Once an asset is split into shares, the whole asset can only be sold by someone holding all of them. |
+| BR-15 | An asset may have one active whole-asset listing, but each shareholder may hold one active share offer concurrently with other shareholders'. |
 
 **Listing state diagram**
 
@@ -267,6 +325,11 @@ Base path `/api`. All endpoints require `Authorization: Bearer <JWT>`.
 | GET | `/blockchain/blocks` | Whole ledger | ✅ |
 | GET | `/blockchain/assets/:assetId` | Ledger history of an asset | ✅ |
 | GET | `/blockchain/verify` | Re-check every block hash and link | ✅ |
+| POST | `/marketplace/listings/:id/bids` | Place a bid on an auction | ✅ |
+| GET | `/marketplace/listings/:id/bids` | Bid history for an auction | ✅ |
+| POST | `/marketplace/listings/:id/cancel` | Seller cancels an auction with no bids | ✅ |
+| POST | `/marketplace/assets/:assetId/fractionalize` | Split an asset into shares | ✅ |
+| GET | `/marketplace/assets/:assetId/shares` | Share register for an asset | ✅ |
 
 `POST /ownership/transfer` and `POST /blockchain/mine` from `api.txt` are deliberately **not**
 exposed. Ownership changes and blocks are produced inside the settlement transaction; letting a
@@ -374,6 +437,13 @@ stored as integer minor units, before real-money-like use; this is a known limit
 | AC-9 | Alice sends `PATCH {status:'sold'}` on an active listing | — | Rejected (only the purchase flow sets `sold`) |
 | AC-10 | Asset has a Duplicate verification result | Owner lists it | Rejected with reason |
 | AC-11 | Mid-settlement failure (simulated error after wallet debit) | — | Full rollback; no balance or ownership change |
+| AC-12 | Auction open, A bids 100 | B bids 200 | A refunded in full, B debited 200, B leads |
+| AC-13 | Auction ends, best bid 200, reserve 150 | Time passes | Sold at 200 to B; seller +200; ownership and ledger updated |
+| AC-14 | Auction ends, best bid 200, reserve 900 | Time passes | Nothing sold; listing closed; bid returned in full |
+| AC-15 | Auction has a live bid | Seller edits, removes or cancels | All rejected (409) |
+| AC-16 | Asset split into 100 shares, owner sells 25 at 10 | Buyer buys | Buyer −250, seller +250, register reads 75/25 |
+| AC-17 | Asset co-owned by two holders | Owner lists the whole asset | Rejected (409) |
+| AC-18 | Buyer acquires all 100 shares | — | Buyer becomes owner of record; whole-asset sale allowed again |
 
 ---
 
@@ -385,10 +455,11 @@ stored as integer minor units, before real-money-like use; this is a known limit
 - **Security:** authorization matrix (owner / non-owner / other user / no token) for every endpoint; attempt to fake a `sale` via the wallet endpoint.
 - **UI:** manual walkthrough of UC-1 to UC-4 plus empty/error states.
 
-Implemented in `tests/marketplace.test.js` and run with `npm test` from the repository root.
-The suite uses Node's built-in test runner against a temporary SQLite file, so it needs no extra
-dependencies. 28 tests currently pass, covering AC-1 to AC-11 plus the browse, wallet and ledger
-rules. The UI walkthrough is still manual.
+Implemented in `tests/marketplace.test.js` and `tests/auctions-fractional.test.js`, run with
+`npm test` from the repository root. Both use Node's built-in test runner against a temporary
+SQLite file, so they need no extra dependencies and never touch the development database.
+53 tests currently pass, covering AC-1 to AC-18 plus the browse, wallet and ledger rules.
+The UI walkthrough is still manual.
 
 ---
 
@@ -396,22 +467,34 @@ rules. The UI walkthrough is still manual.
 
 Confirm against the proposal:
 
-1. **Listing types.** Does the proposal include auctions/bidding and rent in the MVP, or only fixed-price sale? (`api.txt` puts Auctions/Bidding in *Future*; code accepts `auction`/`rent`.) Recommendation: fixed-price sale only for MVP.
+1. ~~**Listing types.**~~ **Resolved by the proposal:** sale, auction and fractional are all in scope and implemented. Rent is not in the proposal and is rejected.
 2. **Verification gate.** Must an asset be verified "Original" before it can be listed? (BR-05 assumes yes.)
 3. **Payment model.** Wallet-balance only? How does a user get funds — demo top-up, seed balance, or no self-service deposit? (Affects NFR-SEC-03.)
 4. **Fees and royalties.** Platform fee percentage? Creator royalty on resale? (`api.txt` lists royalties as future.)
 5. **Guest access.** May unauthenticated visitors browse listings?
 6. **Ledger.** Is the blockchain purely a local hash chain in SQLite (as `api.txt` implies), and should the ledger block be mined inside the settlement transaction?
-7. **Fractional ownership.** MVP or stretch? It is in Sprint 4 of `api.txt` but complicates selling whole assets.
+7. ~~**Fractional ownership.**~~ **Resolved by the proposal:** in scope and implemented. A whole-asset sale is blocked while others hold shares (BR-14).
 8. **Currency and precision.** Single currency? Two decimals? Integer minor units?
 9. **Dispute / refund.** Any reversal flow after a sale, or are sales final?
 10. **Roles.** Is there an Admin role with listing moderation in scope?
+11. **Auction close timing.** There is no scheduler, so auctions settle the next time the
+    marketplace is read. Should a background job close them on time instead?
+12. **Share offers.** Should a buyer be able to take part of an offered block, and should
+    shares be auctionable as well as fixed-price?
 
 ## 13. Suggested implementation order
 
-1. Fix integrity gaps in existing code: FR-MKT-04, 08, 09, 36/37, NFR-SEC-03.
-2. Ownership transfer service (`ownership_history` + `assets.owner_id`) and minimal ledger mining.
-3. `POST /marketplace/listings/:id/buy` with atomic settlement (FR-MKT-26…32) and tests AC-4…AC-11.
-4. Authenticity panel and ownership timeline on the details page (FR-MKT-20…24).
-5. Search / filter / sort / pagination and "My listings" / trade history.
-6. Stretch: fractional ownership, auto-suspend on later duplicate flag.
+Sections 1 to 6 of the original plan are complete: the integrity fixes, ownership transfer and
+ledger, atomic purchase settlement, the authenticity panel and ownership timeline, browse
+search/filter/sort/paging, and both advanced features (auctions and fractional ownership).
+
+Remaining, in rough priority order:
+
+1. Asset image previews on listings (FR-MKT-13) — needs a file endpoint that works with `<img>`
+   while respecting the vault's access rules.
+2. The Verification module, so listings show real reports and `REQUIRE_VERIFIED_LISTINGS` can be
+   switched on.
+3. A scheduled job to close auctions on time rather than on next read (§12.11).
+4. Partial fills and auctions for share offers (§12.12).
+5. Auto-suspend a listing if its asset is later flagged duplicate (FR-MKT-25).
+6. A platform wallet, so a non-zero fee has somewhere to go.
