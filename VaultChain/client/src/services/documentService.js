@@ -38,6 +38,18 @@ async function rerunOcr(id) {
 	return (await request(`/documents/${id}/ocr`, { method: 'POST' })).document;
 }
 
+async function verify(id, referenceDocumentId) {
+	return (await request(`/documents/${id}/verify`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ referenceDocumentId }),
+	})).verification;
+}
+
+async function getReport(id) {
+	return (await request(`/documents/${id}/report`)).history;
+}
+
 async function remove(id) {
 	return request(`/documents/${id}`, { method: 'DELETE' });
 }
@@ -54,4 +66,4 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const documentService = { list, upload, get, getOcr, rerunOcr, remove, getContentObjectUrl };
+export const documentService = { list, upload, get, getOcr, rerunOcr, verify, getReport, remove, getContentObjectUrl };
