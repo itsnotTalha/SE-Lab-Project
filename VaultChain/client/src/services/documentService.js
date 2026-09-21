@@ -66,4 +66,16 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const documentService = { list, upload, get, getOcr, rerunOcr, verify, getReport, remove, getContentObjectUrl };
+async function getPreviewObjectUrl(id) {
+	const response = await fetch(`${API_BASE_URL}/documents/${id}/preview`, {
+		headers: { Authorization: `Bearer ${authService.getToken()}` },
+	});
+	if (!response.ok) {
+		let message = 'Unable to load document preview';
+		try { message = (await response.json()).message || message; } catch { /* Empty response. */ }
+		throw new Error(message);
+	}
+	return URL.createObjectURL(await response.blob());
+}
+
+export const documentService = { list, upload, get, getOcr, rerunOcr, verify, getReport, remove, getContentObjectUrl, getPreviewObjectUrl };

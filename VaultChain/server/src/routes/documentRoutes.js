@@ -9,6 +9,7 @@ router.use(authenticateToken);
 router.post('/', singleDocumentUpload, controller.uploadDocument);
 router.get('/', controller.getDocuments);
 router.get('/:id/content', controller.getDocumentContent);
+router.get('/:id/preview', controller.getDocumentPreview);
 router.get('/:id/ocr', controller.getOcrResult);
 router.post('/:id/ocr', controller.processOcr);
 router.post('/:id/verify', controller.verifyDocument);

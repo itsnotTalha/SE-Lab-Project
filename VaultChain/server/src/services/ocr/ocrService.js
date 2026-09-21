@@ -50,6 +50,17 @@ async function pdfText(filePath) {
 	return stdout.trim();
 }
 
+async function renderPdfFirstPage(filePath) {
+	const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'vaultchain-pdf-preview-'));
+	try {
+		const outputPath = path.join(directory, 'preview');
+		await execFileAsync('pdftoppm', ['-png', '-r', '150', '-f', '1', '-singlefile', filePath, outputPath], COMMAND_OPTIONS);
+		return await fs.readFile(`${outputPath}.png`);
+	} finally {
+		await fs.rm(directory, { recursive: true, force: true });
+	}
+}
+
 function pageNumber(fileName) {
 	return Number(fileName.match(/-(\d+)\.png$/)?.[1] || 0);
 }
@@ -95,4 +106,4 @@ async function extractDocumentText({ filePath, mimeType }) {
 	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng' };
 }
 
-module.exports = { extractDocumentText };
+module.exports = { extractDocumentText, renderPdfFirstPage };

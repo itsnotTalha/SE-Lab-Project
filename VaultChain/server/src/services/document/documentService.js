@@ -4,7 +4,7 @@ const path = require('path');
 const { documentUploadDirectory } = require('../../middleware/upload');
 const documentRepository = require('../../repositories/documentRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
-const { extractDocumentText } = require('../ocr/ocrService');
+const { extractDocumentText, renderPdfFirstPage } = require('../ocr/ocrService');
 
 function httpError(status, message) {
 	const error = new Error(message);
@@ -131,6 +131,12 @@ async function getDocumentContent(userId, id) {
 	return { document: publicDocument(document), filePath: contentPath(document) };
 }
 
+async function getDocumentPreview(userId, id) {
+	const document = await ownedDocument(userId, id);
+	if (document.mimeType !== 'application/pdf') return { document: publicDocument(document), filePath: contentPath(document), mimeType: document.mimeType };
+	return { document: publicDocument(document), buffer: await renderPdfFirstPage(contentPath(document)), mimeType: 'image/png' };
+}
+
 async function deleteDocument(userId, id) {
 	const document = await ownedDocument(userId, id);
 	await documentRepository.deleteDocument(document.id, userId);
@@ -145,6 +151,7 @@ module.exports = {
 	getDocument,
 	getOcrResult,
 	getDocumentContent,
+	getDocumentPreview,
 	processOcr,
 	deleteDocument,
 };

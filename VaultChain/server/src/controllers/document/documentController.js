@@ -41,6 +41,17 @@ const getDocumentContent = asyncHandler(async (req, res) => {
 	res.sendFile(content.filePath);
 });
 
+const getDocumentPreview = asyncHandler(async (req, res) => {
+	const preview = await documentService.getDocumentPreview(req.user.id, req.params.id);
+	res.type(preview.mimeType);
+	res.set('Cache-Control', 'private, max-age=300');
+	if (preview.buffer) {
+		res.send(preview.buffer);
+		return;
+	}
+	res.sendFile(preview.filePath);
+});
+
 const deleteDocument = asyncHandler(async (req, res) => {
 	await documentService.deleteDocument(req.user.id, req.params.id);
 	res.status(204).send();
@@ -55,5 +66,6 @@ module.exports = {
 	verifyDocument,
 	getVerificationHistory,
 	getDocumentContent,
+	getDocumentPreview,
 	deleteDocument,
 };
