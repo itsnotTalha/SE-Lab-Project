@@ -3,13 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05070d" />
+    <meta name="theme-color" content="#07111F" data-theme-color="dark" />
+    <meta name="theme-color" content="#F5F9FC" data-theme-color="light" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta
       name="description"
       content="VaultChain gives digital assets a verifiable identity through secure hashing, metadata intelligence, and duplicate protection."
     />
     <title>VaultChain — Secure Digital Ownership</title>
+    <script>
+      (function () {
+        var stored = null;
+        try { stored = localStorage.getItem('vaultchain-theme'); } catch (error) { stored = null; }
+        var theme = 'dark';
+        if (stored === 'light' || stored === 'dark') {
+          theme = stored;
+        } else if (window.matchMedia) {
+          if (window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+          else if (window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

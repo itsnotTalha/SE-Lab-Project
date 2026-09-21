@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 
 import BrandLogo from '../../components/ui/BrandLogo';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 
 const features = [
@@ -42,9 +43,9 @@ function LandingNavbar() {
 				<Link to="/" className="landing-nav__brand" aria-label="VaultChain home"><BrandLogo /></Link>
 				<nav className={`landing-nav__links ${open ? 'is-open' : ''}`} aria-label="Landing page navigation">
 					<a href="#features" onClick={close}>Features</a><a href="#how-it-works" onClick={close}>How it works</a><a href="#security" onClick={close}>Security</a><a href="#about" onClick={close}>About</a>
-					<div className="landing-nav__mobile-actions">{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary" onClick={close}>Dashboard</Link> : <><Link to="/login" className="landing-button landing-button--secondary" onClick={close}>Sign in</Link><Link to="/register" className="landing-button landing-button--primary" onClick={close}>Get started</Link></>}</div>
+					<div className="landing-nav__mobile-actions">{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary" onClick={close}>Dashboard</Link> : <><Link to="/login" className="landing-button landing-button--secondary" onClick={close}>Sign in</Link><Link to="/register" className="landing-button landing-button--primary" onClick={close}>Get started</Link></>}<ThemeToggle /></div>
 				</nav>
-				<div className="landing-nav__actions">{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary">Dashboard <ArrowRight size={14} /></Link> : <><Link to="/login" className="landing-button landing-button--ghost">Sign in</Link><Link to="/register" className="landing-button landing-button--primary">Get started <ArrowRight size={14} /></Link></>}</div>
+				<div className="landing-nav__actions"><ThemeToggle />{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary">Dashboard <ArrowRight size={14} /></Link> : <><Link to="/login" className="landing-button landing-button--ghost">Sign in</Link><Link to="/register" className="landing-button landing-button--primary">Get started <ArrowRight size={14} /></Link></>}</div>
 				<button type="button" className="landing-nav__toggle" aria-expanded={open} aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? <X size={20} /> : <Menu size={20} />}</button>
 			</div>
 		</header>

@@ -2,6 +2,7 @@ import { CheckCircle2, Fingerprint, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import BrandLogo from '../components/ui/BrandLogo';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 export default function AuthLayout({ children, mode = 'login' }) {
 	return (
@@ -21,6 +22,7 @@ export default function AuthLayout({ children, mode = 'login' }) {
 				<p className="auth-story__footer">SHA-256 fingerprinting · Perceptual matching · Metadata intelligence</p>
 			</section>
 			<section className="auth-panel">
+				<div className="auth-theme-toggle"><ThemeToggle /></div>
 				<Link to="/" className="auth-panel__mobile-brand"><BrandLogo /></Link>
 				<div className="auth-card" data-mode={mode}>{children}</div>
 			</section>

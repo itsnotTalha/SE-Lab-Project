@@ -1,31 +1,132 @@
+/* ==========================================================================
+   VeriVault TrustWave design tokens
+   Two complete modes: TrustWave Light + TrustWave Dark.
+   The active mode is set by `data-theme` on <html> (index.html inline script
+   applies it before first paint; ThemeContext keeps it in sync).
+   ========================================================================== */
+
 :root {
-  color-scheme: dark;
-  --bg: #05070d;
-  --bg-elevated: #0a0e17;
-  --surface: #0f1522;
-  --surface-raised: #131b2b;
-  --surface-soft: rgba(15, 21, 34, 0.72);
-  --surface-glass: rgba(10, 14, 23, 0.76);
-  --border: rgba(150, 174, 215, 0.13);
-  --border-strong: rgba(150, 174, 215, 0.22);
-  --text: #f4f7fb;
-  --text-secondary: #a5afc0;
-  --text-muted: #6f7b90;
-  --primary: #41d9ff;
-  --primary-strong: #169be8;
-  --primary-soft: rgba(65, 217, 255, 0.11);
-  --secondary: #8b7cff;
-  --success: #42d69d;
-  --warning: #f4b860;
-  --danger: #ff6b7a;
   --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.18);
-  --shadow-lg: 0 28px 90px rgba(0, 0, 0, 0.38);
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
   --content-width: 1180px;
-  --sidebar-width: 248px;
+  --sidebar-width: 252px;
+
+  --transition-fast: 150ms ease;
+  --transition: 200ms ease;
+  --transition-slow: 250ms ease;
+}
+
+/* TrustWave Dark Mode (default brand mode) */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #07111F;
+  --bg-elevated: #16243A;
+  --surface: #0F1B2D;
+  --surface-raised: #16243A;
+  --surface-soft: #0B1728;
+  --surface-glass: rgba(7, 17, 31, 0.82);
+  --sidebar-bg: #0B1728;
+  --input-bg: rgba(4, 12, 24, 0.5);
+  --well-bg: rgba(7, 17, 31, 0.55);
+
+  --border: #263A53;
+  --border-strong: #33486A;
+  --border-subtle: rgba(148, 163, 184, 0.14);
+
+  --text: #F1F5F9;
+  --text-secondary: #C3CEDC;
+  --text-muted: #94A3B8;
+
+  --primary: #60A5FA;
+  --primary-strong: #3B82F6;
+  --primary-soft: rgba(96, 165, 250, 0.12);
+  --on-primary: #FFFFFF;
+
+  --secondary: #22D3EE;
+  --secondary-soft: rgba(34, 211, 238, 0.12);
+  --accent: #2DD4BF;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --danger: #F87171;
+
+  --grad-primary: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  --grad-primary-hover: linear-gradient(135deg, #1D4ED8 0%, #0E7490 100%);
+  --grad-hero-text: linear-gradient(110deg, #F1F5F9 5%, #60A5FA 47%, #22D3EE 96%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(96, 165, 250, 0.14), rgba(34, 211, 238, 0.1));
+
+  --shadow-sm: 0 8px 24px rgba(2, 8, 17, 0.35);
+  --shadow-md: 0 14px 40px rgba(2, 8, 17, 0.42);
+  --shadow-lg: 0 28px 90px rgba(2, 8, 17, 0.55);
+
+  --scrim: rgba(2, 6, 12, 0.66);
+  --scrim-strong: rgba(2, 6, 12, 0.8);
+  --ring: 0 0 0 3px rgba(96, 165, 250, 0.32);
+  --ring-color: rgba(96, 165, 250, 0.55);
+
+  --glow-one: rgba(37, 99, 235, 0.16);
+  --glow-two: rgba(8, 145, 178, 0.14);
+}
+
+/* TrustWave Light Mode */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #F5F9FC;
+  --bg-elevated: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-soft: #EEF5FB;
+  --surface-glass: rgba(255, 255, 255, 0.86);
+  --sidebar-bg: #FFFFFF;
+  --input-bg: #FFFFFF;
+  --well-bg: #F1F6FB;
+
+  --border: #DCE6F0;
+  --border-strong: #C4D4E4;
+  --border-subtle: rgba(15, 23, 42, 0.07);
+
+  --text: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+
+  --primary: #2563EB;
+  --primary-strong: #1D4ED8;
+  --primary-soft: rgba(37, 99, 235, 0.09);
+  --on-primary: #FFFFFF;
+
+  --secondary: #0891B2;
+  --secondary-soft: rgba(8, 145, 178, 0.1);
+  --accent: #14B8A6;
+  --accent-soft: rgba(20, 184, 166, 0.1);
+
+  --success: #16A34A;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+
+  --grad-primary: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  --grad-primary-hover: linear-gradient(135deg, #1D4ED8 0%, #0E7490 100%);
+  --grad-hero-text: linear-gradient(110deg, #0F172A 5%, #2563EB 47%, #0891B2 96%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(8, 145, 178, 0.07));
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 20px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.18);
+
+  --scrim: rgba(15, 23, 42, 0.42);
+  --scrim-strong: rgba(15, 23, 42, 0.55);
+  --ring: 0 0 0 3px rgba(37, 99, 235, 0.22);
+  --ring-color: rgba(37, 99, 235, 0.45);
+
+  --glow-one: rgba(37, 99, 235, 0.1);
+  --glow-two: rgba(8, 145, 178, 0.09);
 }

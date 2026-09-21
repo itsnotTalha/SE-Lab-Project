@@ -7,6 +7,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../components/ui/BrandLogo';
 import StatusBadge from '../components/ui/StatusBadge';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 
 const primaryNav = [
@@ -75,6 +76,7 @@ export default function AppShell() {
 					<button type="button" className="icon-button topbar__menu" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}><Menu size={19} /></button>
 					<div className="topbar__search"><Search size={15} /><span>Search workspace</span><kbd>⌘ K</kbd></div>
 					<div className="topbar__actions">
+						<ThemeToggle />
 						<button type="button" className="icon-button" aria-label="Notifications" title="Notifications are coming soon"><Bell size={17} /></button>
 						<NavLink to="/profile" className="topbar__profile" aria-label="Open profile">
 							<span>{firstName.charAt(0).toUpperCase()}</span><div><strong>{firstName}</strong><small>{user?.role || 'Member'}</small></div>
