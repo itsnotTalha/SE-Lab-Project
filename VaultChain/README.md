@@ -1,6 +1,6 @@
 # VaultChain
 
-VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build now covers authentication, the first protected user experience, authenticated asset uploads, SHA-256 hashing for uploaded assets, pHash generation for uploaded images, and image metadata extraction.
+VaultChain is a full-stack web app for managing digital assets, user vaults, and related account activity. The current build covers authentication, the first protected user experience, authenticated asset uploads, SHA-256 hashing for uploaded assets, pHash generation for uploaded images, image metadata extraction, and a complete marketplace where assets can be listed and bought, with ownership transfer and a tamper-evident ledger.
 
 ## What is implemented now
 
@@ -15,6 +15,11 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
   - `/api/assets/:id/metadata`
   - `/api/assets/:id/hash`
   - `/api/dashboard/summary`
+  - `/api/wallet`, `/api/wallet/transactions`
+  - `/api/marketplace/listings` (browse, create, detail, edit, remove, buy)
+  - `/api/marketplace/listings/mine`, `/api/marketplace/listable-assets`, `/api/marketplace/trades`
+  - `/api/ownership/history/:assetId`
+  - `/api/blockchain/blocks`, `/api/blockchain/assets/:assetId`, `/api/blockchain/verify`
 - SQLite database initialization with tables for users, wallets, assets, documents, verification reports, marketplace listings, vault items, and notifications.
 - Registration creates a user and wallet together, and login returns a JWT plus basic user data.
 - The authenticated user endpoint returns the signed-in user's profile without exposing the password hash.
@@ -23,10 +28,22 @@ VaultChain is a full-stack web app for managing digital assets, user vaults, and
 - The generated SHA-256 hash is stored in the `asset_hashes` table and returned in the upload response.
 - The upload flow also generates a perceptual hash with `image-hash`, stores it in the existing `asset_hashes` row, blocks duplicate image uploads before persistence, and exposes both hashes through `GET /api/assets/:id/hash`.
 - The upload flow also extracts available EXIF metadata with `exifr`, stores width, height, camera, location, created date, and the raw metadata JSON in `asset_metadata`, and exposes it through `GET /api/assets/:id/metadata`.
+- The marketplace lets an owner list an asset at a fixed price, and lets any other signed-in user buy it with their wallet balance. Browse supports search, price and category filters, sorting, and paging, and the listing page shows the asset's verification result, hashes, metadata, ownership timeline, and ledger blocks.
+- A purchase is settled in one database transaction: both wallet balances, both wallet ledger rows, the asset's owner, the ownership history entry, the blockchain block, and the listing status are written together or not at all. Two buyers racing for the same listing produce exactly one sale, and the other buyer is never charged.
+- Ownership changes are recorded in `ownership_history` and appended to a hash-chained ledger in `blockchain_blocks`, which `GET /api/blockchain/verify` re-checks block by block.
+- `purchase` and `sale` wallet entries can only be created by a completed marketplace trade, so a user cannot credit themselves a sale that never happened.
 
 ## Current progress
 
-The app is beyond the initial skeleton stage, and the core authentication, dashboard, asset upload, hashing, duplicate protection, and image metadata foundation are now working. Most of the broader product features are still planned, but the backend and routing layers are in place for continued expansion.
+The app is beyond the initial skeleton stage. Authentication, the dashboard, asset upload with hashing, duplicate protection and metadata, the wallet, and the full marketplace (list, browse, buy, transfer ownership, ledger) are working. Verification reports, documents and OCR, the encrypted vault, and fractional ownership are still planned.
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs `tests/marketplace.test.js` with Node's built-in test runner against a temporary SQLite file, so it needs no extra dependencies and does not touch the development database. It covers the listing rules, the verification gate, browse and paging, the full purchase settlement, the concurrent-buyer race, rollback when a mid-settlement step fails, the wallet restrictions, and ledger tamper detection.
 
 ## Tech Stack
 
@@ -58,6 +75,8 @@ cd client && npm run dev
 
 ## Next Steps
 
+- Build the Verification module so verification reports exist; the marketplace already reads them and can be switched to require a passing report by setting `REQUIRE_VERIFIED_LISTINGS=true`.
+- Serve asset image previews so marketplace listings are not text-only.
 - Expand the dashboard with richer analytics and recent activity views.
 - Replace placeholder profile pages with working features.
-- Add authenticated API routes for verification, vault management, and wallet activity.
+- Add authenticated API routes for document verification and vault management.

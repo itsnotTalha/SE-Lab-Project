@@ -161,48 +161,80 @@ Sprint 4 - Blockchain, Marketplace & Ownership
 Blockchain
 
 POST /api/blockchain/mine
-- Create blockchain record.
-- Automatically called after asset upload and ownership transfer.
-- Status: planned
+- Deliberately not exposed. Blocks are mined inside the transaction
+  that changes ownership, so the ledger always describes something
+  that actually happened.
+- Status: intentionally omitted
 
 GET /api/blockchain/blocks
 - Return blockchain ledger.
-- Status: planned
+- Status: implemented
 
-GET /api/blockchain/assets/:id
+GET /api/blockchain/assets/:assetId
 - Return blockchain history of an asset.
-- Status: planned
+- Status: implemented
+
+GET /api/blockchain/verify
+- Re-check every block hash and its link to the previous block.
+- Status: implemented
 
 Ownership
 
 POST /api/ownership/transfer
-- Transfer ownership.
-- Automatically:
-  - Create ownership history
-  - Mine blockchain record
-- Status: planned
+- Deliberately not exposed. Ownership moves only as part of a
+  marketplace settlement, so that an ownership change cannot happen
+  without the matching payment.
+- Status: intentionally omitted
 
 GET /api/ownership/history/:assetId
 - Return ownership timeline.
-- Status: planned
+- Status: implemented
 
 Marketplace
 
 GET /api/marketplace/listings
-- List marketplace assets.
-- Status: planned
+- List active marketplace listings.
+- Supports search, minPrice, maxPrice, category, sort, page, limit.
+- Returns a pagination block.
+- Status: implemented
 
 POST /api/marketplace/listings
 - Create marketplace listing.
-- Status: planned
+- Fixed-price sale only. Requires ownership, a passing (or absent)
+  verification result, and no existing active listing for the asset.
+- Status: implemented
+
+GET /api/marketplace/listings/:id
+- Listing details with verification result, hashes, metadata,
+  ownership timeline and ledger blocks.
+- Status: implemented
+
+GET /api/marketplace/listings/mine
+- Caller's own listings in every status.
+- Status: implemented
 
 PATCH /api/marketplace/listings/:id
-- Update listing.
-- Status: planned
+- Update listing price. Seller only, active listings only.
+- Cannot set status to sold; only a purchase does that.
+- Status: implemented
 
 DELETE /api/marketplace/listings/:id
-- Remove listing.
-- Status: planned
+- Remove listing (soft delete, status becomes removed).
+- Status: implemented
+
+POST /api/marketplace/listings/:id/buy
+- Buy a listed asset with wallet balance.
+- Atomically: debit buyer, credit seller, transfer ownership,
+  write ownership history, mine a block, mark the listing sold.
+- Status: implemented
+
+GET /api/marketplace/listable-assets
+- Caller's assets, each with a listable flag and a reason when blocked.
+- Status: implemented
+
+GET /api/marketplace/trades
+- Caller's completed purchases and sales.
+- Status: implemented
 
 Fractional Ownership
 
@@ -218,11 +250,17 @@ Wallet
 
 GET /api/wallet
 - Return wallet summary.
-- Status: planned
+- Status: implemented
 
 GET /api/wallet/transactions
 - Return wallet transaction history.
-- Status: planned
+- Status: implemented
+
+POST /api/wallet/transactions
+- Add a deposit or withdrawal.
+- purchase and sale are rejected here: they are written by the
+  marketplace settlement when a trade completes.
+- Status: implemented
 
 ========================================
 Future Enhancements - Not Part of MVP
@@ -314,6 +352,13 @@ Sprint 4: Blockchain Ledger, Ownership Transfer, Marketplace, Fractional Ownersh
 
 Notes
 
-- Only the Sprint 1 auth and health endpoints are implemented right now.
-- The remaining endpoints are roadmap items and should be added as the project grows.
+- Sprint 1 (auth, health, dashboard) and Sprint 2 (upload, hashing, metadata)
+  are implemented, along with the Sprint 4 Marketplace, Ownership, Blockchain
+  and Wallet endpoints.
+- Still outstanding: verification reports, documents and OCR, the encrypted
+  vault, and fractional ownership.
+- Two endpoints in this file are intentionally omitted rather than pending:
+  POST /api/ownership/transfer and POST /api/blockchain/mine. Both would let a
+  client change ownership or write ledger history without the payment that is
+  supposed to cause it.
 - This file is intended as the canonical API checklist for current and future work.
