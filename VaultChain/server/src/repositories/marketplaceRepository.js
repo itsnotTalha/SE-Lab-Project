@@ -14,6 +14,11 @@ const LISTING_SELECT = `
 		marketplace_listings.price AS price,
 		marketplace_listings.description AS description,
 		marketplace_listings.status AS status,
+		marketplace_listings.starting_price AS starting_price,
+		marketplace_listings.reserve_price AS reserve_price,
+		marketplace_listings.min_bid_increment AS min_bid_increment,
+		marketplace_listings.ends_at AS ends_at,
+		marketplace_listings.share_count AS share_count,
 		marketplace_listings.created_at AS created_at,
 		marketplace_listings.updated_at AS updated_at,
 		marketplace_listings.sold_at AS sold_at,
@@ -21,7 +26,15 @@ const LISTING_SELECT = `
 		assets.category AS asset_category,
 		assets.owner_id AS asset_owner_id,
 		sellers.full_name AS seller_name,
-		buyers.full_name AS buyer_name
+		buyers.full_name AS buyer_name,
+		(
+			SELECT MAX(amount) FROM auction_bids
+			WHERE auction_bids.listing_id = marketplace_listings.id AND auction_bids.status = 'held'
+		) AS current_bid,
+		(
+			SELECT COUNT(*) FROM auction_bids
+			WHERE auction_bids.listing_id = marketplace_listings.id
+		) AS bid_count
 	FROM marketplace_listings
 	JOIN assets ON assets.id = marketplace_listings.asset_id
 	JOIN users AS sellers ON sellers.id = marketplace_listings.seller_id
@@ -49,6 +62,13 @@ function mapListingRow(row) {
 		price: row.price,
 		description: row.description,
 		status: row.status,
+		startingPrice: row.starting_price,
+		reservePrice: row.reserve_price,
+		minBidIncrement: row.min_bid_increment,
+		endsAt: row.ends_at,
+		shareCount: row.share_count,
+		currentBid: row.current_bid,
+		bidCount: row.bid_count,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		soldAt: row.sold_at,
@@ -60,11 +80,38 @@ function mapListingRow(row) {
 	};
 }
 
-async function createListing({ assetId, sellerId, listingType, price, description }, client = defaultClient) {
+async function createListing(
+	{
+		assetId,
+		sellerId,
+		listingType,
+		price,
+		description,
+		startingPrice,
+		reservePrice,
+		minBidIncrement,
+		endsAt,
+		shareCount,
+	},
+	client = defaultClient
+) {
 	const result = await client.run(
-		`INSERT INTO marketplace_listings (asset_id, seller_id, listing_type, price, description, updated_at)
-		 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-		[assetId, sellerId, listingType, price, description || null]
+		`INSERT INTO marketplace_listings (
+			asset_id, seller_id, listing_type, price, description,
+			starting_price, reserve_price, min_bid_increment, ends_at, share_count, updated_at
+		 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		[
+			assetId,
+			sellerId,
+			listingType,
+			price,
+			description || null,
+			startingPrice ?? null,
+			reservePrice ?? null,
+			minBidIncrement ?? null,
+			endsAt ?? null,
+			shareCount ?? null,
+		]
 	);
 
 	const row = await client.get(`${LISTING_SELECT} WHERE marketplace_listings.id = ?`, [result.lastID]);
@@ -77,7 +124,7 @@ async function createListing({ assetId, sellerId, listingType, price, descriptio
  * all applied in SQL so the client never has to download the full table.
  */
 async function getActiveListings(
-	{ search, minPrice, maxPrice, category, sort = 'newest', limit = 20, offset = 0 } = {},
+	{ search, minPrice, maxPrice, category, listingType, sort = 'newest', limit = 20, offset = 0 } = {},
 	client = defaultClient
 ) {
 	const conditions = ["marketplace_listings.status = 'active'"];
@@ -86,6 +133,11 @@ async function getActiveListings(
 	if (search) {
 		conditions.push('LOWER(assets.title) LIKE ?');
 		params.push(`%${String(search).toLowerCase()}%`);
+	}
+
+	if (listingType) {
+		conditions.push('marketplace_listings.listing_type = ?');
+		params.push(listingType);
 	}
 
 	if (minPrice != null) {
@@ -132,13 +184,51 @@ async function getListingById(id, client = defaultClient) {
 	return mapListingRow(row);
 }
 
+/**
+ * An active sale or auction listing for the asset. Fractional listings are
+ * excluded because several co-owners may each be offering their own shares at
+ * the same time.
+ */
 async function getActiveListingByAssetId(assetId, client = defaultClient) {
 	const row = await client.get(
-		`${LISTING_SELECT} WHERE marketplace_listings.asset_id = ? AND marketplace_listings.status = 'active' LIMIT 1`,
+		`${LISTING_SELECT}
+		 WHERE marketplace_listings.asset_id = ?
+		   AND marketplace_listings.status = 'active'
+		   AND marketplace_listings.listing_type IN ('sale', 'auction')
+		 LIMIT 1`,
 		[assetId]
 	);
 
 	return mapListingRow(row);
+}
+
+async function getActiveFractionalListing(assetId, sellerId, client = defaultClient) {
+	const row = await client.get(
+		`${LISTING_SELECT}
+		 WHERE marketplace_listings.asset_id = ?
+		   AND marketplace_listings.seller_id = ?
+		   AND marketplace_listings.status = 'active'
+		   AND marketplace_listings.listing_type = 'fractional'
+		 LIMIT 1`,
+		[assetId, sellerId]
+	);
+
+	return mapListingRow(row);
+}
+
+/**
+ * Ends a listing without a sale — an auction that drew no bids, or whose best
+ * bid never reached the reserve.
+ */
+async function closeListing(id, client = defaultClient) {
+	await client.run(
+		`UPDATE marketplace_listings
+		 SET status = 'closed', updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		[id]
+	);
+
+	return getListingById(id, client);
 }
 
 async function getListingsBySellerId(sellerId, client = defaultClient) {
@@ -247,13 +337,20 @@ async function getOwnedAssetsWithListingState(userId, client = defaultClient) {
 			assets.category AS category,
 			assets.created_at AS created_at,
 			active_listings.id AS active_listing_id,
+			fractional_assets.total_shares AS total_shares,
+			holdings.shares AS my_shares,
 			asset_hashes.sha256_hash AS sha256_hash,
 			asset_hashes.phash AS phash,
 			latest_reports.status AS verification_status,
 			latest_reports.created_at AS verification_created_at
 		 FROM assets
 		 LEFT JOIN marketplace_listings AS active_listings
-			ON active_listings.asset_id = assets.id AND active_listings.status = 'active'
+			ON active_listings.asset_id = assets.id
+			AND active_listings.status = 'active'
+			AND active_listings.listing_type IN ('sale', 'auction')
+		 LEFT JOIN fractional_assets ON fractional_assets.asset_id = assets.id
+		 LEFT JOIN fractional_ownership AS holdings
+			ON holdings.asset_id = assets.id AND holdings.user_id = assets.owner_id
 		 LEFT JOIN asset_hashes ON asset_hashes.asset_id = assets.id
 		 LEFT JOIN (
 			-- SQLite picks the row holding MAX(created_at) for the bare columns
@@ -273,6 +370,8 @@ async function getOwnedAssetsWithListingState(userId, client = defaultClient) {
 		category: row.category,
 		createdAt: row.created_at,
 		activeListingId: row.active_listing_id,
+		totalShares: row.total_shares,
+		myShares: row.my_shares,
 		sha256Hash: row.sha256_hash,
 		phash: row.phash,
 		verificationStatus: row.verification_status,
@@ -310,9 +409,11 @@ module.exports = {
 	getActiveListings,
 	getListingById,
 	getActiveListingByAssetId,
+	getActiveFractionalListing,
 	getListingsBySellerId,
 	updateListing,
 	softDeleteListing,
+	closeListing,
 	claimListingForBuyer,
 	getTradesByUserId,
 	getOwnedAssetsWithListingState,

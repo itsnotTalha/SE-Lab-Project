@@ -1,17 +1,25 @@
 const { withTransaction } = require('../../database/database');
 const assetRepository = require('../../repositories/assetRepository');
+const auctionRepository = require('../../repositories/auctionRepository');
 const marketplaceRepository = require('../../repositories/marketplaceRepository');
 const ownershipRepository = require('../../repositories/ownershipRepository');
 const walletRepository = require('../../repositories/walletRepository');
 const blockchainRepository = require('../../repositories/blockchainRepository');
 const ownershipService = require('../ownership/ownershipService');
+const auctionService = require('./auctionService');
+const fractionalService = require('./fractionalService');
 
-// Fixed-price sale is the only listing type that can actually be fulfilled.
-// Auctions and rentals are in the roadmap but nothing implements bidding or
-// rental terms yet, so they are rejected rather than allowed to create
-// listings no buyer could ever complete.
-const SUPPORTED_LISTING_TYPES = new Set(['sale']);
-const PLANNED_LISTING_TYPES = new Set(['auction', 'rent']);
+// The three ways an asset can be offered, per the Marketplace with Fractional
+// Ownership module: a fixed-price sale, an auction with bidding, or a block of
+// shares in an asset that has been split.
+const SUPPORTED_LISTING_TYPES = new Set(['sale', 'auction', 'fractional']);
+
+// Rent appears in the original API sketch but not in the project proposal, and
+// nothing implements rental terms, so it is rejected rather than allowed to
+// create listings no one could fulfil.
+const PLANNED_LISTING_TYPES = new Set(['rent']);
+
+const WHOLE_ASSET_LISTING_TYPES = new Set(['sale', 'auction']);
 
 // A seller may move a listing back off the market, but only the purchase flow
 // is allowed to mark something sold.
@@ -79,7 +87,7 @@ function validateListingType(listingType) {
 		throw badRequest(`${listingType} listings are not available yet — use a fixed-price sale listing`);
 	}
 
-	throw badRequest('listingType must be sale');
+	throw badRequest(`listingType must be one of ${[...SUPPORTED_LISTING_TYPES].join(', ')}`);
 }
 
 async function assertOwnsAsset(assetId, userId) {
@@ -132,18 +140,43 @@ async function assertAssetIsListable(assetId) {
 	return report;
 }
 
-async function createListing(userId, { assetId, listingType, price, description }) {
+async function createListing(userId, payload) {
+	const { assetId, listingType, price, description } = payload;
 	const numericAssetId = parsePositiveInteger(assetId, 'assetId');
 	const validatedType = validateListingType(listingType);
-	const numericPrice = parsePrice(price);
 
-	await assertOwnsAsset(numericAssetId, userId);
 	await assertAssetIsListable(numericAssetId);
 
-	const existingListing = await marketplaceRepository.getActiveListingByAssetId(numericAssetId);
+	let typeFields;
 
-	if (existingListing) {
-		throw badRequest('This asset already has an active listing', 409);
+	if (validatedType === 'fractional') {
+		// A share offer is made by a shareholder, who may no longer be the
+		// asset's owner of record, so ownership of the whole asset is not
+		// required — holding the shares is.
+		const asset = await assetRepository.getAssetById(numericAssetId);
+
+		if (!asset) {
+			throw badRequest('Asset not found', 404);
+		}
+
+		typeFields = await fractionalService.buildFractionalFields(userId, numericAssetId, {
+			shareCount: payload.shareCount,
+			price,
+		});
+	} else {
+		await assertOwnsAsset(numericAssetId, userId);
+		await fractionalService.assertWholeAssetSaleAllowed(numericAssetId, userId);
+
+		const existingListing = await marketplaceRepository.getActiveListingByAssetId(numericAssetId);
+
+		if (existingListing) {
+			throw badRequest('This asset already has an active listing', 409);
+		}
+
+		typeFields =
+			validatedType === 'auction'
+				? auctionService.buildAuctionFields(payload)
+				: { price: parsePrice(price) };
 	}
 
 	try {
@@ -151,21 +184,26 @@ async function createListing(userId, { assetId, listingType, price, description 
 			assetId: numericAssetId,
 			sellerId: userId,
 			listingType: validatedType,
-			price: numericPrice,
 			description: description ? String(description).trim() : null,
+			...typeFields,
 		});
 	} catch (error) {
-		// The unique index is the real guard against two simultaneous requests
-		// both passing the check above.
+		// The unique indexes are the real guard against two simultaneous
+		// requests both passing the checks above.
 		if (String(error.message).includes('UNIQUE constraint failed')) {
-			throw badRequest('This asset already has an active listing', 409);
+			throw badRequest(
+				validatedType === 'fractional'
+					? 'You already have an active share offer for this asset'
+					: 'This asset already has an active listing',
+				409
+			);
 		}
 
 		throw error;
 	}
 }
 
-function parseListingQuery({ search, minPrice, maxPrice, category, sort, page, limit } = {}) {
+function parseListingQuery({ search, minPrice, maxPrice, category, listingType, sort, page, limit } = {}) {
 	const parsedLimit = limit == null ? DEFAULT_PAGE_SIZE : Number(limit);
 	const parsedPage = page == null ? 1 : Number(page);
 
@@ -196,11 +234,16 @@ function parseListingQuery({ search, minPrice, maxPrice, category, sort, page, l
 		throw badRequest(`sort must be one of ${[...SORT_OPTIONS].join(', ')}`);
 	}
 
+	if (listingType && !SUPPORTED_LISTING_TYPES.has(listingType)) {
+		throw badRequest(`listingType must be one of ${[...SUPPORTED_LISTING_TYPES].join(', ')}`);
+	}
+
 	return {
 		search: search ? String(search).trim() : null,
 		minPrice: parsedMinPrice,
 		maxPrice: parsedMaxPrice,
 		category: category ? String(category).trim() : null,
+		listingType: listingType || null,
 		sort: sort || 'newest',
 		limit: parsedLimit,
 		offset: (parsedPage - 1) * parsedLimit,
@@ -209,6 +252,10 @@ function parseListingQuery({ search, minPrice, maxPrice, category, sort, page, l
 }
 
 async function getListings(query) {
+	// Auctions that have run out of time are settled before anything is shown,
+	// so a finished auction is never presented as still open.
+	await auctionService.settleExpiredAuctions();
+
 	const parsedQuery = parseListingQuery(query);
 	const { listings, total } = await marketplaceRepository.getActiveListings(parsedQuery);
 
@@ -234,22 +281,39 @@ async function getMyListings(userId) {
  */
 async function getListingById(id) {
 	const numericId = parsePositiveInteger(id, 'listing id');
+
+	// Settle first, so opening a finished auction shows its result rather than
+	// a countdown that has already run out.
+	await auctionService.settleExpiredAuctions();
+
 	const listing = await marketplaceRepository.getListingById(numericId);
 
 	if (!listing) {
 		throw badRequest('Listing not found', 404);
 	}
 
-	const [verification, hashes, metadata, ownershipHistory, blocks] = await Promise.all([
+	const [verification, hashes, metadata, ownershipHistory, blocks, bids, shares] = await Promise.all([
 		marketplaceRepository.getLatestVerificationReportByAssetId(listing.assetId),
 		assetRepository.getAssetHashByAssetId(listing.assetId),
 		assetRepository.getAssetMetadataByAssetId(listing.assetId),
 		ownershipRepository.getHistoryByAssetId(listing.assetId),
 		blockchainRepository.getBlocksByAssetId(listing.assetId),
+		listing.listingType === 'auction' ? auctionRepository.getBidsByListingId(numericId) : [],
+		fractionalService.getShares(listing.assetId),
 	]);
 
 	return {
 		...listing,
+		bids,
+		minimumBid:
+			listing.listingType === 'auction' && listing.status === 'active'
+				? auctionService.minimumAcceptableBid(
+						listing,
+						bids.find((bid) => bid.status === 'held') || null
+					)
+				: null,
+		fractional: shares.fractional,
+		holdings: shares.holdings,
 		verification,
 		hashes: hashes
 			? {
@@ -279,6 +343,20 @@ async function updateListing(userId, id, { price, status, description }) {
 		throw badRequest(`A listing that is already ${listing.status} can no longer be changed`, 409);
 	}
 
+	// Moving the goalposts once people have committed money to a bid would not
+	// be fair, so an auction's terms are fixed as soon as it has a live bid.
+	if (listing.listingType === 'auction') {
+		const heldBids = await auctionRepository.getHeldBids(numericId);
+
+		if (heldBids.length > 0) {
+			throw badRequest('An auction with live bids can no longer be changed', 409);
+		}
+
+		if (price != null) {
+			throw badRequest('Use startingPrice when creating an auction; its price cannot be edited', 409);
+		}
+	}
+
 	if (status != null && !SELLER_UPDATABLE_STATUSES.has(status)) {
 		throw badRequest(
 			status === 'sold'
@@ -299,8 +377,16 @@ async function deleteListing(userId, id) {
 	const numericId = parsePositiveInteger(id, 'listing id');
 	const listing = await getListingOwnedByUserOrThrow(numericId, userId);
 
-	if (listing.status === 'sold') {
-		throw badRequest('A sold listing cannot be removed', 409);
+	if (listing.status !== 'active') {
+		throw badRequest(`A listing that is already ${listing.status} cannot be removed`, 409);
+	}
+
+	if (listing.listingType === 'auction') {
+		const heldBids = await auctionRepository.getHeldBids(numericId);
+
+		if (heldBids.length > 0) {
+			throw badRequest('An auction with live bids cannot be removed', 409);
+		}
 	}
 
 	return marketplaceRepository.softDeleteListing(numericId);
@@ -323,6 +409,16 @@ async function purchaseListing(buyerId, id) {
 
 		if (!listing) {
 			throw badRequest('Listing not found', 404);
+		}
+
+		if (listing.listingType === 'auction') {
+			throw badRequest('This is an auction — place a bid instead of buying outright', 409);
+		}
+
+		// A share offer moves shares rather than the whole asset, so it has its
+		// own settlement path.
+		if (listing.listingType === 'fractional') {
+			return fractionalService.purchaseShares(buyerId, numericId, client);
 		}
 
 		if (listing.sellerId === buyerId) {
@@ -437,6 +533,8 @@ async function getListableAssets(userId) {
 
 	return assets.map((asset) => {
 		const status = asset.verificationStatus ? String(asset.verificationStatus).toLowerCase() : null;
+		const isFractionalized = asset.totalShares != null;
+		const holdsEveryShare = isFractionalized && asset.myShares === asset.totalShares;
 
 		let listable = true;
 		let reason = null;
@@ -450,9 +548,19 @@ async function getListableAssets(userId) {
 		} else if (REQUIRE_VERIFIED_LISTINGS && status !== 'original') {
 			listable = false;
 			reason = 'Not verified yet';
+		} else if (isFractionalized && !holdsEveryShare) {
+			listable = false;
+			reason = 'Split into shares held by other owners — sell shares instead';
 		}
 
-		return { ...asset, listable, reason };
+		return {
+			...asset,
+			listable,
+			reason,
+			fractionalized: isFractionalized,
+			// Splitting is only offered for an asset that is whole and unlisted.
+			canFractionalize: !isFractionalized && !asset.activeListingId,
+		};
 	});
 }
 
@@ -466,4 +574,12 @@ module.exports = {
 	purchaseListing,
 	getTrades,
 	getListableAssets,
+	// Auctions
+	placeBid: auctionService.placeBid,
+	getBids: auctionService.getBids,
+	cancelAuction: auctionService.cancelAuction,
+	settleExpiredAuctions: auctionService.settleExpiredAuctions,
+	// Fractional ownership
+	fractionalizeAsset: fractionalService.fractionalizeAsset,
+	getShares: fractionalService.getShares,
 };

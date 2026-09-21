@@ -1,14 +1,14 @@
 const walletRepository = require('../../repositories/walletRepository');
 
-const CREDIT_TYPES = new Set(['deposit', 'sale']);
-const DEBIT_TYPES = new Set(['withdrawal', 'purchase']);
+const CREDIT_TYPES = new Set(['deposit', 'sale', 'bid_release']);
+const DEBIT_TYPES = new Set(['withdrawal', 'purchase', 'bid_hold']);
 
-// "purchase" and "sale" rows record a completed marketplace settlement, so
-// they are written by the marketplace service inside the settlement
-// transaction and are not accepted from this endpoint. Otherwise any user
-// could credit themselves a sale that never happened.
+// These rows record what the marketplace did: a completed settlement, or funds
+// committed to and returned from an auction bid. They are written by the
+// marketplace inside its own transactions and are not accepted from this
+// endpoint, or any user could credit themselves a sale that never happened.
 const USER_SUBMITTABLE_TYPES = new Set(['deposit', 'withdrawal']);
-const SETTLEMENT_ONLY_TYPES = new Set(['purchase', 'sale']);
+const SETTLEMENT_ONLY_TYPES = new Set(['purchase', 'sale', 'bid_hold', 'bid_release']);
 
 const MAX_TRANSACTION_AMOUNT = 1_000_000;
 

@@ -2,13 +2,18 @@ const express = require('express');
 
 const {
 	buyListing,
+	cancelAuction,
 	createListing,
 	deleteListing,
+	fractionalizeAsset,
+	getBids,
 	getListableAssets,
 	getListingById,
 	getListings,
 	getMyListings,
+	getShares,
 	getTrades,
+	placeBid,
 	updateListing,
 } = require('../controllers/marketplace/marketplaceController');
 const { authenticateToken } = require('../middleware/auth');
@@ -28,5 +33,14 @@ router.get('/listings/:id', authenticateToken, getListingById);
 router.patch('/listings/:id', authenticateToken, updateListing);
 router.delete('/listings/:id', authenticateToken, deleteListing);
 router.post('/listings/:id/buy', authenticateToken, buyListing);
+
+// Auctions
+router.post('/listings/:id/bids', authenticateToken, placeBid);
+router.get('/listings/:id/bids', authenticateToken, getBids);
+router.post('/listings/:id/cancel', authenticateToken, cancelAuction);
+
+// Fractional ownership
+router.post('/assets/:assetId/fractionalize', authenticateToken, fractionalizeAsset);
+router.get('/assets/:assetId/shares', authenticateToken, getShares);
 
 module.exports = router;
