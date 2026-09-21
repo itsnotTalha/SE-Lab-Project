@@ -125,12 +125,17 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   asset_id INTEGER NOT NULL,
   seller_id INTEGER NOT NULL,
+  buyer_id INTEGER,
   listing_type TEXT,
   price REAL,
+  description TEXT,
   status TEXT DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  sold_at DATETIME,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE,
-  FOREIGN KEY(seller_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY(seller_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- ownership_history table
@@ -191,5 +196,10 @@ CREATE INDEX IF NOT EXISTS idx_verification_reports_asset_id ON verification_rep
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_asset_id ON blockchain_blocks(asset_id);
 CREATE INDEX IF NOT EXISTS idx_blockchain_blocks_block_index ON blockchain_blocks(block_index);
 CREATE INDEX IF NOT EXISTS idx_marketplace_listings_status ON marketplace_listings(status);
+CREATE INDEX IF NOT EXISTS idx_marketplace_listings_seller_id ON marketplace_listings(seller_id);
+-- Indexes that depend on columns added after the first release live in
+-- migrations/001_marketplace_settlement.js, because this file also runs
+-- against databases whose marketplace_listings table predates those columns.
 CREATE INDEX IF NOT EXISTS idx_ownership_history_asset_id ON ownership_history(asset_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
