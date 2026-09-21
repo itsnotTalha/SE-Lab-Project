@@ -11,6 +11,8 @@ router.get('/', controller.getDocuments);
 router.get('/:id/content', controller.getDocumentContent);
 router.get('/:id/ocr', controller.getOcrResult);
 router.post('/:id/ocr', controller.processOcr);
+router.post('/:id/verify', controller.verifyDocument);
+router.get('/:id/report', controller.getVerificationHistory);
 router.get('/:id', controller.getDocument);
 router.delete('/:id', controller.deleteDocument);
 
