@@ -145,6 +145,74 @@ async function saveOcrResult(id, ownerId, { text, confidence, pageCount, languag
 	});
 }
 
+function mapVerificationRow(row) {
+	if (!row) return null;
+	let report = {};
+	try {
+		report = row.report_json ? JSON.parse(row.report_json) : {};
+	} catch {
+		report = {};
+	}
+	return {
+		id: row.id,
+		documentId: row.document_id,
+		documentName: row.document_name,
+		referenceDocumentId: row.reference_document_id,
+		referenceDocumentName: row.reference_document_name,
+		semanticHashMatch: row.semantic_hash_match == null ? null : Boolean(row.semantic_hash_match),
+		similarityScore: row.similarity_score,
+		status: row.status,
+		report,
+		createdAt: row.created_at,
+	};
+}
+
+const OWNED_DOCUMENT_VERIFICATION_SELECT = `
+	SELECT dv.*, d.original_name AS document_name, rd.original_name AS reference_document_name
+	FROM document_verifications dv
+	JOIN documents d ON d.id = dv.document_id AND d.owner_id = dv.user_id
+	JOIN documents rd ON rd.id = dv.reference_document_id AND rd.owner_id = dv.user_id`;
+
+async function createDocumentVerification({
+	userId,
+	documentId,
+	referenceDocumentId,
+	semanticHashMatch,
+	similarityScore,
+	status,
+	report,
+}) {
+	const result = await run(
+		`INSERT INTO document_verifications
+		 (user_id, document_id, reference_document_id, semantic_hash_match, similarity_score, status, report_json)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		[
+			userId,
+			documentId,
+			referenceDocumentId,
+			semanticHashMatch == null ? null : semanticHashMatch ? 1 : 0,
+			similarityScore,
+			status,
+			JSON.stringify(report || {}),
+		]
+	);
+	return mapVerificationRow(await get(`${OWNED_DOCUMENT_VERIFICATION_SELECT}
+		WHERE dv.id = ? AND dv.user_id = ? LIMIT 1`, [result.lastID, userId]));
+}
+
+async function getLatestDocumentVerification(documentId, userId) {
+	return mapVerificationRow(await get(`${OWNED_DOCUMENT_VERIFICATION_SELECT}
+		WHERE dv.document_id = ? AND dv.user_id = ?
+		ORDER BY dv.created_at DESC, dv.id DESC LIMIT 1`, [documentId, userId]));
+}
+
+async function getDocumentVerificationHistory(documentId, userId) {
+	const rows = await all(`${OWNED_DOCUMENT_VERIFICATION_SELECT}
+		WHERE dv.document_id = ? AND dv.user_id = ?
+		ORDER BY dv.created_at DESC, dv.id DESC`, [documentId, userId]);
+	return rows.map(mapVerificationRow);
+}
+
 async function deleteDocument(id, ownerId) {
 	return run('DELETE FROM documents WHERE id = ? AND owner_id = ?', [id, ownerId]);
 }
@@ -155,5 +223,8 @@ module.exports = {
 	getDocumentByIdAndOwnerId,
 	setOcrStatus,
 	saveOcrResult,
+	createDocumentVerification,
+	getLatestDocumentVerification,
+	getDocumentVerificationHistory,
 	deleteDocument,
 };
