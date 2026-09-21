@@ -1,5 +1,6 @@
 const { asyncHandler } = require('../../middleware/asyncHandler');
 const documentService = require('../../services/document/documentService');
+const documentVerificationService = require('../../services/verification/documentVerificationService');
 
 const uploadDocument = asyncHandler(async (req, res) => {
 	const document = await documentService.uploadDocument(req.user.id, req.file);
@@ -22,6 +23,16 @@ const processOcr = asyncHandler(async (req, res) => {
 	res.json({ success: true, message: 'OCR processing finished', document: await documentService.processOcr(req.user.id, req.params.id) });
 });
 
+const verifyDocument = asyncHandler(async (req, res) => {
+	const verification = await documentVerificationService.verifyDocument(req.user.id, req.params.id, req.body);
+	res.status(201).json({ success: true, message: 'Document verification completed', verification });
+});
+
+const getVerificationHistory = asyncHandler(async (req, res) => {
+	const history = await documentVerificationService.getVerificationHistory(req.user.id, req.params.id);
+	res.json({ success: true, history });
+});
+
 const getDocumentContent = asyncHandler(async (req, res) => {
 	const content = await documentService.getDocumentContent(req.user.id, req.params.id);
 	res.type(content.document.mimeType);
@@ -35,4 +46,14 @@ const deleteDocument = asyncHandler(async (req, res) => {
 	res.status(204).send();
 });
 
-module.exports = { uploadDocument, getDocuments, getDocument, getOcrResult, processOcr, getDocumentContent, deleteDocument };
+module.exports = {
+	uploadDocument,
+	getDocuments,
+	getDocument,
+	getOcrResult,
+	processOcr,
+	verifyDocument,
+	getVerificationHistory,
+	getDocumentContent,
+	deleteDocument,
+};
