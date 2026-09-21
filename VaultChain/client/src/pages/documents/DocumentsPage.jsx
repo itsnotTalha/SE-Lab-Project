@@ -1,7 +1,8 @@
-import { AlertCircle, CheckCircle2, Eye, FileSearch, FileText, Plus, Search, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, FileCheck2, FileSearch, FileText, Plus, Search, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import DocumentPreviewModal from '../../components/documents/DocumentPreviewModal';
+import DocumentVerificationModal from '../../components/documents/DocumentVerificationModal';
 import OcrResultModal from '../../components/documents/OcrResultModal';
 import UploadDocumentModal from '../../components/documents/UploadDocumentModal';
 import Button from '../../components/ui/Button';
@@ -31,6 +32,7 @@ export default function DocumentsPage() {
 	const [uploadOpen, setUploadOpen] = useState(false);
 	const [preview, setPreview] = useState(null);
 	const [ocrDocument, setOcrDocument] = useState(null);
+	const [verificationDocument, setVerificationDocument] = useState(null);
 
 	const load = useCallback(async () => {
 		setLoading(true);
@@ -83,11 +85,12 @@ export default function DocumentsPage() {
 				<span className="document-item__icon"><FileText size={20}/></span>
 				<div className="document-item__identity"><strong>{document.originalName}</strong><span>{document.reference} · {fileSize(document.fileSize)} · {document.mimeType === 'application/pdf' ? `${document.pageCount || '—'} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'Image'}</span><small>Uploaded {new Date(document.createdAt).toLocaleString()}</small>{document.matchedOcrText ? <p className="document-match"><FileSearch size={12}/> Matched OCR text · …{document.ocrSnippet}…</p> : null}</div>
 				<StatusBadge tone={TONES[document.ocrStatus] || 'neutral'}>OCR {document.ocrStatus}</StatusBadge>
-				<div className="document-item__actions"><Button size="sm" variant="ghost" icon={Eye} onClick={() => setPreview(document)}>Preview</Button><Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button><Button size="sm" variant="danger" icon={Trash2} onClick={() => remove(document)}>Delete</Button></div>
+				<div className="document-item__actions"><Button size="sm" variant="ghost" icon={Eye} onClick={() => setPreview(document)}>Preview</Button><Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button><Button size="sm" variant="ghost" icon={FileCheck2} onClick={() => setVerificationDocument(document)}>Verify</Button><Button size="sm" variant="danger" icon={Trash2} onClick={() => remove(document)}>Delete</Button></div>
 			</article>)}</div>}
 		</SectionCard>
 		<UploadDocumentModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={(document) => { setSuccess(`${document.originalName} uploaded successfully.`); load(); }}/>
 		{preview ? <DocumentPreviewModal document={preview} onClose={() => setPreview(null)}/> : null}
 		{ocrDocument ? <OcrResultModal document={ocrDocument} onClose={() => setOcrDocument(null)} onUpdated={load}/> : null}
+		{verificationDocument ? <DocumentVerificationModal document={verificationDocument} documents={documents} open onClose={() => setVerificationDocument(null)} onVerified={(verification) => setSuccess(`Verification completed: ${verification.status}.`)}/> : null}
 	</>;
 }
