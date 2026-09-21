@@ -255,14 +255,16 @@ export default function WalletPage() {
 
 				<section style={pageStyles.card}>
 					<h2 style={pageStyles.panelTitle}>Add transaction</h2>
+					<p style={pageStyles.muted}>
+						Purchases and sales are recorded automatically when a marketplace trade completes, so they cannot be
+						added here.
+					</p>
 					<form onSubmit={handleSubmit} style={pageStyles.form}>
 						<label style={pageStyles.field}>
 							<span style={pageStyles.label}>Type</span>
 							<select value={type} onChange={(event) => setType(event.target.value)} style={pageStyles.input}>
 								<option value="deposit">Deposit</option>
 								<option value="withdrawal">Withdrawal</option>
-								<option value="purchase">Purchase</option>
-								<option value="sale">Sale</option>
 							</select>
 						</label>
 						<label style={pageStyles.field}>

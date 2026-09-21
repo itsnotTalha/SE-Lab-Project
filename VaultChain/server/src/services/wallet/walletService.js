@@ -3,6 +3,15 @@ const walletRepository = require('../../repositories/walletRepository');
 const CREDIT_TYPES = new Set(['deposit', 'sale']);
 const DEBIT_TYPES = new Set(['withdrawal', 'purchase']);
 
+// "purchase" and "sale" rows record a completed marketplace settlement, so
+// they are written by the marketplace service inside the settlement
+// transaction and are not accepted from this endpoint. Otherwise any user
+// could credit themselves a sale that never happened.
+const USER_SUBMITTABLE_TYPES = new Set(['deposit', 'withdrawal']);
+const SETTLEMENT_ONLY_TYPES = new Set(['purchase', 'sale']);
+
+const MAX_TRANSACTION_AMOUNT = 1_000_000;
+
 async function getWalletOrThrow(userId) {
 	const wallet = await walletRepository.getWalletByUserId(userId);
 
@@ -26,8 +35,14 @@ async function getTransactions(userId) {
 }
 
 function validateTransactionInput({ type, amount }) {
-	if (!CREDIT_TYPES.has(type) && !DEBIT_TYPES.has(type)) {
-		const error = new Error('Type must be one of deposit, withdrawal, purchase, sale');
+	if (SETTLEMENT_ONLY_TYPES.has(type)) {
+		const error = new Error(`${type} entries are recorded by the marketplace when a sale completes`);
+		error.status = 403;
+		throw error;
+	}
+
+	if (!USER_SUBMITTABLE_TYPES.has(type)) {
+		const error = new Error('Type must be one of deposit, withdrawal');
 		error.status = 400;
 		throw error;
 	}
@@ -40,7 +55,14 @@ function validateTransactionInput({ type, amount }) {
 		throw error;
 	}
 
-	return numericAmount;
+	if (numericAmount > MAX_TRANSACTION_AMOUNT) {
+		const error = new Error(`Amount must not be greater than ${MAX_TRANSACTION_AMOUNT}`);
+		error.status = 400;
+		throw error;
+	}
+
+	// Balances are held to two decimal places.
+	return Math.round(numericAmount * 100) / 100;
 }
 
 async function addTransaction(userId, { type, amount, description, referenceId }) {
