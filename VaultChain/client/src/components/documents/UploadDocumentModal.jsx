@@ -30,7 +30,9 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 		try {
 			const document = await documentService.upload(file);
 			setResult(document);
-			onUploaded?.(document);
+			if (!document.duplicateInfo?.isDuplicate) {
+				onUploaded?.(document);
+			}
 		} catch (uploadError) { setError(uploadError.message); }
 		finally { setLoading(false); }
 	}
@@ -50,9 +52,15 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 		}
 	}
 
+	const isDuplicate = Boolean(result?.duplicateInfo?.isDuplicate);
+
 	return (
 		<div className="modal" role="dialog" aria-modal="true" aria-labelledby="document-upload-title">
-			<button className="modal__backdrop" aria-label="Close" onClick={loading ? undefined : onClose} />
+			<button
+				className="modal__backdrop"
+				aria-label="Close"
+				onClick={loading || deleting ? undefined : isDuplicate ? handleDeleteDuplicate : onClose}
+			/>
 			<section className="modal__card">
 				<header className="modal__header">
 					<div>
@@ -62,7 +70,13 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 							<p>Store the file, fingerprint it, and extract available text.</p>
 						</div>
 					</div>
-					<button type="button" className="icon-button" onClick={onClose} disabled={loading} aria-label="Close">
+					<button
+						type="button"
+						className="icon-button"
+						onClick={isDuplicate ? handleDeleteDuplicate : onClose}
+						disabled={loading || deleting}
+						aria-label="Close"
+					>
 						<X size={18} />
 					</button>
 				</header>
@@ -146,23 +160,16 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 						)}
 
 						{result.duplicateInfo?.isDuplicate ? (
-							<div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
+							<div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
 								<Button
 									type="button"
 									variant="danger"
 									icon={Trash2}
 									disabled={deleting}
 									onClick={handleDeleteDuplicate}
+									style={{ width: '100%', justifyContent: 'center' }}
 								>
 									{deleting ? 'Deleting duplicate…' : 'Delete duplicate'}
-								</Button>
-								<Button
-									type="button"
-									variant="primary"
-									disabled={deleting}
-									onClick={onClose}
-								>
-									Done (Keep duplicate)
 								</Button>
 							</div>
 						) : (
