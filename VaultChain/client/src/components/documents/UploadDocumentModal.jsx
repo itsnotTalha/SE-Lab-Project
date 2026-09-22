@@ -69,7 +69,7 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 									padding: '12px 14px',
 									borderRadius: '10px',
 									border: '1px solid var(--border)',
-									background: result.duplicateInfo.status === 'original' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+									background: result.duplicateInfo.status === 'original' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
 									textAlign: 'left',
 									fontSize: '0.74rem',
 									display: 'grid',
@@ -77,31 +77,55 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 								}}
 							>
 								<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-									<strong style={{ color: result.duplicateInfo.status === 'original' ? '#10b981' : '#f59e0b' }}>
+									<strong style={{ color: result.duplicateInfo.status === 'original' ? '#10b981' : '#f59e0b', fontSize: '0.8rem' }}>
 										{result.duplicateInfo.matchType === 'exact_sha256'
-											? '⚠️ Exact Duplicate File'
+											? '⚠️ Duplicate Document (Exact Match)'
 											: result.duplicateInfo.status === 'original'
-											? 'ℹ️ Identical Content'
-											: 'ℹ️ Modified Document Detected'}
+											? 'ℹ️ Duplicate Document (100% Text Match)'
+											: 'ℹ️ Similar / Modified Document Found'}
 									</strong>
-									<span style={{ fontWeight: 700, color: result.duplicateInfo.status === 'original' ? '#10b981' : '#f59e0b' }}>
-										{result.duplicateInfo.status === 'original' ? '100% Original' : `${result.duplicateInfo.modificationPercent}% Modified`}
+									<span
+										style={{
+											padding: '2px 8px',
+											borderRadius: '6px',
+											fontWeight: 700,
+											fontSize: '0.68rem',
+											background: result.duplicateInfo.status === 'original' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+											color: result.duplicateInfo.status === 'original' ? '#10b981' : '#f59e0b',
+										}}
+									>
+										{result.duplicateInfo.status === 'original' ? 'Original (100%)' : `${result.duplicateInfo.modificationPercent}% Modified`}
 									</span>
 								</div>
 
-								<p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+								<div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '4px', fontSize: '0.7rem' }}>
+									<span>
+										<strong>SHA-256:</strong>{' '}
+										<span style={{ color: result.duplicateInfo.sha256Match ? '#10b981' : 'var(--text-muted)' }}>
+											{result.duplicateInfo.sha256Match ? 'Identical (Match)' : 'Different'}
+										</span>
+									</span>
+									<span>
+										<strong>OCR Match:</strong>{' '}
+										<span style={{ color: result.duplicateInfo.ocrMatchPercent >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+											{result.duplicateInfo.ocrMatchPercent}%
+										</span>
+									</span>
+								</div>
+
+								<p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
 									{result.duplicateInfo.message}
 								</p>
 
 								{result.duplicateInfo.matchedDocument ? (
-									<div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
-										Existing match: <strong>{result.duplicateInfo.matchedDocument.originalName}</strong> ({result.duplicateInfo.matchedDocument.reference})
+									<div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border)', paddingTop: '5px' }}>
+										Matched with existing: <strong>{result.duplicateInfo.matchedDocument.originalName}</strong> ({result.duplicateInfo.matchedDocument.reference})
 									</div>
 								) : null}
 							</div>
 						) : (
 							<div style={{ margin: '12px 0 6px', fontSize: '0.7rem', color: '#10b981' }}>
-								✨ Unique document — no duplicate found.
+								✨ Unique document — no duplicate found on server.
 							</div>
 						)}
 

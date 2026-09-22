@@ -74,13 +74,17 @@ async function processOcr(userId, id) {
 		const matchedDoc = duplicateMatch.matchedDocument;
 		const refName = matchedDoc.originalName;
 		const refCode = `DOC-${String(matchedDoc.id).padStart(6, '0')}`;
+		const ocrPercent = duplicateMatch.ocrMatchPercent ?? Math.round(duplicateMatch.similarityScore * 100);
+		const modPercent = duplicateMatch.modificationPercent ?? Math.round((1 - duplicateMatch.similarityScore) * 100);
+		const isExactSha = duplicateMatch.matchType === 'exact_sha256';
+
 		let msg = '';
-		if (duplicateMatch.matchType === 'exact_sha256') {
-			msg = `Same document already exists! SHA-256 hash is identical (${updatedDoc.sha256Hash}). 100% Original duplicate of "${refName}".`;
-		} else if (duplicateMatch.matchType === 'semantic_ocr') {
-			msg = `Identical text content detected! 100% Original content match with "${refName}".`;
+		if (isExactSha) {
+			msg = `Duplicate document detected! Both SHA-256 hash and OCR text are 100% identical to "${refName}".`;
+		} else if (duplicateMatch.matchType === 'semantic_ocr' || ocrPercent === 100) {
+			msg = `Duplicate content detected! OCR text matches 100% with "${refName}" (SHA-256 is different).`;
 		} else {
-			msg = `Document is ${duplicateMatch.modificationPercent}% modified compared to "${refName}" (Similarity: ${Math.round(duplicateMatch.similarityScore * 100)}%).`;
+			msg = `Duplicate / similar content detected: OCR text matches ${ocrPercent}% with "${refName}" (${modPercent}% modified).`;
 		}
 
 		duplicateInfo = {
@@ -88,7 +92,9 @@ async function processOcr(userId, id) {
 			matchType: duplicateMatch.matchType,
 			status: duplicateMatch.status,
 			similarityScore: duplicateMatch.similarityScore,
-			modificationPercent: duplicateMatch.modificationPercent,
+			ocrMatchPercent: ocrPercent,
+			modificationPercent: modPercent,
+			sha256Match: isExactSha,
 			matchedDocument: {
 				id: matchedDoc.id,
 				originalName: refName,

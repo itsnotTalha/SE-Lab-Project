@@ -126,7 +126,7 @@ async function findDocumentBySha256(ownerId, sha256Hash, excludeId = null) {
 }
 
 async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn) {
-	// 1. Check exact binary SHA-256 match
+	// 1. Check exact binary SHA-256 match across all documents
 	if (currentDoc.sha256Hash) {
 		const exactSha = await findDocumentBySha256(ownerId, currentDoc.sha256Hash, excludeId);
 		if (exactSha) {
@@ -135,15 +135,16 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 				matchedDocument: exactSha,
 				similarityScore: 1,
 				status: 'original',
+				ocrMatchPercent: 100,
 				modificationPercent: 0,
 			};
 		}
 	}
 
-	// 2. Check OCR semantic hash or token similarity
+	// 2. Check OCR semantic hash or token similarity across ALL documents on server
 	if (currentDoc.extractedText) {
 		const candidates = (await all(
-			`${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.id != ? AND o.extracted_text IS NOT NULL ORDER BY d.id DESC LIMIT 30`,
+			`${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.id != ? AND o.extracted_text IS NOT NULL ORDER BY d.id DESC`,
 			[ownerId, excludeId]
 		)).map(mapRow);
 
@@ -155,12 +156,13 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 					matchedDocument: cand,
 					similarityScore: 1,
 					status: 'original',
+					ocrMatchPercent: 100,
 					modificationPercent: 0,
 				};
 			}
 		}
 
-		// Check token similarity if compareText function is provided
+		// Check token similarity against every document
 		if (typeof compareTextFn === 'function') {
 			let bestMatch = null;
 			let highestScore = 0;
@@ -173,13 +175,15 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 				}
 			}
 
-			if (bestMatch && highestScore >= 0.25) {
+			if (bestMatch && highestScore > 0.05) {
+				const ocrPercent = Math.round(highestScore * 100);
 				const modPercent = Math.round((1 - highestScore) * 100);
 				return {
 					matchType: 'modified',
 					matchedDocument: bestMatch,
 					similarityScore: highestScore,
 					status: highestScore >= 0.98 ? 'original' : 'modified',
+					ocrMatchPercent: ocrPercent,
 					modificationPercent: modPercent,
 				};
 			}
