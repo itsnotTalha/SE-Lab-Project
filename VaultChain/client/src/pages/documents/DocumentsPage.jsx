@@ -46,6 +46,14 @@ export default function DocumentsPage() {
 	}, [search, type, ocrStatus]);
 	useEffect(() => { load(); }, [load]);
 
+	// Automatically trigger search as user types with a 300ms debounce
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setSearch(draftSearch.trim());
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [draftSearch]);
+
 	function submitSearch(event) {
 		event.preventDefault();
 		setSearch(draftSearch.trim());

@@ -76,9 +76,14 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 	const conditions = ['d.owner_id = ?'];
 	const filterParams = [ownerId];
 	if (search) {
-		conditions.push(`(instr(lower(d.original_name), lower(?)) > 0
-			OR instr(lower(COALESCE(o.extracted_text, '')), lower(?)) > 0)`);
-		filterParams.push(search, search);
+		conditions.push(`(
+			instr(lower(d.original_name), lower(?)) > 0
+			OR instr(lower(d.sha256_hash), lower(?)) > 0
+			OR instr(lower('DOC-' || printf('%06d', d.id)), lower(?)) > 0
+			OR instr(CAST(d.id AS TEXT), ?) > 0
+			OR instr(lower(COALESCE(o.extracted_text, '')), lower(?)) > 0
+		)`);
+		filterParams.push(search, search, search, search, search);
 	}
 	if (type === 'pdf') conditions.push("d.mime_type = 'application/pdf'");
 	if (type === 'image') conditions.push("d.mime_type LIKE 'image/%'");
@@ -163,6 +168,8 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 		}
 
 		// Check token similarity against every document
+		// Only classify as duplicate/modified if similarity is high (>= 70%)
+		// Below 70% similarity represents different documents that happen to share common words
 		if (typeof compareTextFn === 'function') {
 			let bestMatch = null;
 			let highestScore = 0;
@@ -175,7 +182,7 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 				}
 			}
 
-			if (bestMatch && highestScore > 0.05) {
+			if (bestMatch && highestScore >= 0.70) {
 				const ocrPercent = Math.round(highestScore * 100);
 				const modPercent = Math.round((1 - highestScore) * 100);
 				return {
