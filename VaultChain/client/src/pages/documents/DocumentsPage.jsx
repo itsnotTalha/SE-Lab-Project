@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import DocumentPreviewModal from '../../components/documents/DocumentPreviewModal';
 import DocumentVerificationModal from '../../components/documents/DocumentVerificationModal';
 import OcrResultModal from '../../components/documents/OcrResultModal';
+import DocumentThumbnail from '../../components/documents/DocumentThumbnail';
 import UploadDocumentModal from '../../components/documents/UploadDocumentModal';
 import Button from '../../components/ui/Button';
 import CopyButton from '../../components/ui/CopyButton';
@@ -84,7 +85,7 @@ export default function DocumentsPage() {
 				{filtered ? <Button size="sm" variant="ghost" icon={X} onClick={clearFilters}>Reset</Button> : null}
 			</div>
 			{loading ? <LoadingState label="Searching documents"/> : documents.length === 0 ? <EmptyState icon={FileText} title={filtered ? 'No matching documents' : 'No documents yet'} description={filtered ? 'Try a different search or reset the document filters.' : 'Upload a supported document to store its fingerprint and extract available text.'} action={filtered ? <Button size="sm" onClick={clearFilters}>Reset filters</Button> : <Button size="sm" icon={Plus} onClick={() => setUploadOpen(true)}>Upload document</Button>}/> : <div className="document-list">{documents.map((document) => <article className="document-item" key={document.id}>
-				<span className="document-item__icon"><FileText size={20}/></span>
+				<DocumentThumbnail document={document} size={46} />
 				<div className="document-item__identity">
 					<strong>{document.originalName}</strong>
 					<span>{document.reference} · {fileSize(document.fileSize)} · {document.mimeType === 'application/pdf' ? `${document.pageCount || '—'} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'Image'}</span>

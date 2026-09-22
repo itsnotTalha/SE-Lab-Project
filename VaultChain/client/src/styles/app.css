@@ -35,8 +35,10 @@
 
 .document-list { display:grid; gap:8px; }
 .document-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:16px; }.document-search { min-width:280px; flex:1; display:flex; gap:7px; }.document-search .search-field { min-width:0; }.document-search .search-field button { width:25px; height:25px; flex:0 0 auto; display:grid; place-items:center; padding:0; color:var(--text-muted); border:0; border-radius:6px; background:transparent; cursor:pointer; }.document-filter { min-height:40px; display:flex; align-items:center; gap:7px; padding:0 9px 0 11px; color:var(--text-muted); border:1px solid var(--border); border-radius:10px; background:rgba(10,14,23,.7); font-size:.62rem; }.document-filter select { color:var(--text-secondary); border:0; outline:0; background:#0a0e17; font-size:.68rem; }
-.document-item { display:grid; grid-template-columns:42px minmax(0,1fr) auto auto; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-radius:12px; background:rgba(5,7,13,.3); }
-.document-item__icon { width:42px; height:42px; display:grid; place-items:center; color:var(--primary); background:var(--primary-soft); border-radius:11px; }
+.document-item { display:grid; grid-template-columns:46px minmax(0,1fr) auto auto; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-radius:12px; background:rgba(5,7,13,.3); }
+.document-item__icon { width:46px; height:46px; display:grid; place-items:center; color:var(--primary); background:var(--primary-soft); border-radius:11px; }
+.document-thumbnail { width:46px; height:46px; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:#05080e; display:grid; place-items:center; flex-shrink:0; }
+.document-thumbnail__img { width:100%; height:100%; object-fit:cover; display:block; }
 .document-item__identity { min-width:0; }.document-item__identity strong,.document-item__identity span,.document-item__identity small { display:block; }.document-item__identity strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.77rem; }.document-item__identity span { margin-top:5px; color:var(--text-secondary); font-size:.61rem; }.document-item__identity small { margin-top:4px; color:var(--text-muted); font-size:.57rem; }
 .document-item__hash-row { display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap; }
 .document-item__hash-label { font-size:.62rem; font-weight:600; color:var(--text-muted); }
