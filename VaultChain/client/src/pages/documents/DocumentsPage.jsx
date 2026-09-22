@@ -93,7 +93,19 @@ export default function DocumentsPage() {
 				{filtered ? <Button size="sm" variant="ghost" icon={X} onClick={clearFilters}>Reset</Button> : null}
 			</div>
 			{loading ? <LoadingState label="Searching documents"/> : documents.length === 0 ? <EmptyState icon={FileText} title={filtered ? 'No matching documents' : 'No documents yet'} description={filtered ? 'Try a different search or reset the document filters.' : 'Upload a supported document to store its fingerprint and extract available text.'} action={filtered ? <Button size="sm" onClick={clearFilters}>Reset filters</Button> : <Button size="sm" icon={Plus} onClick={() => setUploadOpen(true)}>Upload document</Button>}/> : <div className="document-list">{documents.map((document) => <article className="document-item" key={document.id}>
-				<DocumentThumbnail document={document} size={46} />
+				<div className="document-item__preview-col">
+					<DocumentThumbnail document={document} size={50} />
+					<Button
+						size="sm"
+						variant="ghost"
+						icon={Eye}
+						className="document-item__preview-btn"
+						onClick={() => setPreview(document)}
+						title="Open full document preview"
+					>
+						Preview
+					</Button>
+				</div>
 				<div className="document-item__identity">
 					<strong>{document.originalName}</strong>
 					<span>{document.reference} · {fileSize(document.fileSize)} · {document.mimeType === 'application/pdf' ? `${document.pageCount || '—'} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'Image'}</span>
@@ -119,7 +131,7 @@ export default function DocumentsPage() {
 					{document.matchedOcrText ? <p className="document-match"><FileSearch size={12}/> Matched OCR text · …{document.ocrSnippet}…</p> : null}
 				</div>
 				<StatusBadge tone={TONES[document.ocrStatus] || 'neutral'}>OCR {document.ocrStatus}</StatusBadge>
-				<div className="document-item__actions"><Button size="sm" variant="ghost" icon={Eye} onClick={() => setPreview(document)}>Preview</Button><Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button><Button size="sm" variant="ghost" icon={FileCheck2} onClick={() => setVerificationDocument(document)}>Verify</Button><Button size="sm" variant="danger" icon={Trash2} onClick={() => remove(document)}>Delete</Button></div>
+				<div className="document-item__actions"><Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button><Button size="sm" variant="ghost" icon={FileCheck2} onClick={() => setVerificationDocument(document)}>Verify</Button><Button size="sm" variant="danger" icon={Trash2} onClick={() => remove(document)}>Delete</Button></div>
 			</article>)}</div>}
 		</SectionCard>
 		<UploadDocumentModal
