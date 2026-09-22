@@ -40,6 +40,10 @@ function compareText(targetText, referenceText) {
 }
 
 function compareOcr(target, reference) {
+	const targetSha256 = target.sha256Hash || target.sha256 || null;
+	const referenceSha256 = reference.sha256Hash || reference.sha256 || null;
+	const sha256Match = Boolean(targetSha256 && referenceSha256 && targetSha256.toLowerCase() === referenceSha256.toLowerCase());
+
 	const ocrReady = target.ocrStatus === 'completed' && reference.ocrStatus === 'completed';
 	if (!ocrReady || !target.semanticHash || !reference.semanticHash) {
 		return {
@@ -47,8 +51,13 @@ function compareOcr(target, reference) {
 			similarityScore: null,
 			status: 'unknown',
 			report: {
-				algorithm: 'normalized_sha256_and_token_jaccard',
-				reason: 'Both documents must complete OCR with extracted text before verification.',
+				algorithm: 'sha256_binary_and_normalized_token_jaccard',
+				sha256Match,
+				targetSha256,
+				referenceSha256,
+				reason: sha256Match
+					? 'Files are binary identical (SHA-256 matches), but OCR is pending/incomplete on one or both documents.'
+					: 'Both documents must complete OCR with extracted text before full text comparison.',
 				targetOcrStatus: target.ocrStatus,
 				referenceOcrStatus: reference.ocrStatus,
 			},
@@ -57,13 +66,22 @@ function compareOcr(target, reference) {
 
 	const textComparison = compareText(target.extractedText, reference.extractedText);
 	const semanticHashMatch = target.semanticHash === reference.semanticHash;
+	const reason = sha256Match
+		? 'Exact byte-for-byte binary match (identical SHA-256 hash).'
+		: semanticHashMatch
+			? 'Normalized OCR text is identical (same content, but different binary encoding/metadata).'
+			: 'Normalized OCR text differs from the reference document.';
+
 	return {
 		semanticHashMatch,
 		similarityScore: semanticHashMatch ? 1 : textComparison.similarityScore,
 		status: semanticHashMatch ? 'original' : 'modified',
 		report: {
-			algorithm: 'normalized_sha256_and_token_jaccard',
-			reason: semanticHashMatch ? 'Normalized OCR text is identical.' : 'Normalized OCR text differs from the reference document.',
+			algorithm: 'sha256_binary_and_normalized_token_jaccard',
+			sha256Match,
+			targetSha256,
+			referenceSha256,
+			reason,
 			tokenComparison: textComparison,
 		},
 	};
