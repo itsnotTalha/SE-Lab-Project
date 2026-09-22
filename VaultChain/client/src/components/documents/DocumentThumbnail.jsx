@@ -1,12 +1,13 @@
-import { FileText } from 'lucide-react';
+import { FileText, ZoomIn } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { documentService } from '../../services/documentService';
 
-export default function DocumentThumbnail({ document, size = 48, className = '' }) {
+export default function DocumentThumbnail({ document, size = 46, className = '', enableZoom = true }) {
 	const [url, setUrl] = useState('');
 	const [loaded, setLoaded] = useState(false);
 	const [failed, setFailed] = useState(false);
+	const [isHovered, setIsHovered] = useState(false);
 
 	useEffect(() => {
 		let active = true;
@@ -51,6 +52,9 @@ export default function DocumentThumbnail({ document, size = 48, className = '' 
 		<div
 			className={`document-thumbnail ${loaded ? 'is-loaded' : 'is-loading'} ${className}`}
 			style={{ width: `${size}px`, height: `${size}px` }}
+			onMouseEnter={() => enableZoom && setIsHovered(true)}
+			onMouseLeave={() => enableZoom && setIsHovered(false)}
+			title="Hover over front page to zoom"
 		>
 			<img
 				src={url}
@@ -59,6 +63,22 @@ export default function DocumentThumbnail({ document, size = 48, className = '' 
 				onError={() => setFailed(true)}
 				className="document-thumbnail__img"
 			/>
+
+			{enableZoom && isHovered && loaded ? (
+				<div className="document-thumbnail__zoom-popover" role="tooltip">
+					<div className="document-thumbnail__zoom-header">
+						<span><ZoomIn size={12} /> Front page</span>
+						<small>{document?.pageCount ? `${document.pageCount} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'Preview'}</small>
+					</div>
+					<div className="document-thumbnail__zoom-card">
+						<img
+							src={url}
+							alt={`Zoomed front page of ${document?.originalName}`}
+							className="document-thumbnail__zoom-img"
+						/>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }
