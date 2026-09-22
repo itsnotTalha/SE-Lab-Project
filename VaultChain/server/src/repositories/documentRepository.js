@@ -124,14 +124,14 @@ async function getDocumentByIdAndOwnerId(id, ownerId) {
 
 async function findDocumentBySha256(ownerId, sha256Hash, excludeId = null) {
 	const sql = excludeId
-		? `${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.sha256_hash = ? AND d.id != ? ORDER BY d.id DESC LIMIT 1`
-		: `${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.sha256_hash = ? ORDER BY d.id DESC LIMIT 1`;
-	const params = excludeId ? [ownerId, sha256Hash, excludeId] : [ownerId, sha256Hash];
+		? `${DOCUMENT_SELECT} WHERE d.sha256_hash = ? AND d.id != ? ORDER BY (d.owner_id = ?) DESC, d.id DESC LIMIT 1`
+		: `${DOCUMENT_SELECT} WHERE d.sha256_hash = ? ORDER BY (d.owner_id = ?) DESC, d.id DESC LIMIT 1`;
+	const params = excludeId ? [sha256Hash, excludeId, ownerId] : [sha256Hash, ownerId];
 	return mapRow(await get(sql, params));
 }
 
 async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn) {
-	// 1. Check exact binary SHA-256 match across all documents
+	// 1. Check exact binary SHA-256 match across all documents on server
 	if (currentDoc.sha256Hash) {
 		const exactSha = await findDocumentBySha256(ownerId, currentDoc.sha256Hash, excludeId);
 		if (exactSha) {
@@ -149,8 +149,8 @@ async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn
 	// 2. Check OCR semantic hash or token similarity across ALL documents on server
 	if (currentDoc.extractedText) {
 		const candidates = (await all(
-			`${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.id != ? AND o.extracted_text IS NOT NULL ORDER BY d.id DESC`,
-			[ownerId, excludeId]
+			`${DOCUMENT_SELECT} WHERE d.id != ? AND o.extracted_text IS NOT NULL ORDER BY (d.owner_id = ?) DESC, d.id DESC`,
+			[excludeId, ownerId]
 		)).map(mapRow);
 
 		// Check exact semantic hash (same text, re-saved file)
