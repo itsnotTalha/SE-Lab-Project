@@ -41,6 +41,7 @@ function publicDocument(document, includeOcr = false) {
 		ocrProcessedAt: document.ocrProcessedAt,
 		createdAt: document.createdAt,
 		contentUrl: `/api/documents/${document.id}/content`,
+		duplicateRole: document.duplicateRole || null,
 		...(includeOcr ? { extractedText: document.extractedText || '', ocrError: document.ocrError || null, confidence: document.confidence } : {}),
 	};
 }

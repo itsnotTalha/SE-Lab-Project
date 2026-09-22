@@ -36,13 +36,22 @@ export default function DocumentThumbnail({ document, size = 46, className = '',
 		};
 	}, [document?.id]);
 
+	const dotElement = document?.duplicateRole ? (
+		<span
+			className={`document-thumbnail__dot document-thumbnail__dot--${document.duplicateRole === 'original' ? 'green' : 'red'}`}
+			title={document.duplicateRole === 'original' ? 'Original document (First uploaded)' : 'Duplicate document (Uploaded copy)'}
+			aria-label={document.duplicateRole === 'original' ? 'Original document' : 'Duplicate document'}
+		/>
+	) : null;
+
 	if (failed || !url) {
 		return (
 			<span
 				className={`document-item__icon ${className}`}
-				style={{ width: `${size}px`, height: `${size}px` }}
+				style={{ width: `${size}px`, height: `${size}px`, position: 'relative' }}
 				aria-label={document?.originalName || 'Document'}
 			>
+				{dotElement}
 				<FileText size={Math.round(size * 0.45)} />
 			</span>
 		);
@@ -51,11 +60,12 @@ export default function DocumentThumbnail({ document, size = 46, className = '',
 	return (
 		<div
 			className={`document-thumbnail ${loaded ? 'is-loaded' : 'is-loading'} ${className}`}
-			style={{ width: `${size}px`, height: `${size}px` }}
+			style={{ width: `${size}px`, height: `${size}px`, position: 'relative' }}
 			onMouseEnter={() => enableZoom && setIsHovered(true)}
 			onMouseLeave={() => enableZoom && setIsHovered(false)}
-			title="Hover over front page to zoom"
+			title={document?.duplicateRole === 'original' ? 'Original document (First uploaded) · Hover to zoom' : document?.duplicateRole === 'duplicate' ? 'Duplicate document · Hover to zoom' : 'Hover over front page to zoom'}
 		>
+			{dotElement}
 			<img
 				src={url}
 				alt={`Front page of ${document?.originalName || 'document'}`}

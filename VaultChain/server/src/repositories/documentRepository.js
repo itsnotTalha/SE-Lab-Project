@@ -72,6 +72,53 @@ async function createDocument({ ownerId, originalName, storedName, filePath, mim
 	return getDocumentByIdAndOwnerId(result.lastID, ownerId);
 }
 
+async function computeDuplicateRoles() {
+	const rows = await all(`
+		SELECT d.id, d.sha256_hash, o.semantic_hash
+		FROM documents d
+		LEFT JOIN ocr_results o ON o.document_id = d.id
+		ORDER BY d.id ASC
+	`);
+
+	const shaMap = new Map();
+	const semanticMap = new Map();
+
+	for (const row of rows) {
+		if (row.sha256_hash) {
+			if (!shaMap.has(row.sha256_hash)) shaMap.set(row.sha256_hash, []);
+			shaMap.get(row.sha256_hash).push(row.id);
+		}
+		if (row.semantic_hash) {
+			if (!semanticMap.has(row.semantic_hash)) semanticMap.set(row.semantic_hash, []);
+			semanticMap.get(row.semantic_hash).push(row.id);
+		}
+	}
+
+	const roleMap = new Map();
+
+	for (const ids of shaMap.values()) {
+		if (ids.length > 1) {
+			roleMap.set(ids[0], 'original');
+			for (let i = 1; i < ids.length; i++) {
+				roleMap.set(ids[i], 'duplicate');
+			}
+		}
+	}
+
+	for (const ids of semanticMap.values()) {
+		if (ids.length > 1) {
+			if (!roleMap.has(ids[0])) roleMap.set(ids[0], 'original');
+			for (let i = 1; i < ids.length; i++) {
+				if (!roleMap.has(ids[i])) {
+					roleMap.set(ids[i], 'duplicate');
+				}
+			}
+		}
+	}
+
+	return roleMap;
+}
+
 async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatus = '' } = {}) {
 	const conditions = ['d.owner_id = ?'];
 	const filterParams = [ownerId];
@@ -99,18 +146,23 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 			ELSE NULL END AS ocr_snippet`
 		: 'NULL AS ocr_snippet';
 	const snippetParams = search ? [search, search] : [];
-	const rows = await all(
-		`SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
-			d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
-			d.ocr_error, d.ocr_processed_at, d.created_at, ${snippet}
-		 FROM documents d
-		 LEFT JOIN ocr_results o ON o.document_id = d.id
-		 WHERE ${conditions.join(' AND ')}
-		 ORDER BY d.created_at DESC, d.id DESC`,
-		[...snippetParams, ...filterParams]
-	);
+	const [rows, duplicateRoles] = await Promise.all([
+		all(
+			`SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
+				d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
+				d.ocr_error, d.ocr_processed_at, d.created_at, ${snippet}
+			 FROM documents d
+			 LEFT JOIN ocr_results o ON o.document_id = d.id
+			 WHERE ${conditions.join(' AND ')}
+			 ORDER BY d.created_at DESC, d.id DESC`,
+			[...snippetParams, ...filterParams]
+		),
+		computeDuplicateRoles(),
+	]);
+
 	return rows.map((row) => ({
 		...mapRow(row, false),
+		duplicateRole: duplicateRoles.get(row.id) || null,
 		...(search ? {
 			matchedOcrText: Boolean(row.ocr_snippet),
 			ocrSnippet: row.ocr_snippet?.trim() || null,

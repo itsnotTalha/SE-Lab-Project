@@ -104,14 +104,40 @@ export default function DocumentsPage() {
 							<code className="document-item__hash-code">{document.sha256}</code>
 						</div>
 					) : null}
-					<small>Uploaded {formatDhakaTime(document.createdAt)}</small>
+					<div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+						<small style={{ marginTop: 0 }}>Uploaded {formatDhakaTime(document.createdAt)}</small>
+						{document.duplicateRole === 'original' ? (
+							<span style={{ fontSize: '0.66rem', color: '#10b981', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Original document (First uploaded)">
+								<span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981' }} /> Original file
+							</span>
+						) : document.duplicateRole === 'duplicate' ? (
+							<span style={{ fontSize: '0.66rem', color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }} title="Duplicate document (Uploaded copy)">
+								<span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 5px #ef4444' }} /> Duplicate file
+							</span>
+						) : null}
+					</div>
 					{document.matchedOcrText ? <p className="document-match"><FileSearch size={12}/> Matched OCR text · …{document.ocrSnippet}…</p> : null}
 				</div>
 				<StatusBadge tone={TONES[document.ocrStatus] || 'neutral'}>OCR {document.ocrStatus}</StatusBadge>
 				<div className="document-item__actions"><Button size="sm" variant="ghost" icon={Eye} onClick={() => setPreview(document)}>Preview</Button><Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button><Button size="sm" variant="ghost" icon={FileCheck2} onClick={() => setVerificationDocument(document)}>Verify</Button><Button size="sm" variant="danger" icon={Trash2} onClick={() => remove(document)}>Delete</Button></div>
 			</article>)}</div>}
 		</SectionCard>
-		<UploadDocumentModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={(document) => { setSuccess(`${document.originalName} uploaded successfully.`); load(); }}/>
+		<UploadDocumentModal
+			open={uploadOpen}
+			onClose={() => setUploadOpen(false)}
+			onUploaded={(document) => {
+				setSuccess(
+					document.duplicateInfo?.isDuplicate
+						? `Duplicate document “${document.originalName}” kept in library.`
+						: `${document.originalName} uploaded successfully.`
+				);
+				load();
+			}}
+			onDeleted={(document) => {
+				setSuccess(`Duplicate document “${document.originalName}” deleted.`);
+				load();
+			}}
+		/>
 		{preview ? <DocumentPreviewModal document={preview} onClose={() => setPreview(null)}/> : null}
 		{ocrDocument ? <OcrResultModal document={ocrDocument} onClose={() => setOcrDocument(null)} onUpdated={load}/> : null}
 		{verificationDocument ? <DocumentVerificationModal document={verificationDocument} documents={documents} open onClose={() => setVerificationDocument(null)} onVerified={(verification) => setSuccess(`Verification completed: ${verification.status}.`)}/> : null}

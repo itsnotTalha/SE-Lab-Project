@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, FileText, UploadCloud, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, Trash2, UploadCloud, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { documentService } from '../../services/documentService';
@@ -6,16 +6,17 @@ import Button from '../ui/Button';
 
 const ACCEPTED_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
 
-export default function UploadDocumentModal({ open, onClose, onUploaded }) {
+export default function UploadDocumentModal({ open, onClose, onUploaded, onDeleted }) {
 	const inputRef = useRef(null);
 	const [file, setFile] = useState(null);
 	const [loading, setLoading] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
 
 	useEffect(() => {
 		if (!open) return;
-		setFile(null); setError(''); setResult(null); setLoading(false);
+		setFile(null); setError(''); setResult(null); setLoading(false); setDeleting(false);
 	}, [open]);
 
 	if (!open) return null;
@@ -29,9 +30,24 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 		try {
 			const document = await documentService.upload(file);
 			setResult(document);
-			onUploaded(document);
+			onUploaded?.(document);
 		} catch (uploadError) { setError(uploadError.message); }
 		finally { setLoading(false); }
+	}
+
+	async function handleDeleteDuplicate() {
+		if (!result?.id) return;
+		setDeleting(true);
+		setError('');
+		try {
+			await documentService.remove(result.id);
+			onDeleted?.(result);
+			onClose();
+			window.alert('Duplicate document deleted');
+		} catch (err) {
+			setError(err.message || 'Failed to delete duplicate document');
+			setDeleting(false);
+		}
 	}
 
 	return (
@@ -129,7 +145,29 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 							</div>
 						)}
 
-						<Button onClick={onClose} style={{ marginTop: '8px' }}>Done</Button>
+						{result.duplicateInfo?.isDuplicate ? (
+							<div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
+								<Button
+									type="button"
+									variant="danger"
+									icon={Trash2}
+									disabled={deleting}
+									onClick={handleDeleteDuplicate}
+								>
+									{deleting ? 'Deleting duplicate…' : 'Delete duplicate'}
+								</Button>
+								<Button
+									type="button"
+									variant="primary"
+									disabled={deleting}
+									onClick={onClose}
+								>
+									Done (Keep duplicate)
+								</Button>
+							</div>
+						) : (
+							<Button onClick={onClose} style={{ marginTop: '8px' }}>Done</Button>
+						)}
 					</div>
 				) : (
 					<form className="form-grid modal__form" onSubmit={submit}>
