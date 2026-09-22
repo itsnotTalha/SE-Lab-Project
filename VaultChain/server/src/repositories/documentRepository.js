@@ -117,6 +117,78 @@ async function getDocumentByIdAndOwnerId(id, ownerId) {
 	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.id = ? AND d.owner_id = ? LIMIT 1`, [id, ownerId]));
 }
 
+async function findDocumentBySha256(ownerId, sha256Hash, excludeId = null) {
+	const sql = excludeId
+		? `${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.sha256_hash = ? AND d.id != ? ORDER BY d.id DESC LIMIT 1`
+		: `${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.sha256_hash = ? ORDER BY d.id DESC LIMIT 1`;
+	const params = excludeId ? [ownerId, sha256Hash, excludeId] : [ownerId, sha256Hash];
+	return mapRow(await get(sql, params));
+}
+
+async function findSimilarDocument(ownerId, excludeId, currentDoc, compareTextFn) {
+	// 1. Check exact binary SHA-256 match
+	if (currentDoc.sha256Hash) {
+		const exactSha = await findDocumentBySha256(ownerId, currentDoc.sha256Hash, excludeId);
+		if (exactSha) {
+			return {
+				matchType: 'exact_sha256',
+				matchedDocument: exactSha,
+				similarityScore: 1,
+				status: 'original',
+				modificationPercent: 0,
+			};
+		}
+	}
+
+	// 2. Check OCR semantic hash or token similarity
+	if (currentDoc.extractedText) {
+		const candidates = (await all(
+			`${DOCUMENT_SELECT} WHERE d.owner_id = ? AND d.id != ? AND o.extracted_text IS NOT NULL ORDER BY d.id DESC LIMIT 30`,
+			[ownerId, excludeId]
+		)).map(mapRow);
+
+		// Check exact semantic hash (same text, re-saved file)
+		for (const cand of candidates) {
+			if (cand.semanticHash && cand.semanticHash === currentDoc.semanticHash) {
+				return {
+					matchType: 'semantic_ocr',
+					matchedDocument: cand,
+					similarityScore: 1,
+					status: 'original',
+					modificationPercent: 0,
+				};
+			}
+		}
+
+		// Check token similarity if compareText function is provided
+		if (typeof compareTextFn === 'function') {
+			let bestMatch = null;
+			let highestScore = 0;
+			for (const cand of candidates) {
+				const comparison = compareTextFn(currentDoc.extractedText, cand.extractedText);
+				const score = comparison?.similarityScore || 0;
+				if (score > highestScore) {
+					highestScore = score;
+					bestMatch = cand;
+				}
+			}
+
+			if (bestMatch && highestScore >= 0.25) {
+				const modPercent = Math.round((1 - highestScore) * 100);
+				return {
+					matchType: 'modified',
+					matchedDocument: bestMatch,
+					similarityScore: highestScore,
+					status: highestScore >= 0.98 ? 'original' : 'modified',
+					modificationPercent: modPercent,
+				};
+			}
+		}
+	}
+
+	return null;
+}
+
 async function setOcrStatus(id, ownerId, status, error = null) {
 	await run(
 		`UPDATE documents SET ocr_status = ?, ocr_error = ?,
@@ -240,4 +312,6 @@ module.exports = {
 	getLatestDocumentVerification,
 	getDocumentVerificationHistory,
 	deleteDocument,
+	findDocumentBySha256,
+	findSimilarDocument,
 };

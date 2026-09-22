@@ -5,6 +5,7 @@ const { documentUploadDirectory } = require('../../middleware/upload');
 const documentRepository = require('../../repositories/documentRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
 const { extractDocumentText, renderPdfFirstPage } = require('../ocr/ocrService');
+const { compareText } = require('../verification/documentVerificationService');
 
 function httpError(status, message) {
 	const error = new Error(message);
@@ -64,7 +65,44 @@ async function processOcr(userId, id) {
 	} catch (error) {
 		await documentRepository.setOcrStatus(document.id, userId, 'failed', safeOcrError(error));
 	}
-	return publicDocument(await ownedDocument(userId, document.id), true);
+
+	const updatedDoc = await ownedDocument(userId, document.id);
+	const duplicateMatch = await documentRepository.findSimilarDocument(userId, updatedDoc.id, updatedDoc, compareText);
+	let duplicateInfo = null;
+
+	if (duplicateMatch) {
+		const matchedDoc = duplicateMatch.matchedDocument;
+		const refName = matchedDoc.originalName;
+		const refCode = `DOC-${String(matchedDoc.id).padStart(6, '0')}`;
+		let msg = '';
+		if (duplicateMatch.matchType === 'exact_sha256') {
+			msg = `Same document already exists! SHA-256 hash is identical (${updatedDoc.sha256Hash}). 100% Original duplicate of "${refName}".`;
+		} else if (duplicateMatch.matchType === 'semantic_ocr') {
+			msg = `Identical text content detected! 100% Original content match with "${refName}".`;
+		} else {
+			msg = `Document is ${duplicateMatch.modificationPercent}% modified compared to "${refName}" (Similarity: ${Math.round(duplicateMatch.similarityScore * 100)}%).`;
+		}
+
+		duplicateInfo = {
+			isDuplicate: true,
+			matchType: duplicateMatch.matchType,
+			status: duplicateMatch.status,
+			similarityScore: duplicateMatch.similarityScore,
+			modificationPercent: duplicateMatch.modificationPercent,
+			matchedDocument: {
+				id: matchedDoc.id,
+				originalName: refName,
+				reference: refCode,
+				sha256: matchedDoc.sha256Hash,
+			},
+			message: msg,
+		};
+	}
+
+	return {
+		...publicDocument(updatedDoc, true),
+		duplicateInfo,
+	};
 }
 
 async function uploadDocument(userId, file) {
