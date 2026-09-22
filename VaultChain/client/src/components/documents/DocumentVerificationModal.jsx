@@ -5,13 +5,34 @@ import { documentService } from '../../services/documentService';
 import Button from '../ui/Button';
 import VerificationResult from './VerificationResult';
 
-export default function DocumentVerificationModal({ document, documents, open, onClose, onVerified }) {
+export default function DocumentVerificationModal({ document, documents = [], open, onClose, onVerified }) {
+	const [allDocuments, setAllDocuments] = useState(documents || []);
 	const [referenceDocumentId, setReferenceDocumentId] = useState('');
 	const [verification, setVerification] = useState(null);
 	const [history, setHistory] = useState(null);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
-	const references = useMemo(() => documents.filter((candidate) => candidate.id !== document?.id), [document?.id, documents]);
+
+	// Always load the complete, unfiltered list of documents on open so the latest uploaded files appear
+	useEffect(() => {
+		if (!open) return;
+		let active = true;
+		documentService.list()
+			.then((list) => {
+				if (active && Array.isArray(list)) {
+					setAllDocuments(list);
+				}
+			})
+			.catch(() => {});
+		return () => { active = false; };
+	}, [open]);
+
+	const references = useMemo(() => {
+		const pool = allDocuments.length > 0 ? allDocuments : documents;
+		return pool
+			.filter((candidate) => candidate.id !== document?.id)
+			.sort((a, b) => b.id - a.id);
+	}, [document?.id, allDocuments, documents]);
 
 	useEffect(() => {
 		if (!open || !document) return;
