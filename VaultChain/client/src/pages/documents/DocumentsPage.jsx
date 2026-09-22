@@ -89,11 +89,10 @@ export default function DocumentsPage() {
 					<strong>{document.originalName}</strong>
 					<span>{document.reference} · {fileSize(document.fileSize)} · {document.mimeType === 'application/pdf' ? `${document.pageCount || '—'} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'Image'}</span>
 					{document.sha256 ? (
-						<div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-							<small style={{ color: 'var(--text-muted)', fontSize: '0.62rem' }}>
-								SHA: <code style={{ fontSize: '0.62rem', color: 'var(--text-secondary)' }}>{document.sha256.slice(0, 16)}…</code>
-							</small>
+						<div className="document-item__hash-row">
 							<CopyButton value={document.sha256} label="Copy SHA-256" />
+							<span className="document-item__hash-label">SHA-256:</span>
+							<code className="document-item__hash-code">{document.sha256}</code>
 						</div>
 					) : null}
 					<small>Uploaded {formatDhakaTime(document.createdAt)}</small>
