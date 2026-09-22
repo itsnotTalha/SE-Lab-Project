@@ -24,6 +24,19 @@ const DOCUMENT_SELECT = `
 	FROM documents d
 	LEFT JOIN ocr_results o ON o.document_id = d.id`;
 
+function formatUtcIso(value) {
+	if (!value) return null;
+	if (typeof value === 'string') {
+		if (value.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(value)) return value;
+		return `${value.replace(' ', 'T')}Z`;
+	}
+	try {
+		return new Date(value).toISOString();
+	} catch {
+		return value;
+	}
+}
+
 function mapRow(row, includeText = true) {
 	if (!row) return null;
 	return {
@@ -39,8 +52,8 @@ function mapRow(row, includeText = true) {
 		language: row.language,
 		ocrStatus: row.ocr_status,
 		ocrError: row.ocr_error,
-		ocrProcessedAt: row.ocr_processed_at,
-		createdAt: row.created_at,
+		ocrProcessedAt: formatUtcIso(row.ocr_processed_at),
+		createdAt: formatUtcIso(row.created_at),
 		...(includeText ? {
 			extractedText: row.extracted_text,
 			confidence: row.confidence,
@@ -163,7 +176,7 @@ function mapVerificationRow(row) {
 		similarityScore: row.similarity_score,
 		status: row.status,
 		report,
-		createdAt: row.created_at,
+		createdAt: formatUtcIso(row.created_at),
 	};
 }
 

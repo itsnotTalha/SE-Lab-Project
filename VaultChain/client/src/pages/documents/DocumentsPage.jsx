@@ -13,6 +13,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { documentService } from '../../services/documentService';
+import { formatDhakaTime } from '../../utils/date';
 
 const TONES = { completed: 'success', failed: 'warning', processing: 'info', pending: 'info' };
 
@@ -95,7 +96,7 @@ export default function DocumentsPage() {
 							<CopyButton value={document.sha256} label="Copy SHA-256" />
 						</div>
 					) : null}
-					<small>Uploaded {new Date(document.createdAt).toLocaleString()}</small>
+					<small>Uploaded {formatDhakaTime(document.createdAt)}</small>
 					{document.matchedOcrText ? <p className="document-match"><FileSearch size={12}/> Matched OCR text · …{document.ocrSnippet}…</p> : null}
 				</div>
 				<StatusBadge tone={TONES[document.ocrStatus] || 'neutral'}>OCR {document.ocrStatus}</StatusBadge>

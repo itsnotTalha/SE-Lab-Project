@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { documentService } from '../../services/documentService';
 import Button from '../ui/Button';
 import VerificationResult from './VerificationResult';
+import { formatDhakaTime } from '../../utils/date';
 
 export default function DocumentVerificationModal({ document, documents = [], open, onClose, onVerified }) {
 	const [allDocuments, setAllDocuments] = useState(documents || []);
@@ -82,7 +83,7 @@ export default function DocumentVerificationModal({ document, documents = [], op
 					<footer><Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button><Button type="submit" icon={FileCheck2} disabled={loading || references.length === 0}>{loading ? 'Verifying…' : 'Verify'}</Button></footer>
 				</form>}
 				{verification ? <footer><Button variant="secondary" onClick={() => { setVerification(null); setReferenceDocumentId(''); }}>Compare again</Button><Button onClick={onClose}>Done</Button></footer> : null}
-				{history?.length ? <section><h3>Verification history</h3><div className="document-list">{history.map((entry) => <div className="document-item" key={entry.id}><div className="document-item__identity"><strong>{entry.referenceDocumentName}</strong><small>{new Date(entry.createdAt).toLocaleString()}</small></div><VerificationResult verification={entry} compact/></div>)}</div></section> : null}
+				{history?.length ? <section><h3>Verification history</h3><div className="document-list">{history.map((entry) => <div className="document-item" key={entry.id}><div className="document-item__identity"><strong>{entry.referenceDocumentName}</strong><small>{formatDhakaTime(entry.createdAt)}</small></div><VerificationResult verification={entry} compact/></div>)}</div></section> : null}
 			</div>
 		</section>
 	</div>;
