@@ -7,3 +7,12 @@ coverage/
 .DS_Store
 .vscode/
 .idea/
+htr_env/
+__pycache__/
+*.pyc
+server/src/documents/*.pdf
+server/src/uploads/*.png
+server/src/uploads/*.jpg
+server/src/uploads/*.jpeg
+server/src/uploads/*.webp
+!server/src/uploads/.gitkeep

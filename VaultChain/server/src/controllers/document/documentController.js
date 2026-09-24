@@ -3,7 +3,7 @@ const documentService = require('../../services/document/documentService');
 const documentVerificationService = require('../../services/verification/documentVerificationService');
 
 const uploadDocument = asyncHandler(async (req, res) => {
-	const document = await documentService.uploadDocument(req.user.id, req.file);
+	const document = await documentService.uploadDocument(req.user.id, req.file, req.body?.ocrMode || 'printed');
 	res.status(201).json({ success: true, message: 'Document uploaded successfully', document });
 });
 
@@ -20,7 +20,8 @@ const getOcrResult = asyncHandler(async (req, res) => {
 });
 
 const processOcr = asyncHandler(async (req, res) => {
-	res.json({ success: true, message: 'OCR processing finished', document: await documentService.processOcr(req.user.id, req.params.id) });
+	const ocrMode = req.body?.ocrMode || req.body?.mode || 'printed';
+	res.json({ success: true, message: 'OCR processing finished', document: await documentService.processOcr(req.user.id, req.params.id, ocrMode) });
 });
 
 const verifyDocument = asyncHandler(async (req, res) => {

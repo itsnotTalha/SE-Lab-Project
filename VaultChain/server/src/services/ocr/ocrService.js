@@ -86,11 +86,24 @@ async function scannedPdfText(filePath, pageCount) {
 	}
 }
 
-async function extractDocumentText({ filePath, mimeType }) {
+const { extractHandwrittenText } = require('../htr/htrService');
+
+async function extractDocumentText({ filePath, mimeType, mode = 'printed' }) {
+	if (mode === 'handwritten' || mode === 'htr') {
+		if (mimeType !== 'application/pdf') {
+			await validateImage(filePath, mimeType);
+			const result = await extractHandwrittenText({ filePath, mimeType, pageCount: 1 });
+			return { ...result, pageCount: 1, language: 'eng', ocrMode: 'handwritten' };
+		}
+		const pageCount = (await pdfPageCount(filePath)) || 1;
+		const result = await extractHandwrittenText({ filePath, mimeType, pageCount });
+		return { ...result, pageCount, language: 'eng', ocrMode: 'handwritten' };
+	}
+
 	if (mimeType !== 'application/pdf') {
 		await validateImage(filePath, mimeType);
 		const result = await imageText(filePath);
-		return { ...result, pageCount: 1, language: 'eng' };
+		return { ...result, pageCount: 1, language: 'eng', ocrMode: 'printed' };
 	}
 	const pageCount = await pdfPageCount(filePath);
 	let embeddedText = '';
@@ -101,9 +114,10 @@ async function extractDocumentText({ filePath, mimeType }) {
 		embeddedText = '';
 	}
 	if (embeddedText.length >= 10) {
-		return { text: embeddedText, confidence: null, pageCount, language: 'eng' };
+		return { text: embeddedText, confidence: null, pageCount, language: 'eng', ocrMode: 'printed' };
 	}
-	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng' };
+	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng', ocrMode: 'printed' };
 }
 
 module.exports = { extractDocumentText, renderPdfFirstPage };
+

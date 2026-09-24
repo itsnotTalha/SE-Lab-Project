@@ -56,11 +56,11 @@ function safeOcrError(error) {
 	return 'Text extraction failed. You can retry OCR.';
 }
 
-async function processOcr(userId, id) {
+async function processOcr(userId, id, ocrMode = 'printed') {
 	const document = await ownedDocument(userId, id);
 	await documentRepository.setOcrStatus(document.id, userId, 'processing');
 	try {
-		const result = await extractDocumentText({ filePath: contentPath(document), mimeType: document.mimeType });
+		const result = await extractDocumentText({ filePath: contentPath(document), mimeType: document.mimeType, mode: ocrMode });
 		await documentRepository.saveOcrResult(document.id, userId, result);
 	} catch (error) {
 		await documentRepository.setOcrStatus(document.id, userId, 'failed', safeOcrError(error));
@@ -111,7 +111,7 @@ async function processOcr(userId, id) {
 	};
 }
 
-async function uploadDocument(userId, file) {
+async function uploadDocument(userId, file, ocrMode = 'printed') {
 	if (!file) throw httpError(400, 'Document file is required');
 	let document;
 	try {
@@ -128,7 +128,7 @@ async function uploadDocument(userId, file) {
 		await fs.unlink(file.path).catch(() => {});
 		throw error;
 	}
-	return processOcr(userId, document.id);
+	return processOcr(userId, document.id, ocrMode);
 }
 
 function listOptions(query = {}) {

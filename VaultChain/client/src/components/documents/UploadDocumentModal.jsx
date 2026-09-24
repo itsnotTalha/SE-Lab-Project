@@ -9,6 +9,7 @@ const ACCEPTED_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'i
 export default function UploadDocumentModal({ open, onClose, onUploaded, onDeleted }) {
 	const inputRef = useRef(null);
 	const [file, setFile] = useState(null);
+	const [ocrMode, setOcrMode] = useState('printed');
 	const [loading, setLoading] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [error, setError] = useState('');
@@ -16,7 +17,7 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 
 	useEffect(() => {
 		if (!open) return;
-		setFile(null); setError(''); setResult(null); setLoading(false); setDeleting(false);
+		setFile(null); setError(''); setResult(null); setLoading(false); setDeleting(false); setOcrMode('printed');
 	}, [open]);
 
 	if (!open) return null;
@@ -28,7 +29,7 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 		if (file.size > 20 * 1024 * 1024) { setError('Document size must not exceed 20 MB.'); return; }
 		setLoading(true);
 		try {
-			const document = await documentService.upload(file);
+			const document = await documentService.upload(file, ocrMode);
 			setResult(document);
 			if (!document.duplicateInfo?.isDuplicate) {
 				onUploaded?.(document);
@@ -194,10 +195,60 @@ export default function UploadDocumentModal({ open, onClose, onUploaded, onDelet
 							accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
 							onChange={(event) => setFile(event.target.files?.[0] || null)}
 						/>
+
+						<div style={{ display: 'grid', gap: '8px', margin: '4px 0 2px' }}>
+							<label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+								Recognition Mode:
+							</label>
+							<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+								<button
+									type="button"
+									onClick={() => setOcrMode('printed')}
+									style={{
+										padding: '9px 12px',
+										borderRadius: '8px',
+										border: ocrMode === 'printed' ? '2px solid #3b82f6' : '1px solid var(--border)',
+										background: ocrMode === 'printed' ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-secondary)',
+										color: ocrMode === 'printed' ? '#60a5fa' : 'var(--text-secondary)',
+										cursor: 'pointer',
+										textAlign: 'left',
+										display: 'grid',
+										gap: '2px',
+										transition: 'all 0.15s ease',
+									}}
+								>
+									<strong style={{ fontSize: '0.78rem' }}>📄 Standard OCR</strong>
+									<span style={{ fontSize: '0.66rem', opacity: 0.8 }}>Printed text & scanned forms</span>
+								</button>
+
+								<button
+									type="button"
+									onClick={() => setOcrMode('handwritten')}
+									style={{
+										padding: '9px 12px',
+										borderRadius: '8px',
+										border: ocrMode === 'handwritten' ? '2px solid #8b5cf6' : '1px solid var(--border)',
+										background: ocrMode === 'handwritten' ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-secondary)',
+										color: ocrMode === 'handwritten' ? '#a78bfa' : 'var(--text-secondary)',
+										cursor: 'pointer',
+										textAlign: 'left',
+										display: 'grid',
+										gap: '2px',
+										transition: 'all 0.15s ease',
+									}}
+								>
+									<strong style={{ fontSize: '0.78rem' }}>✍️ TrOCR (Handwritten)</strong>
+									<span style={{ fontSize: '0.66rem', opacity: 0.8 }}>Local Apple Silicon MPS</span>
+								</button>
+							</div>
+						</div>
+
 						{error ? <div className="error-banner" role="alert"><AlertCircle size={16} />{error}</div> : null}
 						<footer className="modal__footer">
 							<Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
-							<Button type="submit" icon={UploadCloud} disabled={loading}>{loading ? 'Uploading & extracting…' : 'Upload document'}</Button>
+							<Button type="submit" icon={UploadCloud} disabled={loading}>
+								{loading ? (ocrMode === 'handwritten' ? 'Running TrOCR HTR…' : 'Uploading & extracting…') : 'Upload document'}
+							</Button>
 						</footer>
 					</form>
 				)}

@@ -20,9 +20,10 @@ async function list(filters = {}) {
 	return (await request(`/documents${suffix}`)).documents;
 }
 
-async function upload(file) {
+async function upload(file, ocrMode = 'printed') {
 	const body = new FormData();
 	body.append('file', file);
+	body.append('ocrMode', ocrMode);
 	return (await request('/documents', { method: 'POST', body })).document;
 }
 
@@ -34,8 +35,12 @@ async function getOcr(id) {
 	return (await request(`/documents/${id}/ocr`)).ocr;
 }
 
-async function rerunOcr(id) {
-	return (await request(`/documents/${id}/ocr`, { method: 'POST' })).document;
+async function rerunOcr(id, ocrMode = 'printed') {
+	return (await request(`/documents/${id}/ocr`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ ocrMode }),
+	})).document;
 }
 
 async function verify(id, referenceDocumentId) {
