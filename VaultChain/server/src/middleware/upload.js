@@ -12,8 +12,8 @@ fs.mkdirSync(documentUploadDirectory, { recursive: true });
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-const allowedDocumentMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
-const allowedDocumentExtensions = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
+const allowedDocumentMimeTypes = new Set(['application/pdf']);
+const allowedDocumentExtensions = new Set(['.pdf']);
 
 function createStorage(directory) {
 	return multer.diskStorage({
@@ -44,7 +44,7 @@ function fileFilter(req, file, callback) {
 function documentFileFilter(req, file, callback) {
 	const extension = path.extname(file.originalname).toLowerCase();
 	if (!allowedDocumentMimeTypes.has(file.mimetype) || !allowedDocumentExtensions.has(extension)) {
-		const error = new Error('Only PDF, JPG, JPEG, and PNG documents are allowed');
+		const error = new Error('Only PDF documents are allowed');
 		error.status = 400;
 		callback(error, false);
 		return;

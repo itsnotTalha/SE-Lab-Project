@@ -94,29 +94,30 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 		json: { fullName: 'Other User', email: 'document-other@example.test', password: 'DocumentPass123!' },
 	}), 201);
 
-	assert.equal((await api('/documents', { method: 'POST', form: uploadForm('private.png', 'image/png', OCR_IMAGE) })).status, 401);
+	assert.equal((await api('/documents', { method: 'POST', form: uploadForm('private.pdf', 'application/pdf', digitalPdf('private')) })).status, 401);
 	assert.equal((await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('unsafe.txt', 'text/plain', Buffer.from('not allowed')) })).status, 400);
+	assert.equal((await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('unsafe.png', 'image/png', OCR_IMAGE) })).status, 400);
 
-	const image = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('ocr-image.png', 'image/png', OCR_IMAGE) }), 201).document;
-	assert.equal(image.ocrStatus, 'completed');
-	assert.match(image.sha256, /^[a-f0-9]{64}$/);
-	assert.match(image.extractedText, /System Architecture/i);
-	assert.equal(image.pageCount, 1);
-	assert.doesNotMatch(JSON.stringify(image), /filePath|storedName|ownerId/);
+	const architectureDoc = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('architecture.pdf', 'application/pdf', digitalPdf('System Architecture Overview')) }), 201).document;
+	assert.equal(architectureDoc.ocrStatus, 'completed');
+	assert.match(architectureDoc.sha256, /^[a-f0-9]{64}$/);
+	assert.match(architectureDoc.extractedText, /System Architecture/i);
+	assert.equal(architectureDoc.pageCount, 1);
+	assert.doesNotMatch(JSON.stringify(architectureDoc), /filePath|storedName|ownerId/);
 
 	const pdf = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('digital.pdf', 'application/pdf', digitalPdf('DIGITAL PDF TEXT')) }), 201).document;
 	assert.equal(pdf.ocrStatus, 'completed');
 	assert.match(pdf.extractedText, /DIGITAL PDF TEXT/);
 	assert.equal(pdf.pageCount, 1);
 
-	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('broken.png', 'image/png', Buffer.from('broken image')) }), 201).document;
+	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('broken.pdf', 'application/pdf', Buffer.from('%PDF-1.4 broken content')) }), 201).document;
 	assert.equal(failed.ocrStatus, 'failed');
 	assert.match(failed.ocrError, /retry/i);
 	assert.equal(expectStatus(await api(`/documents/${failed.id}`, { token: owner.token }), 200).document.id, failed.id);
 	assert.equal((await api(`/documents/${failed.id}/content`, { token: owner.token })).status, 200);
 
 	const ownerList = expectStatus(await api('/documents', { token: owner.token }), 200).documents;
-	assert.deepEqual(ownerList.map((document) => document.id), [failed.id, pdf.id, image.id]);
+	assert.deepEqual(ownerList.map((document) => document.id), [failed.id, pdf.id, architectureDoc.id]);
 	assert.equal(ownerList.some((document) => Object.hasOwn(document, 'extractedText')), false);
 	assert.deepEqual(expectStatus(await api('/documents', { token: other.token }), 200).documents, []);
 
@@ -128,7 +129,7 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	const filenameSearch = expectStatus(await api('/documents?search=digital', { token: owner.token }), 200).documents;
 	assert.deepEqual(filenameSearch.map((document) => document.id), [pdf.id]);
 	const ocrSearch = expectStatus(await api('/documents?search=architecture', { token: owner.token }), 200).documents;
-	assert.deepEqual(ocrSearch.map((document) => document.id), [image.id]);
+	assert.deepEqual(ocrSearch.map((document) => document.id), [architectureDoc.id]);
 	assert.equal(ocrSearch[0].matchedOcrText, true);
 	assert.match(ocrSearch[0].ocrSnippet, /System Architecture/i);
 	assert.equal(Object.hasOwn(ocrSearch[0], 'extractedText'), false);
@@ -139,36 +140,34 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.deepEqual(otherSearch.map((document) => document.id), [otherDocument.id]);
 	assert.match(otherSearch[0].ocrSnippet, /ELECTRICITY INVOICE/);
 
-	assert.deepEqual(expectStatus(await api('/documents?type=pdf', { token: owner.token }), 200).documents.map((document) => document.id), [pdf.id]);
-	assert.deepEqual(expectStatus(await api('/documents?type=image', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id, image.id]);
+	assert.deepEqual(expectStatus(await api('/documents?type=pdf', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id, pdf.id, architectureDoc.id]);
 	assert.deepEqual(expectStatus(await api('/documents?ocrStatus=failed', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id]);
-	assert.deepEqual(expectStatus(await api('/documents?ocrStatus=completed', { token: owner.token }), 200).documents.map((document) => document.id), [pdf.id, image.id]);
+	assert.deepEqual(expectStatus(await api('/documents?ocrStatus=completed', { token: owner.token }), 200).documents.map((document) => document.id), [pdf.id, architectureDoc.id]);
 
 	const ownerDashboard = expectStatus(await api('/dashboard/summary', { token: owner.token }), 200).summary;
 	const otherDashboard = expectStatus(await api('/dashboard/summary', { token: other.token }), 200).summary;
 	assert.equal(ownerDashboard.totalDocuments, 3);
-	assert.deepEqual(ownerDashboard.recentDocuments.map((document) => document.id), [failed.id, pdf.id, image.id]);
+	assert.deepEqual(ownerDashboard.recentDocuments.map((document) => document.id), [failed.id, pdf.id, architectureDoc.id]);
 	assert.equal(ownerDashboard.recentDocuments.some((document) => document.id === otherDocument.id), false);
 	assert.equal(otherDashboard.totalDocuments, 1);
 	assert.deepEqual(otherDashboard.recentDocuments.map((document) => document.id), [otherDocument.id]);
 	assert.equal(JSON.stringify(ownerDashboard).includes('private-electricity'), false);
 
-	for (const endpoint of [`/documents/${image.id}`, `/documents/${image.id}/content`, `/documents/${image.id}/ocr`]) {
+	for (const endpoint of [`/documents/${architectureDoc.id}`, `/documents/${architectureDoc.id}/content`, `/documents/${architectureDoc.id}/ocr`]) {
 		assert.equal((await api(endpoint, { token: other.token })).status, 404);
 	}
-	assert.equal((await api(`/documents/${image.id}/ocr`, { token: other.token, method: 'POST' })).status, 404);
-	assert.equal((await api(`/documents/${image.id}`, { token: other.token, method: 'DELETE' })).status, 404);
+	assert.equal((await api(`/documents/${architectureDoc.id}/ocr`, { token: other.token, method: 'POST' })).status, 404);
+	assert.equal((await api(`/documents/${architectureDoc.id}`, { token: other.token, method: 'DELETE' })).status, 404);
 
-	const content = await api(`/documents/${image.id}/content`, { token: owner.token });
+	const content = await api(`/documents/${architectureDoc.id}/content`, { token: owner.token });
 	assert.equal(content.status, 200);
-	assert.match(content.type, /image\/png/);
-	assert.deepEqual(content.body, OCR_IMAGE);
-	const ocr = expectStatus(await api(`/documents/${image.id}/ocr`, { token: owner.token }), 200).ocr;
+	assert.match(content.type, /application\/pdf/);
+	const ocr = expectStatus(await api(`/documents/${architectureDoc.id}/ocr`, { token: owner.token }), 200).ocr;
 	assert.equal(ocr.status, 'completed');
 	assert.match(ocr.extractedText, /System Architecture/i);
 	assert.ok(ocr.processedAt);
 
-	for (const document of [image, pdf, failed]) {
+	for (const document of [architectureDoc, pdf, failed]) {
 		expectStatus(await api(`/documents/${document.id}`, { token: owner.token, method: 'DELETE' }), 204);
 	}
 	expectStatus(await api(`/documents/${otherDocument.id}`, { token: other.token, method: 'DELETE' }), 204);
