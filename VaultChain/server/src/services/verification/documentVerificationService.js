@@ -14,7 +14,7 @@ function httpError(status, message) {
 async function geminiSemanticCompare(textA, textB) {
 	if (!isGeminiConfigured()) return null;
 	const apiKey = process.env.GEMINI_API_KEY?.trim();
-	const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+	const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 	const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
 	const prompt = `Compare the following two document texts and summarize what was changed, added, or removed.

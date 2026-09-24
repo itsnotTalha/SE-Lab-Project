@@ -14,7 +14,7 @@ async function extractPdfTextWithGemini({ filePath, mimeType = 'application/pdf'
 
 	const fileBuffer = await fs.readFile(filePath);
 	const base64Data = fileBuffer.toString('base64');
-	const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+	const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 	const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
 	const requestBody = {
