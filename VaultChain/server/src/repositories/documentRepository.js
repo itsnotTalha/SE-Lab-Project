@@ -99,6 +99,10 @@ async function getDocumentByIdAndOwnerId(id, ownerId) {
 	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.id = ? AND d.owner_id = ? LIMIT 1`, [id, ownerId]));
 }
 
+async function findDocumentBySha256(sha256Hash) {
+	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.sha256_hash = ? LIMIT 1`, [sha256Hash]));
+}
+
 async function setOcrStatus(id, ownerId, status, error = null) {
 	await run(
 		`UPDATE documents SET ocr_status = ?, ocr_error = ?,
@@ -146,6 +150,7 @@ module.exports = {
 	createDocument,
 	getDocumentsByOwnerId,
 	getDocumentByIdAndOwnerId,
+	findDocumentBySha256,
 	setOcrStatus,
 	saveOcrResult,
 	deleteDocument,

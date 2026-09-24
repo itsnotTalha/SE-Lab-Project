@@ -6,9 +6,10 @@ const documentRepository = require('../../repositories/documentRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
 const { extractDocumentText } = require('../ocr/ocrService');
 
-function httpError(status, message) {
+function httpError(status, message, details = {}) {
 	const error = new Error(message);
 	error.status = status;
+	Object.assign(error, details);
 	return error;
 }
 
@@ -69,6 +70,30 @@ async function processOcr(userId, id) {
 
 async function uploadDocument(userId, file) {
 	if (!file) throw httpError(400, 'Document file is required');
+	const fileSha256 = await generateFileSha256(file.path);
+
+	const existingDocument = await documentRepository.findDocumentBySha256(fileSha256);
+	if (existingDocument) {
+		await fs.unlink(file.path).catch(() => {});
+		throw httpError(409, 'Duplicate document detected: exact file has already been uploaded', {
+			duplicate: {
+				isDuplicate: true,
+				duplicateType: 'exact',
+				exactMatch: true,
+				textContentMatch: true,
+				sha256: fileSha256,
+				existingDocument: {
+					id: existingDocument.id,
+					reference: `DOC-${String(existingDocument.id).padStart(6, '0')}`,
+					originalName: existingDocument.originalName,
+					createdAt: existingDocument.createdAt,
+					pageCount: existingDocument.pageCount,
+					ocrStatus: existingDocument.ocrStatus,
+				},
+			},
+		});
+	}
+
 	let document;
 	try {
 		document = await documentRepository.createDocument({
@@ -78,7 +103,7 @@ async function uploadDocument(userId, file) {
 			filePath: file.path,
 			mimeType: file.mimetype,
 			fileSize: file.size,
-			sha256Hash: await generateFileSha256(file.path),
+			sha256Hash: fileSha256,
 		});
 	} catch (error) {
 		await fs.unlink(file.path).catch(() => {});

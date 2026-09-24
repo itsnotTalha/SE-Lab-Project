@@ -110,6 +110,16 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.match(pdf.extractedText, /DIGITAL PDF TEXT/);
 	assert.equal(pdf.pageCount, 1);
 
+	const duplicateRes = await api('/documents', {
+		token: owner.token,
+		method: 'POST',
+		form: uploadForm('duplicate-digital.pdf', 'application/pdf', digitalPdf('DIGITAL PDF TEXT')),
+	});
+	assert.equal(duplicateRes.status, 409);
+	assert.equal(duplicateRes.body.duplicate?.isDuplicate, true);
+	assert.equal(duplicateRes.body.duplicate?.duplicateType, 'exact');
+	assert.equal(duplicateRes.body.duplicate?.exactMatch, true);
+
 	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('broken.pdf', 'application/pdf', Buffer.from('%PDF-1.4 broken content')) }), 201).document;
 	assert.equal(failed.ocrStatus, 'failed');
 	assert.match(failed.ocrError, /retry/i);
