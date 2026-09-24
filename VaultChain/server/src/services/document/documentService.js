@@ -4,6 +4,7 @@ const path = require('path');
 const { documentUploadDirectory } = require('../../middleware/upload');
 const documentRepository = require('../../repositories/documentRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
+const { generateTextSha256 } = require('../hashing/textHashService');
 const { extractDocumentText } = require('../ocr/ocrService');
 
 function httpError(status, message, details = {}) {
@@ -35,6 +36,8 @@ function publicDocument(document, includeOcr = false) {
 		mimeType: document.mimeType,
 		fileSize: document.fileSize,
 		sha256: document.sha256Hash,
+		textSha256: document.textSha256 || document.semanticHash || null,
+		semanticHash: document.semanticHash || document.textSha256 || null,
 		pageCount: document.pageCount,
 		language: document.language,
 		ocrStatus: document.ocrStatus,
@@ -56,13 +59,43 @@ function safeOcrError(error) {
 	return 'Text extraction failed. You can retry OCR.';
 }
 
-async function processOcr(userId, id) {
+async function processOcr(userId, id, checkContentDuplicate = false) {
 	const document = await ownedDocument(userId, id);
 	await documentRepository.setOcrStatus(document.id, userId, 'processing');
 	try {
 		const result = await extractDocumentText({ filePath: contentPath(document), mimeType: document.mimeType });
-		await documentRepository.saveOcrResult(document.id, userId, result);
+		const textSha256 = generateTextSha256(result.text);
+
+		if (checkContentDuplicate && textSha256) {
+			const contentDuplicate = await documentRepository.findDocumentByTextHash(textSha256, document.id);
+			if (contentDuplicate) {
+				await deleteDocument(userId, document.id);
+				throw httpError(409, 'Duplicate document detected: identical text content already exists', {
+					duplicate: {
+						isDuplicate: true,
+						duplicateType: 'content',
+						exactMatch: false,
+						textContentMatch: true,
+						textSha256,
+						existingDocument: {
+							id: contentDuplicate.id,
+							reference: `DOC-${String(contentDuplicate.id).padStart(6, '0')}`,
+							originalName: contentDuplicate.originalName,
+							createdAt: contentDuplicate.createdAt,
+							pageCount: contentDuplicate.pageCount,
+						},
+					},
+				});
+			}
+		}
+
+		await documentRepository.saveOcrResult(document.id, userId, {
+			...result,
+			textSha256,
+			semanticHash: textSha256,
+		});
 	} catch (error) {
+		if (error.status === 409) throw error;
 		await documentRepository.setOcrStatus(document.id, userId, 'failed', safeOcrError(error));
 	}
 	return publicDocument(await ownedDocument(userId, document.id), true);
@@ -109,7 +142,7 @@ async function uploadDocument(userId, file) {
 		await fs.unlink(file.path).catch(() => {});
 		throw error;
 	}
-	return processOcr(userId, document.id);
+	return processOcr(userId, document.id, true);
 }
 
 function listOptions(query = {}) {

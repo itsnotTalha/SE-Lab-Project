@@ -20,7 +20,7 @@ const { initializeDatabase } = require('../src/database/initDatabase');
 let server;
 let baseUrl;
 
-function digitalPdf(text) {
+function digitalPdf(text, extraComment = '') {
 	const content = `BT /F1 24 Tf 72 720 Td (${text.replace(/[()\\]/g, '\\$&')}) Tj ET`;
 	const objects = [
 		'<< /Type /Catalog /Pages 2 0 R >>',
@@ -29,7 +29,7 @@ function digitalPdf(text) {
 		'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
 		`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
 	];
-	let pdf = '%PDF-1.4\n';
+	let pdf = `%PDF-1.4\n${extraComment ? `% ${extraComment}\n` : ''}`;
 	const offsets = [0];
 	objects.forEach((object, index) => {
 		offsets.push(Buffer.byteLength(pdf));
@@ -119,6 +119,18 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.equal(duplicateRes.body.duplicate?.isDuplicate, true);
 	assert.equal(duplicateRes.body.duplicate?.duplicateType, 'exact');
 	assert.equal(duplicateRes.body.duplicate?.exactMatch, true);
+
+	// Content duplicate check: identical extracted text but different file bytes/hash
+	const contentDuplicateRes = await api('/documents', {
+		token: owner.token,
+		method: 'POST',
+		form: uploadForm('content-duplicate.pdf', 'application/pdf', digitalPdf('DIGITAL PDF TEXT', 'timestamp-meta-2026')),
+	});
+	assert.equal(contentDuplicateRes.status, 409);
+	assert.equal(contentDuplicateRes.body.duplicate?.isDuplicate, true);
+	assert.equal(contentDuplicateRes.body.duplicate?.duplicateType, 'content');
+	assert.equal(contentDuplicateRes.body.duplicate?.exactMatch, false);
+	assert.equal(contentDuplicateRes.body.duplicate?.textContentMatch, true);
 
 	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('broken.pdf', 'application/pdf', Buffer.from('%PDF-1.4 broken content')) }), 201).document;
 	assert.equal(failed.ocrStatus, 'failed');

@@ -75,18 +75,44 @@ async function scannedPdfText(filePath, pageCount) {
 	}
 }
 
+const { isGeminiConfigured, extractPdfTextWithGemini } = require('./geminiOcrService');
+
 async function extractDocumentText({ filePath, mimeType }) {
 	if (mimeType !== 'application/pdf') {
 		await validateImage(filePath, mimeType);
 		const result = await imageText(filePath);
 		return { ...result, pageCount: 1, language: 'eng' };
 	}
-	const pageCount = await pdfPageCount(filePath);
-	const embeddedText = await pdfText(filePath);
-	if (embeddedText.length >= 10) {
-		return { text: embeddedText, confidence: null, pageCount, language: 'eng' };
+
+	const pageCount = await pdfPageCount(filePath).catch(() => 1);
+
+	// Primary OCR pathway: Google Gemini API when configured
+	if (isGeminiConfigured()) {
+		try {
+			const geminiResult = await extractPdfTextWithGemini({ filePath, mimeType });
+			return {
+				text: geminiResult.text,
+				confidence: geminiResult.confidence,
+				pageCount: pageCount || 1,
+				language: 'eng',
+				source: 'gemini',
+			};
+		} catch (error) {
+			console.warn('Gemini OCR failed or unavailable, falling back to local extractor:', error.message);
+		}
 	}
-	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng' };
+
+	// Secondary / local fallback extraction
+	try {
+		const embeddedText = await pdfText(filePath);
+		if (embeddedText && embeddedText.length >= 10) {
+			return { text: embeddedText, confidence: null, pageCount, language: 'eng', source: 'local_embedded' };
+		}
+	} catch {
+		// Continue to scanned fallback
+	}
+
+	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng', source: 'local_ocr' };
 }
 
 module.exports = { extractDocumentText };

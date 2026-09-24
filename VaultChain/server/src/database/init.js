@@ -116,6 +116,33 @@ async function migrateDocuments() {
     if (!columns.some((column) => column.name === name)) await run(`ALTER TABLE documents ADD COLUMN ${name} ${definition}`);
   }
   await exec('CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id)');
+  await exec('CREATE INDEX IF NOT EXISTS idx_documents_sha256_hash ON documents(sha256_hash)');
+
+  const ocrColumns = await all('PRAGMA table_info(ocr_results)');
+  if (!ocrColumns.some((column) => column.name === 'text_sha256')) {
+    await run('ALTER TABLE ocr_results ADD COLUMN text_sha256 TEXT');
+  }
+  await exec('CREATE INDEX IF NOT EXISTS idx_ocr_results_semantic_hash ON ocr_results(semantic_hash)');
+  await exec('CREATE INDEX IF NOT EXISTS idx_ocr_results_text_sha256 ON ocr_results(text_sha256)');
+
+  const reportColumns = await all('PRAGMA table_info(verification_reports)');
+  if (!reportColumns.some((column) => column.name === 'document_id')) {
+    await run('ALTER TABLE verification_reports ADD COLUMN document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE');
+  }
+  if (!reportColumns.some((column) => column.name === 'target_document_id')) {
+    await run('ALTER TABLE verification_reports ADD COLUMN target_document_id INTEGER REFERENCES documents(id) ON DELETE SET NULL');
+  }
+
+  const vaultItemColumns = await all('PRAGMA table_info(vault_items)');
+  if (!vaultItemColumns.some((column) => column.name === 'document_id')) {
+    await run('ALTER TABLE vault_items ADD COLUMN document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE');
+  }
+  if (!vaultItemColumns.some((column) => column.name === 'iv')) {
+    await run('ALTER TABLE vault_items ADD COLUMN iv TEXT');
+  }
+  if (!vaultItemColumns.some((column) => column.name === 'auth_tag')) {
+    await run('ALTER TABLE vault_items ADD COLUMN auth_tag TEXT');
+  }
 }
 
 async function migrateAdminPlatform() {

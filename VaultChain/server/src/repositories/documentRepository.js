@@ -19,7 +19,7 @@ const DOCUMENT_SELECT = `
 	SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 		d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
 		d.ocr_error, d.ocr_processed_at, d.created_at,
-		o.extracted_text, o.confidence
+		o.extracted_text, o.confidence, o.semantic_hash, o.text_sha256
 	FROM documents d
 	LEFT JOIN ocr_results o ON o.document_id = d.id`;
 
@@ -40,6 +40,8 @@ function mapRow(row, includeText = true) {
 		ocrError: row.ocr_error,
 		ocrProcessedAt: row.ocr_processed_at,
 		createdAt: row.created_at,
+		semanticHash: row.semantic_hash || null,
+		textSha256: row.text_sha256 || row.semantic_hash || null,
 		...(includeText ? { extractedText: row.extracted_text, confidence: row.confidence } : {}),
 	};
 }
@@ -112,16 +114,21 @@ async function setOcrStatus(id, ownerId, status, error = null) {
 	);
 }
 
-async function saveOcrResult(id, ownerId, { text, confidence, pageCount, language = 'eng' }) {
+async function saveOcrResult(id, ownerId, { text, confidence, pageCount, language = 'eng', semanticHash = null, textSha256 = null }) {
+	const hashValue = textSha256 || semanticHash || null;
 	return serializeTransaction(async () => {
 		await run('BEGIN TRANSACTION');
 		try {
 			await run(
-				`INSERT INTO ocr_results (document_id, extracted_text, confidence, created_at)
-				 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+				`INSERT INTO ocr_results (document_id, extracted_text, confidence, semantic_hash, text_sha256, created_at)
+				 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 				 ON CONFLICT(document_id) DO UPDATE SET
-				 extracted_text = excluded.extracted_text, confidence = excluded.confidence, created_at = CURRENT_TIMESTAMP`,
-				[id, text, confidence]
+				 extracted_text = excluded.extracted_text,
+				 confidence = excluded.confidence,
+				 semantic_hash = excluded.semantic_hash,
+				 text_sha256 = excluded.text_sha256,
+				 created_at = CURRENT_TIMESTAMP`,
+				[id, text, confidence, hashValue, hashValue]
 			);
 			const result = await run(
 				`UPDATE documents SET ocr_status = 'completed', ocr_error = NULL,
@@ -142,6 +149,46 @@ async function saveOcrResult(id, ownerId, { text, confidence, pageCount, languag
 	});
 }
 
+async function findDocumentByTextHash(textSha256, excludeDocumentId = null) {
+	if (!textSha256) return null;
+	const conditions = ['(o.text_sha256 = ? OR o.semantic_hash = ?)'];
+	const params = [textSha256, textSha256];
+	if (excludeDocumentId) {
+		conditions.push('d.id != ?');
+		params.push(excludeDocumentId);
+	}
+	return mapRow(await get(`${DOCUMENT_SELECT} WHERE ${conditions.join(' AND ')} LIMIT 1`, params));
+}
+
+async function saveDocumentVerificationReport({ userId, documentId, targetDocumentId = null, sha256Match, similarityScore, status, reportJson }) {
+	const result = await run(
+		`INSERT INTO verification_reports (user_id, document_id, target_document_id, verification_type, sha256_match, similarity_score, status, report_json, created_at)
+		 VALUES (?, ?, ?, 'document_verification', ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		[userId, documentId, targetDocumentId, sha256Match ? 1 : 0, similarityScore, status, typeof reportJson === 'string' ? reportJson : JSON.stringify(reportJson)]
+	);
+	return get('SELECT * FROM verification_reports WHERE id = ?', [result.lastID]);
+}
+
+async function getDocumentVerificationReport(documentId, userId) {
+	return get(
+		`SELECT * FROM verification_reports WHERE document_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1`,
+		[documentId, userId]
+	);
+}
+
+async function createVaultItem({ ownerId, title, documentId = null, encryptedPath, encryptionAlgorithm = 'aes-256-gcm', iv = null, authTag = null }) {
+	const result = await run(
+		`INSERT INTO vault_items (owner_id, title, document_id, encrypted_path, encryption_algorithm, iv, auth_tag, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		[ownerId, title, documentId, encryptedPath, encryptionAlgorithm, iv, authTag]
+	);
+	return get('SELECT * FROM vault_items WHERE id = ?', [result.lastID]);
+}
+
+async function getVaultItemByDocumentId(documentId, ownerId) {
+	return get('SELECT * FROM vault_items WHERE document_id = ? AND owner_id = ? LIMIT 1', [documentId, ownerId]);
+}
+
 async function deleteDocument(id, ownerId) {
 	return run('DELETE FROM documents WHERE id = ? AND owner_id = ?', [id, ownerId]);
 }
@@ -151,7 +198,12 @@ module.exports = {
 	getDocumentsByOwnerId,
 	getDocumentByIdAndOwnerId,
 	findDocumentBySha256,
+	findDocumentByTextHash,
 	setOcrStatus,
 	saveOcrResult,
+	saveDocumentVerificationReport,
+	getDocumentVerificationReport,
+	createVaultItem,
+	getVaultItemByDocumentId,
 	deleteDocument,
 };
