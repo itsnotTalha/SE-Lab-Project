@@ -95,7 +95,7 @@ export default function VaultFormModal({ open, vault, onClose, onSubmit }) {
 					{error ? <div className="error-banner" role="alert">{error}</div> : null}
 					<div className="modal__footer">
 						<Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-						<Button type="submit" icon={editing ? Pencil : FolderPlus} disabled={loading}>{loading ? 'Saving…' : editing ? 'Save changes' : 'Create Vault'}</Button>
+						<Button type="submit" icon={editing ? Pencil : FolderPlus} loading={loading} disabled={loading}>{loading ? 'Saving…' : editing ? 'Save changes' : 'Create Vault'}</Button>
 					</div>
 				</form>
 			</div>

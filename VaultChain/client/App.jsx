@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { MotionConfig } from 'framer-motion';
 
 import ProtectedRoute from './src/components/common/ProtectedRoute';
 import RoleGuard from './src/components/admin/RoleGuard';
@@ -94,5 +95,5 @@ function AppRoutes() {
 }
 
 export default function App() {
-	return <ThemeProvider><BrowserRouter><AuthProvider><AppRoutes /></AuthProvider></BrowserRouter></ThemeProvider>;
+	return <ThemeProvider><MotionConfig reducedMotion="user"><BrowserRouter><AuthProvider><AppRoutes /></AuthProvider></BrowserRouter></MotionConfig></ThemeProvider>;
 }

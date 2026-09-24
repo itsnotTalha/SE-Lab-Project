@@ -1,0 +1,214 @@
+/* ============================================================
+   effects.css — Advanced visual effects and micro-interactions
+   ============================================================ */
+
+/* ---------- Background & Orbs ---------- */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  pointer-events: none;
+  animation: floatOrb 20s ease-in-out infinite alternate;
+  opacity: 0.15;
+}
+
+body::before {
+  top: -10%;
+  left: -5%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, var(--primary), transparent 70%);
+}
+
+body::after {
+  bottom: -15%;
+  right: -5%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, var(--secondary), transparent 70%);
+  animation-delay: -10s;
+  animation-duration: 25s;
+}
+
+[data-theme='dark'] body::before { opacity: 0.12; }
+[data-theme='dark'] body::after { opacity: 0.08; }
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, 5%) scale(1.05); }
+  100% { transform: translate(-3%, 2%) scale(0.95); }
+}
+
+/* ---------- Glassmorphism & Elevation ---------- */
+/* Using only backdrop-filter and shadow to prevent overriding existing background colors */
+.section-card, .stat-card, .asset-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease;
+}
+
+[data-theme='dark'] .section-card, 
+[data-theme='dark'] .stat-card, 
+[data-theme='dark'] .asset-card {
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.section-card:hover, .stat-card:hover, .asset-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: var(--primary-soft);
+}
+
+[data-theme='dark'] .section-card:hover, 
+[data-theme='dark'] .stat-card:hover, 
+[data-theme='dark'] .asset-card:hover {
+  box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- Button Glow ---------- */
+.button--primary {
+  box-shadow: 0 4px 14px 0 var(--primary-soft);
+}
+
+.button--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px 0 var(--primary-soft);
+}
+
+[data-theme='dark'] .button--primary {
+  box-shadow: 0 0 12px 0 rgba(138, 130, 255, 0.3);
+}
+
+[data-theme='dark'] .button--primary:hover:not(:disabled) {
+  box-shadow: 0 0 20px 2px rgba(138, 130, 255, 0.4);
+}
+
+/* ---------- Smooth Focus States ---------- */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--primary);
+  transition: box-shadow 0.2s ease;
+}
+
+/* ---------- Gradient Borders ---------- */
+.asset-card__visual {
+  position: relative;
+}
+
+.asset-card__visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.05), transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.asset-card:hover .asset-card__visual::before {
+  opacity: 1;
+}
+
+/* ---------- Forms & Inputs ---------- */
+/* Using transitions and focus rings safely without overriding default backgrounds */
+.input, .select, .textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+  transform: translateY(-1px);
+}
+
+[data-theme='dark'] .input:focus, 
+[data-theme='dark'] .select:focus, 
+[data-theme='dark'] .textarea:focus {
+  box-shadow: 0 0 0 4px rgba(138, 130, 255, 0.15);
+}
+
+/* ---------- Image Overlays & Hover ---------- */
+.asset-thumbnail img {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.6s ease;
+}
+
+.asset-card:hover .asset-thumbnail img {
+  transform: scale(1.05);
+}
+
+/* Image overlay gradient */
+.asset-thumbnail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.asset-card:hover .asset-thumbnail::after {
+  opacity: 1;
+}
+
+/* ---------- Navigation & Toolbars ---------- */
+.admin-sidebar, .landing-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ---------- Subtle Particles (Landing / Hero) ---------- */
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 160px 120px, rgba(255,255,255,0.5), rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: particleDrift 40s linear infinite;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme='dark'] .landing-hero::before {
+  opacity: 0.6;
+}
+
+@keyframes particleDrift {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 -200px; }
+}
+
+/* ---------- Gradient Text ---------- */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Advanced Typography Enhancements ---------- */
+.page-header h1, .section-heading h2, .landing-hero h1 {
+  text-shadow: 0 4px 24px rgba(65, 217, 255, 0.15);
+}
+
+[data-theme='dark'] .page-header h1, 
+[data-theme='dark'] .section-heading h2, 
+[data-theme='dark'] .landing-hero h1 {
+  text-shadow: 0 4px 32px rgba(138, 130, 255, 0.25);
+}

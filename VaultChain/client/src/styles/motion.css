@@ -1,0 +1,181 @@
+/* ============================================================
+   motion.css — shared animation system for VaultChain
+   Loaded last so it can layer on top of existing styles.
+   Timing system:
+   - Interaction feedback:  .15s–.2s
+   - Component transitions: .2s–.3s
+   - Entrance effects:      .3s–.5s, ease-out, 8–24px travel
+   Entrance animations use fill-mode "backwards" only, so they
+   never lock the final transform and never block hover states.
+   ============================================================ */
+
+/* ---------- Theme (light/dark) switch cross-fade ----------
+   ThemeContext toggles html.theme-switching for ~320ms while the
+   palette changes; every surface cross-fades instead of snapping. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+	transition: background-color .28s ease, border-color .28s ease, color .28s ease, fill .28s ease, stroke .28s ease, box-shadow .28s ease !important;
+}
+
+/* ---------- Reusable entrance helpers ---------- */
+.fade-in-section { animation: fade-in .3s ease-out backwards; }
+.pop-in { animation: pop-in .3s cubic-bezier(.34,1.4,.64,1) backwards; }
+
+/* Staggered card/list entrances. Pure CSS — applied to existing
+   grid containers so no component logic changes are required. */
+.dashboard-stats > *,
+.vault-stats > *,
+.vault-grid > *,
+.asset-grid > *,
+.assets-list > *,
+.marketplace-grid > *,
+.dashboard-main-grid > *,
+.dashboard-lower-grid > *,
+.earnings-grid > *,
+.analytics-grid > *,
+.transaction-list > * {
+	animation: fade-up .45s ease-out backwards;
+}
+.dashboard-stats > *:nth-child(2), .vault-stats > *:nth-child(2), .vault-grid > *:nth-child(2), .asset-grid > *:nth-child(2), .assets-list > *:nth-child(2), .marketplace-grid > *:nth-child(2), .dashboard-main-grid > *:nth-child(2), .dashboard-lower-grid > *:nth-child(2), .earnings-grid > *:nth-child(2), .analytics-grid > *:nth-child(2), .transaction-list > *:nth-child(2) { animation-delay: .05s; }
+.dashboard-stats > *:nth-child(3), .vault-stats > *:nth-child(3), .vault-grid > *:nth-child(3), .asset-grid > *:nth-child(3), .assets-list > *:nth-child(3), .marketplace-grid > *:nth-child(3), .dashboard-main-grid > *:nth-child(3), .dashboard-lower-grid > *:nth-child(3), .earnings-grid > *:nth-child(3), .analytics-grid > *:nth-child(3), .transaction-list > *:nth-child(3) { animation-delay: .1s; }
+.dashboard-stats > *:nth-child(4), .vault-grid > *:nth-child(4), .asset-grid > *:nth-child(4), .assets-list > *:nth-child(4), .marketplace-grid > *:nth-child(4), .earnings-grid > *:nth-child(4), .analytics-grid > *:nth-child(4), .transaction-list > *:nth-child(4) { animation-delay: .15s; }
+.dashboard-stats > *:nth-child(5), .vault-grid > *:nth-child(5), .asset-grid > *:nth-child(5), .assets-list > *:nth-child(5), .marketplace-grid > *:nth-child(5), .earnings-grid > *:nth-child(5), .analytics-grid > *:nth-child(5), .transaction-list > *:nth-child(5) { animation-delay: .2s; }
+.vault-grid > *:nth-child(6), .asset-grid > *:nth-child(6), .assets-list > *:nth-child(6), .marketplace-grid > *:nth-child(6), .earnings-grid > *:nth-child(6), .analytics-grid > *:nth-child(6), .transaction-list > *:nth-child(6) { animation-delay: .25s; }
+.vault-grid > *:nth-child(7), .asset-grid > *:nth-child(7), .assets-list > *:nth-child(7), .marketplace-grid > *:nth-child(7), .transaction-list > *:nth-child(7) { animation-delay: .3s; }
+.vault-grid > *:nth-child(8), .asset-grid > *:nth-child(8), .assets-list > *:nth-child(8), .marketplace-grid > *:nth-child(8), .transaction-list > *:nth-child(8) { animation-delay: .35s; }
+.vault-grid > *:nth-child(n+9), .asset-grid > *:nth-child(n+9), .assets-list > *:nth-child(n+9), .marketplace-grid > *:nth-child(n+9), .transaction-list > *:nth-child(n+9) { animation-delay: .4s; }
+
+/* Section containers: gentle one-time rise on page entry */
+.verification-journey-card,
+.vault-security-hero,
+.assets-section-heading,
+.assets-toolbar,
+.marketplace-toolbar,
+.activity-toolbar,
+.section-card,
+.chart-card {
+	animation: fade-up .4s ease-out backwards;
+}
+
+/* Banners appear with a soft slide instead of popping */
+.error-banner, .success-banner, .info-banner { animation: banner-in .25s ease-out backwards; }
+
+/* Empty states fade in */
+.empty-state { animation: fade-up .3s ease-out backwards; }
+
+/* Document rows: entrance + hover feedback (previously fully static) */
+.document-item { transition: border-color .18s ease, background .18s ease, transform .18s ease; animation: fade-up .35s ease-out backwards; }
+.document-item:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.document-item:nth-of-type(2) { animation-delay: .04s; } .document-item:nth-of-type(3) { animation-delay: .08s; }
+.document-item:nth-of-type(4) { animation-delay: .12s; } .document-item:nth-of-type(5) { animation-delay: .16s; }
+.document-item:nth-of-type(n+6) { animation-delay: .2s; }
+
+/* Verification history rows: smooth the existing instant hover */
+.verification-history-item { transition: background .16s ease, border-color .16s ease; animation: fade-up .3s ease-out backwards; }
+.verification-history-item:nth-of-type(n+2) { animation-delay: .04s; }
+.verification-history-item:nth-of-type(n+4) { animation-delay: .08s; }
+.verification-history-item:nth-of-type(n+8) { animation-delay: .12s; }
+
+/* ---------- Missing hover/press transitions ---------- */
+
+/* Buttons: press feedback */
+.button:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.landing-button:active { transform: translateY(0) scale(.985); }
+
+/* Stat cards: the hover lift existed but jumped with no transition */
+.stat-card { transition: transform .2s ease, border-color .2s ease; }
+
+/* Shared data table + timeline rows: smooth hover */
+.data-table tbody tr { transition: background .15s ease; }
+.activity-timeline__item { transition: background .15s ease, border-color .15s ease; }
+
+/* Wallet transaction items */
+.transaction-item { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.transaction-item:hover { transform: translateY(-1px); }
+
+/* Asset-library toolbar controls (previously instant) */
+.filter-chip { transition: color .16s ease, border-color .16s ease, background .16s ease; }
+.view-switch button { transition: color .16s ease, background .16s ease; }
+.search-field { transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+.assets-sort select, .activity-filter select { transition: border-color .2s ease, box-shadow .2s ease; }
+
+/* Text + copy micro-interactions */
+.text-button { transition: color .16s ease; }
+.copy-button { transition: color .16s ease, border-color .16s ease, background .16s ease; }
+.copy-button svg { transition: transform .18s ease, color .18s ease; }
+.copy-button.is-copied svg { transform: scale(1.12); color: var(--success); }
+
+/* Marketplace search + asset picker (previously instant) */
+.marketplace-search { transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+.marketplace-search:focus-within { border-color: rgba(65,217,255,.45); box-shadow: 0 0 0 3px rgba(65,217,255,.08); }
+.listing-asset-picker > button { transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.listing-asset-picker > button:active:not(:disabled) { transform: scale(.99); }
+
+/* Upload drop area in the asset upload modal (previously instant) */
+.file-drop { transition: border-color .2s ease, background .2s ease; }
+
+/* Progress/meter fills that previously snapped to width */
+.vault-security-meter i { transition: width .6s ease-out; }
+.admin-score i { transition: width .6s ease-out; }
+.admin-model-score b { transition: width .6s ease-out; }
+
+/* ---------- Modals & overlays ---------- */
+.modal__backdrop { animation: fade-in .2s ease-out backwards; }
+.upload-success { animation: fade-up .3s ease-out backwards; }
+.upload-success > span { animation: pop-in .35s cubic-bezier(.34,1.4,.64,1) .05s backwards; }
+.purchase-receipt { animation: fade-up .3s ease-out backwards; }
+
+/* ---------- Loading spinner inside buttons ---------- */
+.button-spinner { animation: spin .8s linear infinite; }
+
+/* ---------- Auth pages ---------- */
+.auth-card { animation: fade-up .45s ease-out backwards; }
+.auth-panel__mobile-brand { animation: fade-up .35s ease-out backwards; }
+.password-toggle { transition: color .16s ease, background .16s ease; }
+.password-toggle:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.password-strength span { transition: background .25s ease; }
+.auth-card__footer a, .auth-back-link { transition: color .18s ease; }
+
+/* ---------- Theme toggle icon (user + admin navbars) ---------- */
+.theme-toggle svg { transition: transform .35s ease; }
+.theme-toggle:hover svg { transform: rotate(-18deg); }
+
+/* ---------- Landing page polish ---------- */
+.identity-card__scan { animation: scan-sweep 3.4s ease-in-out infinite; }
+.hero-float-card--hash { animation: float 8s ease-in-out infinite; }
+.hero-float-card--meta { animation: float 9s ease-in-out 1.2s infinite; }
+.landing-footer__links a, .landing-footer__bottom a { transition: color .18s ease; }
+.landing-nav__links.is-open { animation: fade-up .25s ease-out backwards; }
+.feature-card__live i { animation: pulse-node 2.6s ease-in-out infinite; }
+
+/* ---------- Admin area ---------- */
+.admin-button { transition: filter .16s ease, background .16s ease, border-color .16s ease, color .16s ease; }
+.admin-button:active { filter: brightness(.97); transform: scale(.99); }
+.admin-icon-btn { transition: color .16s ease, background .16s ease, border-color .16s ease; }
+.admin-table__more { transition: background .16s ease; }
+.admin-notification-popover { animation: fade-up .22s ease-out backwards; }
+.admin-notification-popover article { transition: background .15s ease; }
+.admin-settings-fields label > div { transition: border-color .2s ease, box-shadow .2s ease; }
+.admin-settings-fields label > div:focus-within { border-color: color-mix(in srgb, var(--admin-accent) 55%, transparent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.admin-table-toolbar label, .admin-table-tools label { transition: border-color .2s ease; }
+.admin-table-toolbar label:focus-within, .admin-table-tools label:focus-within { border-color: color-mix(in srgb, var(--admin-accent) 45%, transparent); }
+.admin-table-toolbar select, .admin-table-tools select { transition: border-color .2s ease; }
+.admin-sidebar__collapse svg { transition: transform .2s ease; }
+.admin-commission-card > a, .admin-inline-link { transition: color .16s ease; }
+.admin-control-list article { transition: background .15s ease; }
+
+/* Status pills: one-time soft entrance */
+.admin-status { animation: pop-in .25s ease-out backwards; }
+
+/* Admin table rows: quick staggered entrance (first rows only) */
+.admin-table tbody tr { animation: fade-up .28s ease-out backwards; }
+.admin-table tbody tr:nth-child(2) { animation-delay: .03s; }
+.admin-table tbody tr:nth-child(3) { animation-delay: .06s; }
+.admin-table tbody tr:nth-child(4) { animation-delay: .09s; }
+.admin-table tbody tr:nth-child(5) { animation-delay: .12s; }
+.admin-table tbody tr:nth-child(n+6) { animation-delay: .15s; }
+
+/* ---------- Reduced motion: already neutralized globally in
+   animations.css; repeat nothing here. ---------- */

@@ -44,6 +44,6 @@ export default function CreateListingModal({ open, onClose, onCreated }) {
 		<div className="field"><label htmlFor="listing-title">Listing title</label><input id="listing-title" className="input" maxLength="120" value={title} onChange={(event)=>setTitle(event.target.value)} required/></div>
 		<div className="field"><label htmlFor="listing-description">Description <span className="field-hint">(optional)</span></label><textarea id="listing-description" className="textarea" maxLength="1000" value={description} onChange={(event)=>setDescription(event.target.value)}/></div>
 		<div className="field"><label htmlFor="listing-price">Price in VaultChain Credits</label><input id="listing-price" className="input" type="number" min="0.01" max="1000000000" step="0.01" value={price} onChange={(event)=>setPrice(event.target.value)} required/></div>
-		{error?<div className="error-banner" role="alert"><AlertCircle size={16}/>{error}</div>:null}<footer className="modal__footer"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" icon={Store} disabled={submitting||!assetId}>{submitting?'Creating…':'Create listing'}</Button></footer>
+		{error?<div className="error-banner" role="alert"><AlertCircle size={16}/>{error}</div>:null}<footer className="modal__footer"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" icon={Store} loading={submitting} disabled={submitting||!assetId}>{submitting?'Creating…':'Create listing'}</Button></footer>
 	</form></section></div>;
 }

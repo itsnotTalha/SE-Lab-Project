@@ -12,7 +12,7 @@ export default function CopyButton({ value, label = 'Copy' }) {
 	}
 
 	return (
-		<button type="button" className="copy-button" onClick={handleCopy} disabled={!value} aria-label={`${label} to clipboard`}>
+		<button type="button" className={`copy-button ${copied ? 'is-copied' : ''}`.trim()} onClick={handleCopy} disabled={!value} aria-label={`${label} to clipboard`}>
 			{copied ? <Check size={14} /> : <Copy size={14} />}
 			<span>{copied ? 'Copied' : label}</span>
 		</button>

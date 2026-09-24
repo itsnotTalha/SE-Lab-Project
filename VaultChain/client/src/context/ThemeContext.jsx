@@ -12,9 +12,13 @@ export function ThemeProvider({ children }) {
 	const [theme, setTheme] = useState(getInitialTheme);
 
 	useEffect(() => {
-		document.documentElement.dataset.theme = theme;
-		document.documentElement.style.colorScheme = theme;
+		const root = document.documentElement;
+		root.classList.add('theme-switching');
+		root.dataset.theme = theme;
+		root.style.colorScheme = theme;
 		window.localStorage.setItem('vaultchain-theme', theme);
+		const timeout = window.setTimeout(() => root.classList.remove('theme-switching'), 320);
+		return () => window.clearTimeout(timeout);
 	}, [theme]);
 
 	const value = useMemo(() => ({

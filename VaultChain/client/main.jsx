@@ -10,5 +10,7 @@ import './src/styles/auth.css';
 import './src/styles/app.css';
 import './src/styles/redesign.css';
 import './src/styles/admin.css';
+import './src/styles/motion.css';
+import './src/styles/effects.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

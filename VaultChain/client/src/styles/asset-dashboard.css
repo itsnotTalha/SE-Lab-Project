@@ -544,8 +544,7 @@
 }
 
 .tabs-content {
-	animation: fadeIn 0.3s ease;
-}
+	/* entrance handled by framer-motion in AssetTabs.jsx */
 
 @keyframes fadeIn {
 	from {
@@ -1470,8 +1469,7 @@
 .tab-content-verification,
 .tab-content-blockchain,
 .tab-content-activity {
-	animation: fadeInUp 0.4s ease;
-}
+	/* entrance handled by framer-motion in AssetInspectPage.jsx */
 
 @keyframes fadeInUp {
 	from {

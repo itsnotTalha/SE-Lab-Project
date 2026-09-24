@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { test } = require('node:test');
+const OCR_IMAGE = fs.readFileSync(path.resolve('src/uploads/1785433463116-711316499.png'));
+const testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'vc-probe-'));
+process.env.DATABASE_PATH = path.join(testDirectory, 'documents.sqlite');
+process.env.DOCUMENT_UPLOAD_DIRECTORY = path.join(testDirectory, 'documents');
+process.env.JWT_SECRET = 'probe-secret';
+const app = require('./src/app');
+const { initializeDatabase } = require('./src/database/initDatabase');
+test('probe ocr', async () => {
+  await initializeDatabase();
+  const server = app.listen(0);
+  await new Promise((r) => server.once('listening', r));
+  const base = 'http://localhost:' + server.address().port;
+  const reg = await fetch(base + '/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fullName:'Probe', email:'probe@example.test', password:'Password123!'}) });
+  const { token } = await reg.json();
+  const fd = new FormData();
+  fd.set('file', new Blob([OCR_IMAGE], { type:'image/png' }), 'ocr-image.png');
+  const up = await fetch(base + '/api/documents', { method:'POST', headers:{Authorization:'Bearer '+token}, body: fd });
+  const doc = (await up.json()).document;
+  console.log('PROBE STATUS:', doc.ocrStatus, '| ERROR:', doc.ocrError || '(none)');
+  server.close();
+});

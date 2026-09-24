@@ -36,7 +36,7 @@ export default function RegisterPage() {
 				<div className="field"><label htmlFor="register-email">Email address</label><input id="register-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required /></div>
 				<div className="field"><label htmlFor="register-password">Password</label><div className="password-field"><input id="register-password" className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required /><button type="button" className="password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div><div className="password-strength" aria-label="Password length indicator">{[1,2,3,4].map((n)=><span key={n} className={strength >= n ? 'is-active' : ''}/>)}</div></div>
 				{error ? <div className="error-banner" role="alert"><AlertCircle size={16}/><span>{error}</span></div> : null}
-				<Button type="submit" size="lg" icon={UserPlus} disabled={loading}>{loading ? 'Creating vault…' : 'Create secure account'}</Button>
+				<Button type="submit" size="lg" icon={UserPlus} loading={loading} disabled={loading}>{loading ? 'Creating vault…' : 'Create secure account'}</Button>
 			</form>
 			<p className="auth-card__footer">Already have an account? <Link to="/login">Sign in</Link></p>
 			<Link to="/" className="auth-back-link"><ArrowLeft size={14}/> Back to home</Link>

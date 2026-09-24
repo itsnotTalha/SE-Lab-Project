@@ -36,7 +36,7 @@ export default function LoginPage() {
 				<div className="field"><label htmlFor="login-email">Email address</label><input id="login-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required /></div>
 				<div className="field"><label htmlFor="login-password">Password</label><div className="password-field"><input id="login-password" className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" required /><button type="button" className="password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div></div>
 				{error ? <div className="error-banner" role="alert"><AlertCircle size={16}/><span>{error}</span></div> : null}
-				<Button type="submit" size="lg" icon={LogIn} disabled={loading}>{loading ? 'Signing in…' : 'Sign in securely'}</Button>
+				<Button type="submit" size="lg" icon={LogIn} loading={loading} disabled={loading}>{loading ? 'Signing in…' : 'Sign in securely'}</Button>
 			</form>
 			<p className="auth-card__footer">New to VaultChain? <Link to="/register">Create an account</Link></p>
 			<Link to="/" className="auth-back-link"><ArrowLeft size={14}/> Back to home</Link>

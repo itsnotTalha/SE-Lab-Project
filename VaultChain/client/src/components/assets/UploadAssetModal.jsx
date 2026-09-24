@@ -66,7 +66,7 @@ export default function UploadAssetModal({ open, onClose, onUploaded, initialFil
 						<div className="form-row"><div className="field"><label htmlFor="asset-title">Asset title</label><input id="asset-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Northern Lights" required /></div><div className="field"><label htmlFor="asset-category">Category</label><select id="asset-category" className="select" value={category} onChange={(e) => setCategory(e.target.value)}><option value="image">Image</option><option value="artwork">Artwork</option><option value="photography">Photography</option><option value="document-image">Document image</option></select></div></div>
 						<div className="field"><label htmlFor="asset-description">Description <span className="field-hint">(optional)</span></label><textarea id="asset-description" className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add context about this asset" /></div>
 						{error ? <div className="error-banner" role="alert"><AlertCircle size={16} />{error}</div> : null}
-						<footer className="modal__footer"><Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button><Button type="submit" icon={UploadCloud} disabled={loading}>{loading ? 'Fingerprinting…' : 'Upload & fingerprint'}</Button></footer>
+						<footer className="modal__footer"><Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button><Button type="submit" icon={UploadCloud} loading={loading} disabled={loading}>{loading ? 'Fingerprinting…' : 'Upload & fingerprint'}</Button></footer>
 					</form>
 				)}
 			</section>

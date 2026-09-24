@@ -1,9 +1,11 @@
-import { CheckCircle2, Fingerprint, ShieldCheck, Sparkles } from 'lucide-react';
+import { CheckCircle2, Fingerprint, ShieldCheck, Sparkles, Sun, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import BrandLogo from '../components/ui/BrandLogo';
+import { useTheme } from '../context/ThemeContext';
 
 export default function AuthLayout({ children, mode = 'login' }) {
+	const { theme, toggleTheme } = useTheme();
 	return (
 		<main className="auth-layout">
 			<section className="auth-story" aria-label="VaultChain security overview">
@@ -21,6 +23,9 @@ export default function AuthLayout({ children, mode = 'login' }) {
 				<p className="auth-story__footer">SHA-256 fingerprinting · Perceptual matching · Metadata intelligence</p>
 			</section>
 			<section className="auth-panel">
+				<button type="button" className="icon-button theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 10 }}>
+					{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}
+				</button>
 				<Link to="/" className="auth-panel__mobile-brand"><BrandLogo /></Link>
 				<div className="auth-card" data-mode={mode}>{children}</div>
 			</section>
