@@ -35,4 +35,42 @@ const deleteDocument = asyncHandler(async (req, res) => {
 	res.status(204).send();
 });
 
-module.exports = { uploadDocument, getDocuments, getDocument, getOcrResult, processOcr, getDocumentContent, deleteDocument };
+const verifyDocument = asyncHandler(async (req, res) => {
+	const { targetDocumentId } = req.body;
+	if (!targetDocumentId) {
+		const error = new Error('targetDocumentId is required for document verification');
+		error.status = 400;
+		throw error;
+	}
+	const verification = await documentService.verifyDocument(req.user.id, req.params.id, targetDocumentId);
+	res.json({ success: true, message: 'Document verification completed', verification });
+});
+
+const getDocumentReport = asyncHandler(async (req, res) => {
+	const report = await documentService.getDocumentReport(req.user.id, req.params.id);
+	res.json({ success: true, report });
+});
+
+const encryptAndVaultDocument = asyncHandler(async (req, res) => {
+	const vault = await documentService.encryptAndVaultDocument(req.user.id, req.params.id, req.body?.secret);
+	res.status(201).json({ success: true, message: 'Document encrypted with AES-256-GCM and stored in Secure Vault', vault });
+});
+
+const getDocumentVaultStatus = asyncHandler(async (req, res) => {
+	const vaultStatus = await documentService.getDocumentVaultStatus(req.user.id, req.params.id);
+	res.json({ success: true, vaultStatus });
+});
+
+module.exports = {
+	uploadDocument,
+	getDocuments,
+	getDocument,
+	getOcrResult,
+	processOcr,
+	getDocumentContent,
+	deleteDocument,
+	verifyDocument,
+	getDocumentReport,
+	encryptAndVaultDocument,
+	getDocumentVaultStatus,
+};

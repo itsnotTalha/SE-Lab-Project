@@ -11,6 +11,10 @@ router.get('/', controller.getDocuments);
 router.get('/:id/content', controller.getDocumentContent);
 router.get('/:id/ocr', controller.getOcrResult);
 router.post('/:id/ocr', controller.processOcr);
+router.post('/:id/verify', controller.verifyDocument);
+router.get('/:id/report', controller.getDocumentReport);
+router.post('/:id/vault', controller.encryptAndVaultDocument);
+router.get('/:id/vault', controller.getDocumentVaultStatus);
 router.get('/:id', controller.getDocument);
 router.delete('/:id', controller.deleteDocument);
 

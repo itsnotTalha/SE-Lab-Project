@@ -197,6 +197,59 @@ async function deleteDocument(userId, id) {
 	});
 }
 
+const documentVerificationService = require('../verification/documentVerificationService');
+const { encryptFile } = require('../encryption/encryptionService');
+
+async function verifyDocument(userId, sourceId, targetId) {
+	return documentVerificationService.verifyDocument(userId, documentId(sourceId), documentId(targetId));
+}
+
+async function getDocumentReport(userId, id) {
+	return documentVerificationService.getDocumentReport(userId, documentId(id));
+}
+
+async function encryptAndVaultDocument(userId, id, secret = null) {
+	const document = await ownedDocument(userId, id);
+	const vaultDir = path.resolve(documentUploadDirectory, '../vault_encrypted');
+	const targetEncryptedPath = path.resolve(vaultDir, `doc_${document.id}_${Date.now()}.enc`);
+	const encResult = await encryptFile(contentPath(document), targetEncryptedPath, secret);
+
+	const vaultItem = await documentRepository.createVaultItem({
+		ownerId: userId,
+		title: document.originalName,
+		documentId: document.id,
+		encryptedPath: encResult.encryptedPath,
+		encryptionAlgorithm: encResult.algorithm,
+		iv: encResult.iv,
+		authTag: encResult.authTag,
+	});
+
+	return {
+		id: vaultItem.id,
+		documentId: document.id,
+		title: vaultItem.title,
+		algorithm: vaultItem.encryption_algorithm,
+		iv: vaultItem.iv,
+		authTag: vaultItem.auth_tag,
+		createdAt: vaultItem.created_at,
+	};
+}
+
+async function getDocumentVaultStatus(userId, id) {
+	const document = await ownedDocument(userId, id);
+	const vaultItem = await documentRepository.getVaultItemByDocumentId(document.id, userId);
+	return {
+		documentId: document.id,
+		isVaulted: Boolean(vaultItem),
+		vaultItem: vaultItem ? {
+			id: vaultItem.id,
+			title: vaultItem.title,
+			algorithm: vaultItem.encryption_algorithm,
+			createdAt: vaultItem.created_at,
+		} : null,
+	};
+}
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -205,4 +258,8 @@ module.exports = {
 	getDocumentContent,
 	processOcr,
 	deleteDocument,
+	verifyDocument,
+	getDocumentReport,
+	encryptAndVaultDocument,
+	getDocumentVaultStatus,
 };
