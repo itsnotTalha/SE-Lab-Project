@@ -171,6 +171,8 @@ async function initializeDatabase() {
       const schemaPath = path.join(__dirname, 'schema.sql');
       const schema = await fs.readFile(schemaPath, 'utf8');
 
+      await run('PRAGMA journal_mode = WAL');
+      await run('PRAGMA busy_timeout = 5000');
       await exec(schema);
       await migrateVerificationReports();
       await migrateVaultPasswords();

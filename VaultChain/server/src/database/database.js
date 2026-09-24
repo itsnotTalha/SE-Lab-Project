@@ -42,6 +42,9 @@ const database = new sqlite3.Database(databasePath);
 
 database.on('open', () => {
   database.run('PRAGMA foreign_keys = ON');
+  database.run('PRAGMA journal_mode = WAL');
+  database.run('PRAGMA busy_timeout = 5000');
+  database.run('PRAGMA synchronous = NORMAL');
 });
 
 database.on('error', (error) => {

@@ -318,6 +318,3 @@ CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_expires_at ON vault_unlock_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_attempts_blocked_until ON vault_unlock_attempts(blocked_until);
-CREATE INDEX IF NOT EXISTS idx_documents_sha256_hash ON documents(sha256_hash);
-CREATE INDEX IF NOT EXISTS idx_ocr_results_semantic_hash ON ocr_results(semantic_hash);
-CREATE INDEX IF NOT EXISTS idx_ocr_results_text_sha256 ON ocr_results(text_sha256);
