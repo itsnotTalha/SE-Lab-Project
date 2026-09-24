@@ -7,7 +7,13 @@ async function request(path, options = {}) {
 		headers: { Authorization: `Bearer ${authService.getToken()}`, ...options.headers },
 	});
 	const data = response.status === 204 ? null : await response.json();
-	if (!response.ok) throw new Error(data?.message || 'Document request failed');
+	if (!response.ok) {
+		const error = new Error(data?.message || 'Document request failed');
+		error.status = response.status;
+		error.duplicate = data?.duplicate || null;
+		error.details = data?.details || null;
+		throw error;
+	}
 	return data;
 }
 
@@ -38,6 +44,30 @@ async function rerunOcr(id) {
 	return (await request(`/documents/${id}/ocr`, { method: 'POST' })).document;
 }
 
+async function verify(id, targetDocumentId) {
+	return (await request(`/documents/${id}/verify`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ targetDocumentId }),
+	})).verification;
+}
+
+async function getReport(id) {
+	return (await request(`/documents/${id}/report`)).report;
+}
+
+async function vaultDocument(id, secret = null) {
+	return (await request(`/documents/${id}/vault`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ secret }),
+	})).vault;
+}
+
+async function getVaultStatus(id) {
+	return (await request(`/documents/${id}/vault`)).vaultStatus;
+}
+
 async function remove(id) {
 	return request(`/documents/${id}`, { method: 'DELETE' });
 }
@@ -54,4 +84,16 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const documentService = { list, upload, get, getOcr, rerunOcr, remove, getContentObjectUrl };
+export const documentService = {
+	list,
+	upload,
+	get,
+	getOcr,
+	rerunOcr,
+	verify,
+	getReport,
+	vaultDocument,
+	getVaultStatus,
+	remove,
+	getContentObjectUrl,
+};
