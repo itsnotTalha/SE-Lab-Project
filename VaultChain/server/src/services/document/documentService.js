@@ -6,6 +6,7 @@ const execFileAsync = promisify(execFile);
 
 const { documentUploadDirectory } = require('../../middleware/upload');
 const documentRepository = require('../../repositories/documentRepository');
+const marketplaceRepository = require('../../repositories/marketplaceRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
 const { generateTextSha256 } = require('../hashing/textHashService');
 const { extractDocumentText } = require('../ocr/ocrService');
@@ -197,9 +198,133 @@ async function getOcrResult(userId, id) {
 	};
 }
 
-async function getDocumentContent(userId, id) {
-	const document = await ownedDocument(userId, id);
-	return { document: publicDocument(document), filePath: contentPath(document) };
+async function validateDocumentAccess(userId, id, { action = 'view', page = null } = {}) {
+	const numericId = Number(id);
+	if (!Number.isInteger(numericId) || numericId <= 0) {
+		throw httpError(404, 'Document not found');
+	}
+	const document = await documentRepository.getDocumentById(numericId);
+	if (!document) {
+		throw httpError(404, 'Document not found');
+	}
+
+	if (document.ownerId === userId) {
+		return { document, grant: null, isOwner: true };
+	}
+
+	const grant = await marketplaceRepository.getActiveAccessGrant({
+		buyerId: userId,
+		documentId: document.id,
+	});
+
+	if (!grant) {
+		throw httpError(403, 'Access denied: No active grant for this document', { code: 'FORBIDDEN' });
+	}
+
+	if (grant.revokedAt) {
+		throw httpError(403, 'Access grant has been revoked', { code: 'GRANT_REVOKED' });
+	}
+
+	if (grant.expiresAt && new Date(grant.expiresAt) <= new Date()) {
+		throw httpError(403, 'Access grant has expired', { code: 'GRANT_EXPIRED' });
+	}
+
+	if (action === 'view') {
+		if (!grant.canView) {
+			throw httpError(403, 'View permission has not been granted for this document', { code: 'VIEW_NOT_PERMITTED' });
+		}
+		if (page != null) {
+			const pageNum = parseInt(page, 10);
+			if (isNaN(pageNum) || pageNum < 1) {
+				throw httpError(400, 'Page number must be a positive integer', { code: 'INVALID_PAGE' });
+			}
+			if (grant.accessType !== 'all') {
+				if (!grant.pages.includes(pageNum)) {
+					throw httpError(403, `Access to page ${pageNum} is not permitted`, { code: 'PAGE_NOT_PERMITTED' });
+				}
+			}
+		}
+	} else if (action === 'download') {
+		if (!grant.canDownload) {
+			throw httpError(403, 'Download permission has not been granted for this document', { code: 'DOWNLOAD_NOT_PERMITTED' });
+		}
+	}
+
+	return { document, grant, isOwner: false };
+}
+
+async function getDocumentContent(userId, id, page = null) {
+	const numericId = documentId(id);
+	const owned = await documentRepository.getDocumentByIdAndOwnerId(numericId, userId);
+	if (owned) {
+		return { document: publicDocument(owned), filePath: contentPath(owned), isOwner: true };
+	}
+
+	const document = await documentRepository.getDocumentById(numericId);
+	if (!document) {
+		throw httpError(404, 'Document not found');
+	}
+
+	const activeGrant = await marketplaceRepository.getActiveAccessGrant({ buyerId: userId, documentId: numericId });
+	if (!activeGrant) {
+		throw httpError(404, 'Document not found');
+	}
+
+	const access = await validateDocumentAccess(userId, numericId, { action: 'view', page });
+	return { document: publicDocument(access.document), filePath: contentPath(access.document), grant: access.grant, isOwner: false };
+}
+
+async function getProtectedPageContent(userId, id, page) {
+	const numericId = documentId(id);
+	const pageNum = parseInt(page, 10);
+	if (isNaN(pageNum) || pageNum < 1) {
+		throw httpError(400, 'Invalid page number');
+	}
+	const access = await validateDocumentAccess(userId, numericId, { action: 'view', page: pageNum });
+	return {
+		document: publicDocument(access.document),
+		filePath: contentPath(access.document),
+		pageNumber: pageNum,
+		grant: access.grant,
+		isOwner: access.isOwner,
+	};
+}
+
+async function getDocumentAccessPermissions(userId, id) {
+	const numericId = documentId(id);
+	const document = await documentRepository.getDocumentById(numericId);
+	if (!document) throw httpError(404, 'Document not found');
+
+	if (document.ownerId === userId) {
+		return {
+			isOwner: true,
+			canView: true,
+			canDownload: true,
+			accessType: 'all',
+			pages: Array.from({ length: document.pageCount || 1 }, (_, i) => i + 1),
+		};
+	}
+
+	const grant = await marketplaceRepository.getActiveAccessGrant({ buyerId: userId, documentId: numericId });
+	if (!grant) {
+		return {
+			isOwner: false,
+			canView: false,
+			canDownload: false,
+			accessType: null,
+			pages: [],
+		};
+	}
+
+	return {
+		isOwner: false,
+		canView: grant.canView,
+		canDownload: grant.canDownload,
+		accessType: grant.accessType,
+		pages: grant.accessType === 'all'
+			? Array.from({ length: document.pageCount || 1 }, (_, i) => i + 1)
+			: grant.pages,
+	};
 }
 
 async function deleteDocument(userId, id) {
@@ -310,7 +435,6 @@ async function getDocumentVaultStatus(userId, id) {
 
 const assetRepository = require('../../repositories/assetRepository');
 const vaultRepository = require('../../repositories/vaultRepository');
-const marketplaceRepository = require('../../repositories/marketplaceRepository');
 const marketplaceService = require('../marketplace/marketplaceService');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -384,7 +508,17 @@ async function verifyAndGetDownloadContent(userId, id, password) {
 	if (!isPasswordValid) {
 		throw httpError(401, 'Incorrect account password');
 	}
-	const document = await ownedDocument(userId, id);
+
+	const numericId = documentId(id);
+	const document = await documentRepository.getDocumentById(numericId);
+	if (!document) {
+		throw httpError(404, 'Document not found');
+	}
+
+	if (document.ownerId !== userId) {
+		await validateDocumentAccess(userId, numericId, { action: 'download' });
+	}
+
 	return {
 		filePath: contentPath(document),
 		fileName: document.originalName,
@@ -398,6 +532,9 @@ module.exports = {
 	getDocument,
 	getOcrResult,
 	getDocumentContent,
+	getProtectedPageContent,
+	getDocumentAccessPermissions,
+	validateDocumentAccess,
 	processOcr,
 	deleteDocument,
 	verifyDocument,

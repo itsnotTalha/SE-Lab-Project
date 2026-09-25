@@ -67,6 +67,7 @@ async function toPublicListing(listing, requesterId, tokenFingerprint) {
 	}
 	const previewAvailable = listing.status === 'active' && !protection.isLocked;
 	return {
+		id: listing.id,
 		reference: listing.reference,
 		title: listing.title,
 		description: listing.description,
@@ -75,7 +76,12 @@ async function toPublicListing(listing, requesterId, tokenFingerprint) {
 		status: listing.status,
 		createdAt: listing.createdAt,
 		soldAt: listing.soldAt,
-		seller: { reference: publicOwnerReference(listing.sellerId), isCurrentUser: isSeller },
+		seller: {
+			reference: publicOwnerReference(listing.sellerId),
+			isCurrentUser: isSeller,
+		},
+		documentId: listing.documentId || null,
+		documentPageCount: listing.documentPageCount || 1,
 		asset: {
 			id: isSeller ? listing.assetId : null,
 			reference: publicAssetReference(listing.assetId),
@@ -130,7 +136,180 @@ async function getListings(userId, tokenFingerprint) {
 }
 
 async function getListing(reference, userId, tokenFingerprint) {
-	return toPublicListing(await getInternalListing(reference), userId, tokenFingerprint);
+	const listing = await getInternalListing(reference);
+	const publicListing = await toPublicListing(listing, userId, tokenFingerprint);
+	if (userId && userId !== listing.sellerId) {
+		const request = await marketplaceRepository.getLatestAccessRequestForListingAndBuyer(listing.id, userId);
+		const activeGrant = await marketplaceRepository.getActiveAccessGrant({ buyerId: userId, listingId: listing.id });
+		publicListing.userAccess = {
+			hasActiveRequest: Boolean(request && request.status === 'pending'),
+			requestStatus: request ? request.status : null,
+			requestId: request ? request.id : null,
+			grant: activeGrant || null,
+		};
+	}
+	return publicListing;
+}
+
+async function createAccessRequest(userId, reference, { message } = {}) {
+	const listing = await getInternalListing(reference);
+	if (listing.sellerId === userId) {
+		throw httpError(400, 'You cannot request access to your own listing', 'OWN_LISTING');
+	}
+	if (listing.status !== 'active') {
+		throw httpError(409, 'Cannot request access for an inactive listing', 'LISTING_NOT_ACTIVE');
+	}
+
+	const pending = await marketplaceRepository.getPendingAccessRequest({
+		listingId: listing.id,
+		requesterId: userId,
+	});
+	if (pending) {
+		throw httpError(409, 'You already have a pending access request for this listing', 'DUPLICATE_PENDING_REQUEST');
+	}
+
+	const request = await marketplaceRepository.createAccessRequest({
+		listingId: listing.id,
+		documentId: listing.documentId,
+		requesterId: userId,
+		ownerId: listing.sellerId,
+		message: validateText(message, 'Message', 500, false),
+	});
+
+	return request;
+}
+
+async function getReceivedAccessRequests(ownerId) {
+	return marketplaceRepository.getAccessRequestsByOwner(ownerId);
+}
+
+async function getSentAccessRequests(requesterId) {
+	return marketplaceRepository.getAccessRequestsByRequester(requesterId);
+}
+
+async function getAccessRequestStatus(userId, reference) {
+	const listing = await getInternalListing(reference);
+	const request = await marketplaceRepository.getLatestAccessRequestForListingAndBuyer(listing.id, userId);
+	const activeGrant = await marketplaceRepository.getActiveAccessGrant({ buyerId: userId, listingId: listing.id });
+	return {
+		listingId: listing.id,
+		listingReference: listing.reference,
+		request,
+		grant: activeGrant,
+	};
+}
+
+async function approveAccessRequest(ownerId, requestId, { accessType = 'all', canView = true, canDownload = false, pages = [], expiresAt = null } = {}) {
+	const numericRequestId = Number(requestId);
+	if (!Number.isInteger(numericRequestId) || numericRequestId <= 0) {
+		throw httpError(400, 'Invalid request ID');
+	}
+
+	const request = await marketplaceRepository.getAccessRequestById(numericRequestId);
+	if (!request) {
+		throw httpError(404, 'Access request not found', 'REQUEST_NOT_FOUND');
+	}
+	if (request.ownerId !== ownerId) {
+		throw httpError(403, 'You are not authorized to approve this access request', 'FORBIDDEN');
+	}
+	if (request.status !== 'pending') {
+		throw httpError(409, `Cannot approve a request with status '${request.status}'`, 'REQUEST_NOT_PENDING');
+	}
+
+	const normalizedType = String(accessType || 'all').toLowerCase();
+	if (!['all', 'selected', 'single'].includes(normalizedType)) {
+		throw httpError(400, "Invalid accessType. Must be 'all', 'selected', or 'single'", 'INVALID_ACCESS_TYPE');
+	}
+
+	let normalizedPages = [];
+	if (normalizedType === 'single') {
+		if (!pages || (Array.isArray(pages) && pages.length !== 1)) {
+			throw httpError(400, 'Single page access requires exactly one page number', 'INVALID_PAGES');
+		}
+		const pageVal = Array.isArray(pages) ? pages[0] : pages;
+		const parsed = parseInt(pageVal, 10);
+		if (isNaN(parsed) || parsed < 1) {
+			throw httpError(400, 'Page number must be a positive integer', 'INVALID_PAGES');
+		}
+		normalizedPages = [parsed];
+	} else if (normalizedType === 'selected') {
+		if (!Array.isArray(pages) || pages.length === 0) {
+			throw httpError(400, 'Selected pages access requires at least one page number', 'INVALID_PAGES');
+		}
+		normalizedPages = pages.map((p) => parseInt(p, 10)).filter((p) => !isNaN(p) && p > 0);
+		if (normalizedPages.length === 0) {
+			throw httpError(400, 'Valid page numbers are required for selected pages access', 'INVALID_PAGES');
+		}
+	}
+
+	await marketplaceRepository.updateAccessRequestStatus(numericRequestId, {
+		status: 'approved',
+		respondedBy: ownerId,
+	});
+
+	const grant = await marketplaceRepository.createAccessGrant({
+		accessRequestId: numericRequestId,
+		listingId: request.listingId,
+		documentId: request.documentId,
+		buyerId: request.requesterId,
+		ownerId,
+		accessType: normalizedType,
+		canView: Boolean(canView),
+		canDownload: Boolean(canDownload),
+		expiresAt: expiresAt || null,
+		pages: normalizedPages,
+	});
+
+	const updatedRequest = await marketplaceRepository.getAccessRequestById(numericRequestId);
+	return {
+		request: updatedRequest,
+		grant,
+	};
+}
+
+async function rejectAccessRequest(ownerId, requestId) {
+	const numericRequestId = Number(requestId);
+	if (!Number.isInteger(numericRequestId) || numericRequestId <= 0) {
+		throw httpError(400, 'Invalid request ID');
+	}
+
+	const request = await marketplaceRepository.getAccessRequestById(numericRequestId);
+	if (!request) {
+		throw httpError(404, 'Access request not found', 'REQUEST_NOT_FOUND');
+	}
+	if (request.ownerId !== ownerId) {
+		throw httpError(403, 'You are not authorized to reject this access request', 'FORBIDDEN');
+	}
+	if (request.status !== 'pending') {
+		throw httpError(409, `Cannot reject a request with status '${request.status}'`, 'REQUEST_NOT_PENDING');
+	}
+
+	await marketplaceRepository.updateAccessRequestStatus(numericRequestId, {
+		status: 'rejected',
+		respondedBy: ownerId,
+	});
+
+	return marketplaceRepository.getAccessRequestById(numericRequestId);
+}
+
+async function revokeAccessGrant(ownerId, grantId) {
+	const numericGrantId = Number(grantId);
+	if (!Number.isInteger(numericGrantId) || numericGrantId <= 0) {
+		throw httpError(400, 'Invalid grant ID');
+	}
+
+	const grant = await marketplaceRepository.getAccessGrantById(numericGrantId);
+	if (!grant) {
+		throw httpError(404, 'Access grant not found', 'GRANT_NOT_FOUND');
+	}
+	if (grant.ownerId !== ownerId) {
+		throw httpError(403, 'You are not authorized to revoke this access grant', 'FORBIDDEN');
+	}
+	if (grant.revokedAt) {
+		throw httpError(409, 'Access grant is already revoked', 'ALREADY_REVOKED');
+	}
+
+	return marketplaceRepository.revokeAccessGrant(numericGrantId, ownerId);
 }
 
 async function updateListing(userId, reference, payload, tokenFingerprint) {
@@ -207,4 +386,7 @@ module.exports = {
 	createListing, getListings, getListing, updateListing, deleteListing,
 	getListingContent, purchaseListing, getOwnershipHistory,
 	toPublicListing, createUniqueReference,
+	createAccessRequest, getReceivedAccessRequests, getSentAccessRequests,
+	getAccessRequestStatus, approveAccessRequest, rejectAccessRequest,
+	revokeAccessGrant,
 };

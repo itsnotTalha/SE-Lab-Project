@@ -21,11 +21,15 @@ function all(sql, params = []) {
 const LISTING_SELECT = `
 	SELECT ml.id, ml.public_reference, ml.asset_id, ml.seller_id, ml.buyer_id,
 		ml.title, ml.description, ml.listing_type, ml.price, ml.status, ml.created_at, ml.sold_at,
+		u.full_name AS seller_name,
+		d.id AS document_id, d.page_count AS document_page_count,
 		a.owner_id AS asset_owner_id, a.title AS asset_title, a.description AS asset_description,
 		a.category AS asset_category, a.file_name, a.file_path, a.file_size, a.mime_type,
 		a.created_at AS asset_created_at, am.width, am.height
 	FROM marketplace_listings ml
 	JOIN assets a ON a.id = ml.asset_id
+	LEFT JOIN users u ON u.id = ml.seller_id
+	LEFT JOIN documents d ON (d.asset_id = a.id OR d.file_path = a.file_path)
 	LEFT JOIN asset_metadata am ON am.asset_id = a.id
 `;
 
@@ -33,9 +37,11 @@ function mapListingRow(row) {
 	if (!row) return null;
 	return {
 		id: row.id, reference: row.public_reference, assetId: row.asset_id,
-		sellerId: row.seller_id, buyerId: row.buyer_id, title: row.title,
+		sellerId: row.seller_id, sellerName: row.seller_name || 'Verified Seller', buyerId: row.buyer_id, title: row.title,
 		description: row.description, listingType: row.listing_type, price: row.price,
 		status: row.status, createdAt: row.created_at, soldAt: row.sold_at,
+		documentId: row.document_id || null,
+		documentPageCount: row.document_page_count || 1,
 		asset: {
 			id: row.asset_id, ownerId: row.asset_owner_id, title: row.asset_title,
 			description: row.asset_description, category: row.asset_category,
@@ -208,8 +214,340 @@ async function getOwnershipHistory(assetId) {
 	}));
 }
 
+function mapAccessRequestRow(row) {
+	if (!row) return null;
+	return {
+		id: row.id,
+		listingId: row.marketplace_listing_id,
+		listingReference: row.listing_reference || null,
+		listingTitle: row.listing_title || null,
+		listingPrice: row.listing_price || null,
+		documentId: row.document_id || row.doc_id || null,
+		documentName: row.document_name || null,
+		documentPageCount: row.document_page_count || 1,
+		requesterId: row.requester_id,
+		requesterName: row.requester_name || null,
+		requesterEmail: row.requester_email || null,
+		ownerId: row.owner_id,
+		ownerName: row.owner_name || null,
+		ownerEmail: row.owner_email || null,
+		message: row.message || null,
+		status: row.status,
+		createdAt: row.created_at,
+		respondedAt: row.responded_at || null,
+		respondedBy: row.responded_by || null,
+	};
+}
+
+async function createAccessRequest({ listingId, documentId, requesterId, ownerId, message }) {
+	const result = await run(
+		`INSERT INTO access_requests
+			(marketplace_listing_id, document_id, requester_id, owner_id, message, status)
+		 VALUES (?, ?, ?, ?, ?, 'pending')`,
+		[listingId, documentId || null, requesterId, ownerId, message || null]
+	);
+	return getAccessRequestById(result.lastID);
+}
+
+async function getPendingAccessRequest({ listingId, requesterId }) {
+	return get(
+		`SELECT ar.*, ml.public_reference AS listing_reference, ml.title AS listing_title
+		 FROM access_requests ar
+		 JOIN marketplace_listings ml ON ml.id = ar.marketplace_listing_id
+		 WHERE ar.marketplace_listing_id = ? AND ar.requester_id = ? AND ar.status = 'pending'
+		 LIMIT 1`,
+		[listingId, requesterId]
+	);
+}
+
+async function getAccessRequestById(id) {
+	const row = await get(
+		`SELECT ar.*,
+			ml.public_reference AS listing_reference, ml.title AS listing_title, ml.price AS listing_price,
+			u.full_name AS requester_name, u.email AS requester_email,
+			o.full_name AS owner_name, o.email AS owner_email,
+			d.id AS doc_id, d.original_name AS document_name, d.page_count AS document_page_count,
+			ag.id AS grant_id, ag.access_type, ag.can_view, ag.can_download, ag.revoked_at, ag.expires_at
+		 FROM access_requests ar
+		 JOIN marketplace_listings ml ON ml.id = ar.marketplace_listing_id
+		 JOIN users u ON u.id = ar.requester_id
+		 JOIN users o ON o.id = ar.owner_id
+		 LEFT JOIN documents d ON d.id = ar.document_id
+		 LEFT JOIN access_grants ag ON ag.access_request_id = ar.id
+		 WHERE ar.id = ? LIMIT 1`,
+		[id]
+	);
+	if (!row) return null;
+	const req = mapAccessRequestRow(row);
+	if (row.grant_id) {
+		const pages = await getGrantPages(row.grant_id);
+		req.grant = {
+			id: row.grant_id,
+			accessType: row.access_type,
+			canView: Boolean(row.can_view),
+			canDownload: Boolean(row.can_download),
+			revokedAt: row.revoked_at,
+			expiresAt: row.expires_at,
+			pages,
+		};
+	}
+	return req;
+}
+
+async function getAccessRequestsByOwner(ownerId) {
+	const rows = await all(
+		`SELECT ar.*,
+			ml.public_reference AS listing_reference, ml.title AS listing_title, ml.price AS listing_price,
+			u.full_name AS requester_name, u.email AS requester_email,
+			d.id AS doc_id, d.original_name AS document_name, d.page_count AS document_page_count,
+			ag.id AS grant_id, ag.access_type, ag.can_view, ag.can_download, ag.revoked_at, ag.expires_at
+		 FROM access_requests ar
+		 JOIN marketplace_listings ml ON ml.id = ar.marketplace_listing_id
+		 JOIN users u ON u.id = ar.requester_id
+		 LEFT JOIN documents d ON d.id = ar.document_id
+		 LEFT JOIN access_grants ag ON ag.access_request_id = ar.id
+		 WHERE ar.owner_id = ?
+		 ORDER BY ar.created_at DESC, ar.id DESC`,
+		[ownerId]
+	);
+	return Promise.all(rows.map(async (row) => {
+		const req = mapAccessRequestRow(row);
+		if (row.grant_id) {
+			const pages = await getGrantPages(row.grant_id);
+			req.grant = {
+				id: row.grant_id,
+				accessType: row.access_type,
+				canView: Boolean(row.can_view),
+				canDownload: Boolean(row.can_download),
+				revokedAt: row.revoked_at,
+				expiresAt: row.expires_at,
+				pages,
+			};
+		}
+		return req;
+	}));
+}
+
+async function getAccessRequestsByRequester(requesterId) {
+	const rows = await all(
+		`SELECT ar.*,
+			ml.public_reference AS listing_reference, ml.title AS listing_title, ml.price AS listing_price,
+			o.full_name AS owner_name, o.email AS owner_email,
+			d.id AS doc_id, d.original_name AS document_name, d.page_count AS document_page_count,
+			ag.id AS grant_id, ag.access_type, ag.can_view, ag.can_download, ag.revoked_at, ag.expires_at
+		 FROM access_requests ar
+		 JOIN marketplace_listings ml ON ml.id = ar.marketplace_listing_id
+		 JOIN users o ON o.id = ar.owner_id
+		 LEFT JOIN documents d ON d.id = ar.document_id
+		 LEFT JOIN access_grants ag ON ag.access_request_id = ar.id
+		 WHERE ar.requester_id = ?
+		 ORDER BY ar.created_at DESC, ar.id DESC`,
+		[requesterId]
+	);
+	return Promise.all(rows.map(async (row) => {
+		const req = mapAccessRequestRow(row);
+		if (row.grant_id) {
+			const pages = await getGrantPages(row.grant_id);
+			req.grant = {
+				id: row.grant_id,
+				accessType: row.access_type,
+				canView: Boolean(row.can_view),
+				canDownload: Boolean(row.can_download),
+				revokedAt: row.revoked_at,
+				expiresAt: row.expires_at,
+				pages,
+			};
+		}
+		return req;
+	}));
+}
+
+async function getLatestAccessRequestForListingAndBuyer(listingId, buyerId) {
+	const row = await get(
+		`SELECT ar.*,
+			ml.public_reference AS listing_reference, ml.title AS listing_title, ml.price AS listing_price,
+			u.full_name AS requester_name, u.email AS requester_email,
+			o.full_name AS owner_name, o.email AS owner_email,
+			d.id AS doc_id, d.original_name AS document_name, d.page_count AS document_page_count,
+			ag.id AS grant_id, ag.access_type, ag.can_view, ag.can_download, ag.revoked_at, ag.expires_at
+		 FROM access_requests ar
+		 JOIN marketplace_listings ml ON ml.id = ar.marketplace_listing_id
+		 JOIN users u ON u.id = ar.requester_id
+		 JOIN users o ON o.id = ar.owner_id
+		 LEFT JOIN documents d ON d.id = ar.document_id
+		 LEFT JOIN access_grants ag ON ag.access_request_id = ar.id
+		 WHERE ar.marketplace_listing_id = ? AND ar.requester_id = ?
+		 ORDER BY ar.created_at DESC, ar.id DESC
+		 LIMIT 1`,
+		[listingId, buyerId]
+	);
+	if (!row) return null;
+	const req = mapAccessRequestRow(row);
+	if (row.grant_id) {
+		const pages = await getGrantPages(row.grant_id);
+		req.grant = {
+			id: row.grant_id,
+			accessType: row.access_type,
+			canView: Boolean(row.can_view),
+			canDownload: Boolean(row.can_download),
+			revokedAt: row.revoked_at,
+			expiresAt: row.expires_at,
+			pages,
+		};
+	}
+	return req;
+}
+
+async function updateAccessRequestStatus(id, { status, respondedBy }) {
+	await run(
+		`UPDATE access_requests
+		 SET status = ?, responded_at = CURRENT_TIMESTAMP, responded_by = ?
+		 WHERE id = ?`,
+		[status, respondedBy, id]
+	);
+	return getAccessRequestById(id);
+}
+
+async function getGrantPages(grantId) {
+	const rows = await all(`SELECT page_number FROM access_grant_pages WHERE grant_id = ? ORDER BY page_number ASC`, [grantId]);
+	return rows.map((r) => r.page_number);
+}
+
+async function createAccessGrant({ accessRequestId, listingId, documentId, buyerId, ownerId, accessType = 'all', canView = 1, canDownload = 0, expiresAt = null, pages = [] }) {
+	await run(
+		`UPDATE access_grants SET revoked_at = CURRENT_TIMESTAMP
+		 WHERE marketplace_listing_id = ? AND buyer_id = ? AND revoked_at IS NULL`,
+		[listingId, buyerId]
+	);
+
+	const grantRes = await run(
+		`INSERT INTO access_grants
+			(access_request_id, marketplace_listing_id, document_id, buyer_id, owner_id, access_type, can_view, can_download, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[
+			accessRequestId || null,
+			listingId,
+			documentId || null,
+			buyerId,
+			ownerId,
+			accessType,
+			canView ? 1 : 0,
+			canDownload ? 1 : 0,
+			expiresAt || null,
+		]
+	);
+	const grantId = grantRes.lastID;
+
+	if (Array.isArray(pages) && pages.length > 0 && (accessType === 'selected' || accessType === 'single')) {
+		for (const pageNum of pages) {
+			const p = parseInt(pageNum, 10);
+			if (!isNaN(p)) {
+				await run(
+					`INSERT INTO access_grant_pages (grant_id, page_number) VALUES (?, ?)`,
+					[grantId, p]
+				);
+			}
+		}
+	}
+
+	return getAccessGrantById(grantId);
+}
+
+async function getAccessGrantById(id) {
+	const row = await get(`SELECT * FROM access_grants WHERE id = ? LIMIT 1`, [id]);
+	if (!row) return null;
+	const pages = await getGrantPages(id);
+	return {
+		id: row.id,
+		accessRequestId: row.access_request_id,
+		listingId: row.marketplace_listing_id,
+		documentId: row.document_id,
+		buyerId: row.buyer_id,
+		ownerId: row.owner_id,
+		accessType: row.access_type,
+		canView: Boolean(row.can_view),
+		canDownload: Boolean(row.can_download),
+		expiresAt: row.expires_at,
+		createdAt: row.created_at,
+		revokedAt: row.revoked_at,
+		pages,
+	};
+}
+
+async function getAccessGrantByRequestId(requestId) {
+	const row = await get(`SELECT * FROM access_grants WHERE access_request_id = ? LIMIT 1`, [requestId]);
+	if (!row) return null;
+	const pages = await getGrantPages(row.id);
+	return {
+		id: row.id,
+		accessRequestId: row.access_request_id,
+		listingId: row.marketplace_listing_id,
+		documentId: row.document_id,
+		buyerId: row.buyer_id,
+		ownerId: row.owner_id,
+		accessType: row.access_type,
+		canView: Boolean(row.can_view),
+		canDownload: Boolean(row.can_download),
+		expiresAt: row.expires_at,
+		createdAt: row.created_at,
+		revokedAt: row.revoked_at,
+		pages,
+	};
+}
+
+async function getActiveAccessGrant({ buyerId, listingId, documentId }) {
+	let sql = `SELECT * FROM access_grants
+		WHERE buyer_id = ?
+		  AND revoked_at IS NULL
+		  AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)`;
+	const params = [buyerId];
+
+	if (listingId) {
+		sql += ` AND marketplace_listing_id = ?`;
+		params.push(listingId);
+	}
+	if (documentId) {
+		sql += ` AND document_id = ?`;
+		params.push(documentId);
+	}
+	sql += ` ORDER BY id DESC LIMIT 1`;
+
+	const row = await get(sql, params);
+	if (!row) return null;
+	const pages = await getGrantPages(row.id);
+	return {
+		id: row.id,
+		accessRequestId: row.access_request_id,
+		listingId: row.marketplace_listing_id,
+		documentId: row.document_id,
+		buyerId: row.buyer_id,
+		ownerId: row.owner_id,
+		accessType: row.access_type,
+		canView: Boolean(row.can_view),
+		canDownload: Boolean(row.can_download),
+		expiresAt: row.expires_at,
+		createdAt: row.created_at,
+		revokedAt: row.revoked_at,
+		pages,
+	};
+}
+
+async function revokeAccessGrant(id, ownerId) {
+	await run(
+		`UPDATE access_grants SET revoked_at = CURRENT_TIMESTAMP
+		 WHERE id = ? AND owner_id = ? AND revoked_at IS NULL`,
+		[id, ownerId]
+	);
+	return getAccessGrantById(id);
+}
+
 module.exports = {
 	createListing, getListings, getListingById, getListingByReference,
 	getActiveListingForAsset, updateActiveListing, cancelListing,
 	purchaseListing, getOwnershipHistory,
+	createAccessRequest, getPendingAccessRequest, getAccessRequestById,
+	getAccessRequestsByOwner, getAccessRequestsByRequester,
+	getLatestAccessRequestForListingAndBuyer, updateAccessRequestStatus,
+	createAccessGrant, getAccessGrantById, getAccessGrantByRequestId,
+	getActiveAccessGrant, revokeAccessGrant, getGrantPages,
 };

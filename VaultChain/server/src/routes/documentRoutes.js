@@ -9,6 +9,8 @@ router.use(authenticateToken);
 router.post('/', singleDocumentUpload, controller.uploadDocument);
 router.get('/', controller.getDocuments);
 router.get('/:id/content', controller.getDocumentContent);
+router.get('/:id/pages/:page', controller.getProtectedPageContent);
+router.get('/:id/permissions', controller.getDocumentPermissions);
 router.post('/:id/download', controller.downloadDocument);
 router.get('/:id/thumbnail', controller.getDocumentThumbnail);
 router.get('/:id/ocr', controller.getOcrResult);

@@ -320,3 +320,61 @@ CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_expires_at ON vault_unlock_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_attempts_blocked_until ON vault_unlock_attempts(blocked_until);
+
+-- access_requests table
+CREATE TABLE IF NOT EXISTS access_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  marketplace_listing_id INTEGER NOT NULL,
+  document_id INTEGER,
+  requester_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  responded_at DATETIME,
+  responded_by INTEGER,
+  FOREIGN KEY(marketplace_listing_id) REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY(requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(responded_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- access_grants table
+CREATE TABLE IF NOT EXISTS access_grants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  access_request_id INTEGER,
+  marketplace_listing_id INTEGER NOT NULL,
+  document_id INTEGER,
+  buyer_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL,
+  access_type TEXT NOT NULL DEFAULT 'all' CHECK(access_type IN ('all', 'selected', 'single')),
+  can_view INTEGER NOT NULL DEFAULT 1,
+  can_download INTEGER NOT NULL DEFAULT 0,
+  expires_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  revoked_at DATETIME,
+  FOREIGN KEY(access_request_id) REFERENCES access_requests(id) ON DELETE SET NULL,
+  FOREIGN KEY(marketplace_listing_id) REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  FOREIGN KEY(buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- access_grant_pages table
+CREATE TABLE IF NOT EXISTS access_grant_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  grant_id INTEGER NOT NULL,
+  page_number INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(grant_id) REFERENCES access_grants(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_requests_listing ON access_requests(marketplace_listing_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_requester ON access_requests(requester_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_owner ON access_requests(owner_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status);
+CREATE INDEX IF NOT EXISTS idx_access_grants_buyer_doc ON access_grants(buyer_id, document_id);
+CREATE INDEX IF NOT EXISTS idx_access_grants_listing ON access_grants(marketplace_listing_id);
+CREATE INDEX IF NOT EXISTS idx_access_grant_pages_grant_page ON access_grant_pages(grant_id, page_number);
+

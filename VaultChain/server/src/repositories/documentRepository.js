@@ -104,6 +104,10 @@ async function getDocumentByIdAndOwnerId(id, ownerId) {
 	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.id = ? AND d.owner_id = ? LIMIT 1`, [id, ownerId]));
 }
 
+async function getDocumentById(id) {
+	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.id = ? LIMIT 1`, [id]));
+}
+
 async function findDocumentBySha256(sha256Hash) {
 	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.sha256_hash = ? LIMIT 1`, [sha256Hash]));
 }
@@ -200,6 +204,7 @@ module.exports = {
 	createDocument,
 	getDocumentsByOwnerId,
 	getDocumentByIdAndOwnerId,
+	getDocumentById,
 	findDocumentBySha256,
 	findDocumentByTextHash,
 	setOcrStatus,

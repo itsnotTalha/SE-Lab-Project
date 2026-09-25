@@ -23,7 +23,7 @@ const processOcr = asyncHandler(async (req, res) => {
 });
 
 const getDocumentContent = asyncHandler(async (req, res) => {
-	const content = await documentService.getDocumentContent(req.user.id, req.params.id);
+	const content = await documentService.getDocumentContent(req.user.id, req.params.id, req.query.page);
 	res.type(content.document.mimeType);
 	res.set('Cache-Control', 'private, max-age=300');
 	res.set('Content-Disposition', 'inline');
@@ -82,6 +82,19 @@ const downloadDocument = asyncHandler(async (req, res) => {
 	res.sendFile(content.filePath);
 });
 
+const getProtectedPageContent = asyncHandler(async (req, res) => {
+	const content = await documentService.getProtectedPageContent(req.user.id, req.params.id, req.params.page);
+	res.type(content.document.mimeType);
+	res.set('Cache-Control', 'private, max-age=300');
+	res.set('Content-Disposition', 'inline');
+	res.sendFile(content.filePath);
+});
+
+const getDocumentPermissions = asyncHandler(async (req, res) => {
+	const permissions = await documentService.getDocumentAccessPermissions(req.user.id, req.params.id);
+	res.status(200).json({ success: true, permissions });
+});
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -89,6 +102,8 @@ module.exports = {
 	getOcrResult,
 	processOcr,
 	getDocumentContent,
+	getProtectedPageContent,
+	getDocumentPermissions,
 	getDocumentThumbnail,
 	deleteDocument,
 	verifyDocument,
