@@ -45,7 +45,7 @@
 .doc-thumb-placeholder { width:100%; height:100%; display:grid; place-items:center; color:var(--text-muted); background:var(--bg-subtle); }
 .doc-thumb-spinner { animation:spin 1s linear infinite; color:var(--primary); }
 /* Floating Full First Page Preview on Hover */
-.doc-zoom-popover { position:absolute; left:calc(100% + 14px); top:-24px; width:440px; height:590px; max-height:86vh; z-index:999; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:0 22px 55px rgba(0,0,0,0.28), 0 6px 18px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; pointer-events:none; animation:fadeIn .18s ease-out; }
+.doc-zoom-popover { position:fixed; width:440px; height:590px; max-height:calc(100vh - 32px); z-index:99999; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:0 22px 55px rgba(0,0,0,0.28), 0 6px 18px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; pointer-events:none; animation:fadeIn .18s ease-out; }
 .doc-zoom-popover__header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--bg-subtle); border-bottom:1px solid var(--border); font-size:0.68rem; }
 .doc-zoom-popover__title { font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:250px; }
 .doc-zoom-popover__hint { color:var(--primary); font-weight:500; font-size:0.62rem; background:var(--primary-soft); padding:2px 8px; border-radius:6px; }
