@@ -70,6 +70,51 @@ async function getContentObjectUrl(reference) {
 	return URL.createObjectURL(await response.blob());
 }
 
+async function createAccessRequest(reference, message = '') {
+	const data = await request(`/marketplace/listings/${reference}/requests`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ message }),
+	});
+	return data.request;
+}
+
+async function getAccessRequestStatus(reference) {
+	return await request(`/marketplace/listings/${reference}/requests/status`);
+}
+
+async function getReceivedAccessRequests() {
+	const data = await request('/marketplace/requests/received');
+	return data.requests;
+}
+
+async function getSentAccessRequests() {
+	const data = await request('/marketplace/requests/sent');
+	return data.requests;
+}
+
+async function approveAccessRequest(requestId, payload = {}) {
+	return await request(`/marketplace/requests/${requestId}/approve`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+}
+
+async function rejectAccessRequest(requestId) {
+	const data = await request(`/marketplace/requests/${requestId}/reject`, {
+		method: 'POST',
+	});
+	return data.request;
+}
+
+async function revokeAccessGrant(grantId) {
+	const data = await request(`/marketplace/grants/${grantId}/revoke`, {
+		method: 'POST',
+	});
+	return data.grant;
+}
+
 export const marketplaceService = {
 	getListings,
 	getListing,
@@ -78,4 +123,11 @@ export const marketplaceService = {
 	deleteListing,
 	purchaseListing,
 	getContentObjectUrl,
+	createAccessRequest,
+	getAccessRequestStatus,
+	getReceivedAccessRequests,
+	getSentAccessRequests,
+	approveAccessRequest,
+	rejectAccessRequest,
+	revokeAccessGrant,
 };

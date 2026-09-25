@@ -19,6 +19,7 @@ const DocumentsPage = lazy(() => import('./src/pages/documents/DocumentsPage'));
 const LandingPage = lazy(() => import('./src/pages/landing/LandingPage'));
 const ListingDetails = lazy(() => import('./src/pages/marketplace/ListingDetails'));
 const MarketplacePage = lazy(() => import('./src/pages/marketplace/MarketplacePage'));
+const AccessRequestsPage = lazy(() => import('./src/pages/marketplace/AccessRequestsPage'));
 const ProfilePage = lazy(() => import('./src/pages/settings/ProfilePage'));
 const SettingsPage = lazy(() => import('./src/pages/settings/SettingsPage'));
 const AnalyticsPage = lazy(() => import('./src/pages/analytics/AnalyticsPage'));
@@ -71,6 +72,7 @@ function AppRoutes() {
 					<Route path="/activity" element={<ActivityPage />} />
 					<Route path="/wallet" element={<WalletPage />} />
 					<Route path="/marketplace" element={<MarketplacePage />} />
+					<Route path="/marketplace/requests" element={<AccessRequestsPage />} />
 					<Route path="/marketplace/:id" element={<ListingDetails />} />
 				</Route>
 				<Route path="/admin" element={<RoleGuard><AdminShell /></RoleGuard>}>

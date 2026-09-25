@@ -139,6 +139,25 @@ async function downloadWithPassword(id, password, originalName) {
 	setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 2000);
 }
 
+async function getPermissions(id) {
+	const data = await request(`/documents/${id}/permissions`);
+	return data.permissions;
+}
+
+async function getPageContentObjectUrl(id, page) {
+	const response = await fetch(`${API_BASE_URL}/documents/${id}/pages/${page}`, {
+		headers: { Authorization: `Bearer ${authService.getToken()}` },
+	});
+	if (!response.ok) {
+		let message = `Unable to load document page ${page}`;
+		try { message = (await response.json()).message || message; } catch { /* Empty */ }
+		const error = new Error(message);
+		error.status = response.status;
+		throw error;
+	}
+	return URL.createObjectURL(await response.blob());
+}
+
 export const documentService = {
 	list,
 	upload,
@@ -151,6 +170,8 @@ export const documentService = {
 	getVaultStatus,
 	remove,
 	getContentObjectUrl,
+	getPageContentObjectUrl,
+	getPermissions,
 	getThumbnailObjectUrl,
 	addToMarketplace,
 	downloadWithPassword,
