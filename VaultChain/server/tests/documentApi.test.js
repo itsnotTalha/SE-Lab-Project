@@ -211,6 +211,73 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.equal(authorizedDownload.status, 200);
 	assert.match(authorizedDownload.type, /application\/pdf/);
 
+	// Marketplace document access request workflow and page permissions
+	const accessReq = expectStatus(await api('/marketplace/requests', {
+		token: other.token,
+		method: 'POST',
+		json: { reference: mktResult.reference, message: 'Need access to page 1' },
+	}), 201).request;
+
+	const approveRes = expectStatus(await api(`/marketplace/requests/${accessReq.id}/approve`, {
+		token: owner.token,
+		method: 'POST',
+		json: { accessType: 'single', pages: [1], canView: true, canDownload: false },
+	}), 200);
+
+	const permRes = expectStatus(await api(`/documents/${architectureDoc.id}/permissions`, {
+		token: other.token,
+	}), 200).permissions;
+	assert.equal(permRes.canView, true);
+	assert.equal(permRes.canDownload, false);
+	assert.equal(permRes.accessType, 'single');
+	assert.deepEqual(permRes.pages, [1]);
+
+	// Allowed page 1 -> 200
+	const allowedPage = await api(`/documents/${architectureDoc.id}/pages/1`, { token: other.token });
+	assert.equal(allowedPage.status, 200);
+	assert.match(allowedPage.type, /application\/pdf/);
+
+	// Unauthorized page 2 -> 403
+	const forbiddenPage = await api(`/documents/${architectureDoc.id}/pages/2`, { token: other.token });
+	assert.equal(forbiddenPage.status, 403);
+
+	// Download forbidden when canDownload is false -> 403
+	const forbiddenDownload = await api(`/documents/${architectureDoc.id}/download`, {
+		token: other.token,
+		method: 'POST',
+		json: { password: 'DocumentPass123!' },
+	});
+	assert.equal(forbiddenDownload.status, 403);
+
+	// Grant download permission via new approved request
+	const reqDownload = expectStatus(await api('/marketplace/requests', {
+		token: other.token,
+		method: 'POST',
+		json: { reference: mktResult.reference, message: 'Requesting download permission' },
+	}), 201).request;
+
+	const grantDownloadRes = expectStatus(await api(`/marketplace/requests/${reqDownload.id}/approve`, {
+		token: owner.token,
+		method: 'POST',
+		json: { accessType: 'all', canView: true, canDownload: true },
+	}), 200);
+
+	const allowedDownload = await api(`/documents/${architectureDoc.id}/download`, {
+		token: other.token,
+		method: 'POST',
+		json: { password: 'DocumentPass123!' },
+	});
+	assert.equal(allowedDownload.status, 200);
+
+	// Revoke grant and verify access is forbidden -> 403
+	expectStatus(await api(`/marketplace/grants/${grantDownloadRes.grant.id}/revoke`, {
+		token: owner.token,
+		method: 'POST',
+	}), 200);
+
+	const revokedView = await api(`/documents/${architectureDoc.id}/pages/1`, { token: other.token });
+	assert.equal(revokedView.status, 403);
+
 	for (const document of [architectureDoc, pdf, failed]) {
 		expectStatus(await api(`/documents/${document.id}`, { token: owner.token, method: 'DELETE' }), 204);
 	}
