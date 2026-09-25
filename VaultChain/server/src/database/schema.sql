@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS documents (
   ocr_status TEXT NOT NULL DEFAULT 'pending',
   ocr_error TEXT,
   ocr_processed_at DATETIME,
+  description TEXT,
+  category TEXT DEFAULT 'pdf',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE SET NULL

@@ -45,6 +45,8 @@ function publicDocument(document, includeOcr = false) {
 		language: document.language,
 		ocrStatus: document.ocrStatus,
 		ocrProcessedAt: document.ocrProcessedAt,
+		description: document.description || null,
+		category: document.category || (document.mimeType?.startsWith('image/') ? 'image' : 'pdf'),
 		createdAt: document.createdAt,
 		contentUrl: `/api/documents/${document.id}/content`,
 		...(includeOcr ? { extractedText: document.extractedText || '', ocrError: document.ocrError || null, confidence: document.confidence } : {}),
@@ -104,7 +106,7 @@ async function processOcr(userId, id, checkContentDuplicate = false) {
 	return publicDocument(await ownedDocument(userId, document.id), true);
 }
 
-async function uploadDocument(userId, file) {
+async function uploadDocument(userId, file, metadata = {}) {
 	if (!file) throw httpError(400, 'Document file is required');
 	const fileSha256 = await generateFileSha256(file.path);
 
@@ -130,16 +132,22 @@ async function uploadDocument(userId, file) {
 		});
 	}
 
+	const resolvedCategory = metadata.category === 'image' || file.mimetype?.startsWith('image/') ? 'image' : 'pdf';
+	const resolvedName = safeOriginalName(metadata.name || metadata.title || metadata.originalName || file.originalname);
+	const resolvedDescription = typeof metadata.description === 'string' ? metadata.description.trim().slice(0, 1000) : null;
+
 	let document;
 	try {
 		document = await documentRepository.createDocument({
 			ownerId: userId,
-			originalName: safeOriginalName(file.originalname),
+			originalName: resolvedName,
 			storedName: path.basename(file.filename),
 			filePath: file.path,
 			mimeType: file.mimetype,
 			fileSize: file.size,
 			sha256Hash: fileSha256,
+			description: resolvedDescription,
+			category: resolvedCategory,
 		});
 	} catch (error) {
 		await fs.unlink(file.path).catch(() => {});

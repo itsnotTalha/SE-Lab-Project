@@ -2,7 +2,7 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 const documentService = require('../../services/document/documentService');
 
 const uploadDocument = asyncHandler(async (req, res) => {
-	const document = await documentService.uploadDocument(req.user.id, req.file);
+	const document = await documentService.uploadDocument(req.user.id, req.file, req.body);
 	res.status(201).json({ success: true, message: 'Document uploaded successfully', document });
 });
 

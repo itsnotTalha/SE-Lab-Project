@@ -111,6 +111,8 @@ async function migrateDocuments() {
     ['ocr_status', "TEXT NOT NULL DEFAULT 'pending'"],
     ['ocr_error', 'TEXT'],
     ['ocr_processed_at', 'DATETIME'],
+    ['description', 'TEXT'],
+    ['category', "TEXT DEFAULT 'pdf'"],
   ];
   for (const [name, definition] of additions) {
     if (!columns.some((column) => column.name === name)) await run(`ALTER TABLE documents ADD COLUMN ${name} ${definition}`);

@@ -18,7 +18,7 @@ function all(sql, params = []) {
 const DOCUMENT_SELECT = `
 	SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 		d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
-		d.ocr_error, d.ocr_processed_at, d.created_at,
+		d.ocr_error, d.ocr_processed_at, d.description, d.category, d.created_at,
 		o.extracted_text, o.confidence, o.semantic_hash, o.text_sha256
 	FROM documents d
 	LEFT JOIN ocr_results o ON o.document_id = d.id`;
@@ -39,6 +39,8 @@ function mapRow(row, includeText = true) {
 		ocrStatus: row.ocr_status,
 		ocrError: row.ocr_error,
 		ocrProcessedAt: row.ocr_processed_at,
+		description: row.description || null,
+		category: row.category || (row.mime_type?.startsWith('image/') ? 'image' : 'pdf'),
 		createdAt: row.created_at,
 		semanticHash: row.semantic_hash || null,
 		textSha256: row.text_sha256 || row.semantic_hash || null,
@@ -46,12 +48,12 @@ function mapRow(row, includeText = true) {
 	};
 }
 
-async function createDocument({ ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash }) {
+async function createDocument({ ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash, description = null, category = 'pdf' }) {
 	const result = await run(
 		`INSERT INTO documents
-		 (owner_id, original_name, stored_name, file_path, mime_type, file_size, sha256_hash, language, ocr_status)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, 'eng', 'pending')`,
-		[ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash]
+		 (owner_id, original_name, stored_name, file_path, mime_type, file_size, sha256_hash, description, category, language, ocr_status)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'eng', 'pending')`,
+		[ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash, description, category]
 	);
 	return getDocumentByIdAndOwnerId(result.lastID, ownerId);
 }
@@ -61,11 +63,12 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 	const filterParams = [ownerId];
 	if (search) {
 		conditions.push(`(instr(lower(d.original_name), lower(?)) > 0
+			OR instr(lower(COALESCE(d.description, '')), lower(?)) > 0
 			OR instr(lower(COALESCE(o.extracted_text, '')), lower(?)) > 0)`);
-		filterParams.push(search, search);
+		filterParams.push(search, search, search);
 	}
-	if (type === 'pdf') conditions.push("d.mime_type = 'application/pdf'");
-	if (type === 'image') conditions.push("d.mime_type LIKE 'image/%'");
+	if (type === 'pdf') conditions.push("(d.mime_type = 'application/pdf' OR d.category = 'pdf')");
+	if (type === 'image') conditions.push("(d.mime_type LIKE 'image/%' OR d.category = 'image')");
 	if (ocrStatus) {
 		conditions.push('d.ocr_status = ?');
 		filterParams.push(ocrStatus);
@@ -81,7 +84,7 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 	const rows = await all(
 		`SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 			d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
-			d.ocr_error, d.ocr_processed_at, d.created_at, ${snippet}
+			d.ocr_error, d.ocr_processed_at, d.description, d.category, d.created_at, ${snippet}
 		 FROM documents d
 		 LEFT JOIN ocr_results o ON o.document_id = d.id
 		 WHERE ${conditions.join(' AND ')}

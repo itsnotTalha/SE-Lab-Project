@@ -115,11 +115,12 @@ export default function DocumentsPage() {
 				</label>
 				{filtered ? <Button size="sm" variant="ghost" icon={X} onClick={clearFilters}>Reset</Button> : null}
 			</div>
-			{loading ? <LoadingState label="Searching documents" /> : documents.length === 0 ? <EmptyState icon={FileText} title={filtered ? 'No matching documents' : 'No documents yet'} description={filtered ? 'Try a different search or reset the document filters.' : 'Upload a PDF document to calculate SHA-256, extract text with Gemini, and store in Secure Vault.'} action={filtered ? <Button size="sm" onClick={clearFilters}>Reset filters</Button> : <Button size="sm" icon={Plus} onClick={() => setUploadOpen(true)}>Upload PDF</Button>} /> : <div className="document-list">{documents.map((document) => <article className="document-item" key={document.id}>
+			{loading ? <LoadingState label="Searching documents" /> : documents.length === 0 ? <EmptyState icon={FileText} title={filtered ? 'No matching documents' : 'No documents yet'} description={filtered ? 'Try a different search or reset the document filters.' : 'Upload a PDF or image document to calculate SHA-256, extract text with Gemini, and store in Secure Vault.'} action={filtered ? <Button size="sm" onClick={clearFilters}>Reset filters</Button> : <Button size="sm" icon={Plus} onClick={() => setUploadOpen(true)}>Upload Document</Button>} /> : <div className="document-list">{documents.map((document) => <article className="document-item" key={document.id}>
 				<DocumentThumbnail document={document} onPreview={setPreview} />
 				<div className="document-item__identity">
 					<strong>{document.originalName}</strong>
-					<span>{document.reference} · {fileSize(document.fileSize)} · {document.pageCount ? `${document.pageCount} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'PDF'}</span>
+					<span>{document.reference} · {fileSize(document.fileSize)} · {document.category === 'image' || document.mimeType?.startsWith('image/') ? 'Image' : document.pageCount ? `${document.pageCount} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'PDF'}</span>
+					{document.description ? <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', margin: '3px 0 1px' }}>{document.description}</p> : null}
 					<small>Uploaded {new Date(document.createdAt).toLocaleString()} · SHA-256: {document.sha256?.slice(0, 16)}…</small>
 					{document.matchedOcrText ? <p className="document-match"><FileSearch size={12} /> Matched OCR text · …{document.ocrSnippet}…</p> : null}
 				</div>
@@ -135,7 +136,7 @@ export default function DocumentsPage() {
 				</div>
 			</article>)}</div>}
 		</SectionCard>
-		<UploadDocumentModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={(document) => { setSuccess(`${document.originalName} uploaded and fingerprinted successfully.`); load(); }} />
+		<UploadDocumentModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={(document) => { setSuccess(`“${document.originalName}” uploaded and registered successfully.`); load(); }} />
 		{preview ? <DocumentPreviewModal document={preview} onClose={() => setPreview(null)} /> : null}
 		{ocrDocument ? <OcrResultModal document={ocrDocument} onClose={() => setOcrDocument(null)} onUpdated={load} /> : null}
 		{verifyingDoc ? <DocumentVerificationModal open={Boolean(verifyingDoc)} document={verifyingDoc} allDocuments={documents} onClose={() => setVerifyingDoc(null)} /> : null}

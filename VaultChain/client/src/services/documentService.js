@@ -26,9 +26,12 @@ async function list(filters = {}) {
 	return (await request(`/documents${suffix}`)).documents;
 }
 
-async function upload(file) {
+async function upload(file, metadata = {}) {
 	const body = new FormData();
 	body.append('file', file);
+	if (metadata.name) body.append('name', metadata.name);
+	if (metadata.description) body.append('description', metadata.description);
+	if (metadata.category) body.append('category', metadata.category);
 	return (await request('/documents', { method: 'POST', body })).document;
 }
 
