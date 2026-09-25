@@ -1,6 +1,7 @@
-import { AlertCircle, CheckCircle2, Eye, FileCheck, FileSearch, FileText, Lock, Plus, Search, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, FileCheck, FileSearch, FileText, Lock, Plus, Search, Store, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
+import AddMarketplaceModal from '../../components/documents/AddMarketplaceModal';
 import DocumentPreviewModal from '../../components/documents/DocumentPreviewModal';
 import DocumentThumbnail from '../../components/documents/DocumentThumbnail';
 import DocumentVerificationModal from '../../components/documents/DocumentVerificationModal';
@@ -35,6 +36,7 @@ export default function DocumentsPage() {
 	const [ocrDocument, setOcrDocument] = useState(null);
 	const [verifyingDoc, setVerifyingDoc] = useState(null);
 	const [vaultingId, setVaultingId] = useState(null);
+	const [mktDoc, setMktDoc] = useState(null);
 
 	const load = useCallback(async () => {
 		setLoading(true);
@@ -126,7 +128,7 @@ export default function DocumentsPage() {
 				</div>
 				<StatusBadge tone={TONES[document.ocrStatus] || 'neutral'}>OCR {document.ocrStatus}</StatusBadge>
 				<div className="document-item__actions">
-					<Button size="sm" variant="ghost" icon={Eye} onClick={() => setPreview(document)}>Preview</Button>
+					<Button size="sm" variant="ghost" icon={Store} onClick={() => setMktDoc(document)}>Add Market Place</Button>
 					<Button size="sm" variant="ghost" icon={FileSearch} onClick={() => setOcrDocument(document)}>Text</Button>
 					<Button size="sm" variant="ghost" icon={FileCheck} onClick={() => setVerifyingDoc(document)}>Verify</Button>
 					<Button size="sm" variant="ghost" icon={Lock} onClick={() => vaultDocument(document)} disabled={vaultingId === document.id}>
@@ -140,5 +142,6 @@ export default function DocumentsPage() {
 		{preview ? <DocumentPreviewModal document={preview} onClose={() => setPreview(null)} /> : null}
 		{ocrDocument ? <OcrResultModal document={ocrDocument} onClose={() => setOcrDocument(null)} onUpdated={load} /> : null}
 		{verifyingDoc ? <DocumentVerificationModal open={Boolean(verifyingDoc)} document={verifyingDoc} allDocuments={documents} onClose={() => setVerifyingDoc(null)} /> : null}
+		{mktDoc ? <AddMarketplaceModal document={mktDoc} open={Boolean(mktDoc)} onClose={() => setMktDoc(null)} onSuccess={(listing) => { setSuccess(`“${listing.title}” successfully listed on Market Place as a Locked asset.`); load(); }} /> : null}
 	</>;
 }

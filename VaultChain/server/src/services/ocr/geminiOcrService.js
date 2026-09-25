@@ -4,6 +4,12 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
 
 function isGeminiConfigured() {
+	if (
+		(process.env.NODE_ENV === 'test' || process.env.npm_lifecycle_event === 'test' || process.argv.some((a) => a.includes('--test'))) &&
+		!process.env.ENABLE_GEMINI_TESTS
+	) {
+		return false;
+	}
 	return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
 }
 
@@ -50,6 +56,7 @@ async function callGeminiGenerate(endpoint, mimeType, base64Data) {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(requestBody),
+		signal: AbortSignal.timeout(15000),
 	});
 
 	if (!response.ok) {

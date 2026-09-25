@@ -206,4 +206,5 @@ async function getOwnershipHistory(userId, assetId) {
 module.exports = {
 	createListing, getListings, getListing, updateListing, deleteListing,
 	getListingContent, purchaseListing, getOwnershipHistory,
+	toPublicListing, createUniqueReference,
 };

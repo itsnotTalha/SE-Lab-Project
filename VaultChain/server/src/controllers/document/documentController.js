@@ -69,6 +69,11 @@ const getDocumentThumbnail = asyncHandler(async (req, res) => {
 	res.sendFile(result.filePath);
 });
 
+const addDocumentToMarketplace = asyncHandler(async (req, res) => {
+	const listing = await documentService.addDocumentToMarketplace(req.user.id, req.params.id, req.body, req.tokenFingerprint);
+	res.status(201).json({ success: true, message: 'Document listed in Marketplace with Vault lock protection', listing });
+});
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -82,4 +87,5 @@ module.exports = {
 	getDocumentReport,
 	encryptAndVaultDocument,
 	getDocumentVaultStatus,
+	addDocumentToMarketplace,
 };

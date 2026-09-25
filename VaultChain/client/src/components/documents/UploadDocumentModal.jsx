@@ -193,6 +193,23 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 							</div>
 						</div>
 
+						{/* Match Percentage Display */}
+						<div style={{ margin: '0.8rem 0 1rem', padding: '0.85rem 1rem', borderRadius: '10px', background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.35)' }}>
+							<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+								<span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Match Percentage</span>
+								<strong style={{ fontSize: '1.2rem', color: '#eab308', fontFamily: 'var(--font-mono)' }}>
+									{duplicateInfo.matchPercentage || 100}% Match
+								</strong>
+							</div>
+							<div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+								<div style={{ width: `${duplicateInfo.matchPercentage || 100}%`, height: '100%', background: 'linear-gradient(90deg, #eab308, #ef4444)', borderRadius: '999px' }} />
+							</div>
+							<div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.68rem', color: '#eab308' }}>
+								<span>Similarity Score: {duplicateInfo.matchPercentage || 100}%</span>
+								<span>{duplicateInfo.duplicateType === 'exact' ? '100% Exact Hash Match' : '100% Identical Extracted Content'}</span>
+							</div>
+						</div>
+
 						<div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.9rem', borderRadius: '8px', fontSize: '0.875rem', lineHeight: '1.6' }}>
 							<div><strong>Exact File SHA-256 Match:</strong> <span style={{ color: duplicateInfo.exactMatch ? '#22c55e' : '#94a3b8' }}>{duplicateInfo.exactMatch ? 'YES' : 'NO'}</span></div>
 							<div><strong>Text Content Match:</strong> <span style={{ color: duplicateInfo.textContentMatch ? '#22c55e' : '#94a3b8' }}>{duplicateInfo.textContentMatch ? 'YES' : 'NO'}</span></div>
@@ -305,10 +322,21 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 									disabled={loading}
 								/>
 
-								{/* Category Selection Dropdown */}
+								{/* Task 1: Left: File Name / Title (larger width), Right: Document Category (smaller width) */}
 								<div className="doc-upload-grid">
 									<div className="doc-upload-field">
-										<label htmlFor="doc-category-select">Document Category</label>
+										<label htmlFor="doc-name-input">File Name / Title</label>
+										<input
+											id="doc-name-input"
+											type="text"
+											value={customName}
+											onChange={(e) => setCustomName(e.target.value)}
+											placeholder="Auto-fills from file, edit if needed"
+										/>
+									</div>
+
+									<div className="doc-upload-field">
+										<label htmlFor="doc-category-select">Category</label>
 										<select
 											id="doc-category-select"
 											value={category}
@@ -323,20 +351,8 @@ export default function UploadDocumentModal({ open, onClose, onUploaded }) {
 											}}
 										>
 											<option value="pdf">PDF Document (.pdf)</option>
-											<option value="image">Image Document (.png, .jpg, .jpeg, .webp)</option>
+											<option value="image">Image Document (.png, .jpg, etc.)</option>
 										</select>
-									</div>
-
-									{/* Editable File Name Input (Auto-filled on select, user can change) */}
-									<div className="doc-upload-field">
-										<label htmlFor="doc-name-input">File Name / Title</label>
-										<input
-											id="doc-name-input"
-											type="text"
-											value={customName}
-											onChange={(e) => setCustomName(e.target.value)}
-											placeholder="Auto-fills from file, edit if needed"
-										/>
 									</div>
 								</div>
 

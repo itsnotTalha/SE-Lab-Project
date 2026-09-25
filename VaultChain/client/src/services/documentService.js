@@ -99,6 +99,14 @@ async function getThumbnailObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
+async function addToMarketplace(id, payload = {}) {
+	return (await request(`/documents/${id}/marketplace`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	})).listing;
+}
+
 export const documentService = {
 	list,
 	upload,
@@ -112,4 +120,5 @@ export const documentService = {
 	remove,
 	getContentObjectUrl,
 	getThumbnailObjectUrl,
+	addToMarketplace,
 };

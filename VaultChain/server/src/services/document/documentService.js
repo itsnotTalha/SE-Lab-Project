@@ -79,6 +79,7 @@ async function processOcr(userId, id, checkContentDuplicate = false) {
 					duplicate: {
 						isDuplicate: true,
 						duplicateType: 'content',
+						matchPercentage: 100,
 						exactMatch: false,
 						textContentMatch: true,
 						textSha256,
@@ -117,6 +118,7 @@ async function uploadDocument(userId, file, metadata = {}) {
 			duplicate: {
 				isDuplicate: true,
 				duplicateType: 'exact',
+				matchPercentage: 100,
 				exactMatch: true,
 				textContentMatch: true,
 				sha256: fileSha256,
@@ -306,6 +308,68 @@ async function getDocumentVaultStatus(userId, id) {
 	};
 }
 
+const assetRepository = require('../../repositories/assetRepository');
+const vaultRepository = require('../../repositories/vaultRepository');
+const marketplaceRepository = require('../../repositories/marketplaceRepository');
+const marketplaceService = require('../marketplace/marketplaceService');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+
+async function addDocumentToMarketplace(userId, id, payload = {}, tokenFingerprint = null) {
+	const document = await ownedDocument(userId, id);
+	let assetId = document.assetId;
+
+	if (!assetId) {
+		const createdAsset = await assetRepository.createAsset({
+			ownerId: userId,
+			title: payload.title?.trim() || document.originalName,
+			description: payload.description?.trim() || document.description || 'Document Asset',
+			category: document.category || 'document',
+			fileName: document.storedName,
+			filePath: document.filePath,
+			fileSize: document.fileSize,
+			mimeType: document.mimeType,
+			status: 'verified',
+		});
+		assetId = createdAsset.id;
+		await assetRepository.upsertAssetHash({ assetId, sha256Hash: document.sha256Hash });
+	}
+
+	let userVaults = await vaultRepository.getVaultsByUserId(userId);
+	let targetVault = userVaults.find((v) => v.passwordHash);
+	if (!targetVault) {
+		const salt = await bcrypt.genSalt(10);
+		const passwordHash = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), salt);
+		const reference = `VT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+		targetVault = await vaultRepository.createVault({
+			userId,
+			reference,
+			name: 'Document Security Vault',
+			description: 'Automated protected vault for listed documents',
+			passwordHash,
+			autoLockMinutes: 10,
+		});
+	}
+	await vaultRepository.addAssets(targetVault.id, [assetId]).catch(() => {});
+
+	const existingListing = await marketplaceRepository.getActiveListingForAsset(assetId);
+	if (existingListing) {
+		return marketplaceService.toPublicListing(existingListing, userId, tokenFingerprint);
+	}
+
+	const rawPrice = payload.price ? Number(payload.price) : 50;
+	const listing = await marketplaceRepository.createListing({
+		reference: await marketplaceService.createUniqueReference('ML'),
+		assetId,
+		sellerId: userId,
+		title: (payload.title || document.originalName).slice(0, 120),
+		description: (payload.description || document.description || 'Document listed from Secure Vault (Locked)').slice(0, 1000),
+		price: Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 50,
+	});
+
+	return marketplaceService.toPublicListing(listing, userId, tokenFingerprint);
+}
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -319,4 +383,5 @@ module.exports = {
 	encryptAndVaultDocument,
 	getDocumentVaultStatus,
 	getDocumentThumbnail,
+	addDocumentToMarketplace,
 };

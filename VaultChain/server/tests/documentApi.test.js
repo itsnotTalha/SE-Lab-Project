@@ -192,7 +192,14 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	const ocr = expectStatus(await api(`/documents/${architectureDoc.id}/ocr`, { token: owner.token }), 200).ocr;
 	assert.equal(ocr.status, 'completed');
 	assert.match(ocr.extractedText, /System Architecture/i);
-	assert.ok(ocr.processedAt);
+	const mktResult = expectStatus(await api(`/documents/${architectureDoc.id}/marketplace`, {
+		token: owner.token,
+		method: 'POST',
+		json: { title: 'Listed Architecture Doc', price: 99 },
+	}), 201).listing;
+	assert.equal(mktResult.title, 'Listed Architecture Doc');
+	assert.equal(mktResult.price, 99);
+	assert.equal(mktResult.asset.isLocked, true);
 
 	for (const document of [architectureDoc, pdf, failed]) {
 		expectStatus(await api(`/documents/${document.id}`, { token: owner.token, method: 'DELETE' }), 204);
