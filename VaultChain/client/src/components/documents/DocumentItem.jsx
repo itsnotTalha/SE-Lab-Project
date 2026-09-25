@@ -57,10 +57,9 @@ export default function DocumentItem({
 		};
 	}, [document?.id]);
 
-	function updatePopoverPosition(targetElement) {
-		const element = targetElement || buttonRef.current || titleRef.current;
-		if (!element) return;
-		const rect = element.getBoundingClientRect();
+	function updatePopoverPosition() {
+		if (!buttonRef.current) return;
+		const rect = buttonRef.current.getBoundingClientRect();
 		const popoverWidth = 440;
 		const margin = 16;
 		const availableHeight = window.innerHeight - margin * 2;
@@ -87,8 +86,8 @@ export default function DocumentItem({
 		setPopoverPos({ top, left, maxHeight: popoverHeight });
 	}
 
-	function handleMouseEnter(element) {
-		updatePopoverPosition(element);
+	function handleMouseEnter() {
+		updatePopoverPosition();
 		setHovered(true);
 	}
 
@@ -121,7 +120,7 @@ export default function DocumentItem({
 					type="button"
 					className="doc-thumb-btn"
 					onClick={handleOpenPreview}
-					onMouseEnter={(e) => handleMouseEnter(e.currentTarget)}
+					onMouseEnter={handleMouseEnter}
 					onMouseLeave={handleMouseLeave}
 					title="Hover to inspect first page · Click to view full PDF with all pages"
 					aria-label={`Preview ${document.originalName}`}
@@ -155,11 +154,9 @@ export default function DocumentItem({
 					ref={titleRef}
 					className="document-item__title-link"
 					onClick={handleOpenPreview}
-					onMouseEnter={(e) => handleMouseEnter(e.currentTarget)}
-					onMouseLeave={handleMouseLeave}
 					role="button"
 					tabIndex={0}
-					title="Hover to inspect preview · Click to view full PDF with all pages"
+					title="Click to view full document"
 					onKeyDown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
