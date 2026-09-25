@@ -75,13 +75,38 @@ async function scannedPdfText(filePath, pageCount) {
 	}
 }
 
-const { isGeminiConfigured, extractPdfTextWithGemini } = require('./geminiOcrService');
+const { isGeminiConfigured, extractTextWithGemini } = require('./geminiOcrService');
+
+function detectLanguage(text) {
+	if (!text) return 'eng';
+	const hasBengali = /[\u0980-\u09FF]/.test(text);
+	const hasEnglish = /[a-zA-Z]/.test(text);
+	if (hasBengali && hasEnglish) return 'ben+eng';
+	if (hasBengali) return 'ben';
+	return 'eng';
+}
 
 async function extractDocumentText({ filePath, mimeType }) {
 	if (mimeType !== 'application/pdf') {
 		await validateImage(filePath, mimeType);
+
+		if (isGeminiConfigured()) {
+			try {
+				const geminiResult = await extractTextWithGemini({ filePath, mimeType });
+				return {
+					text: geminiResult.text,
+					confidence: geminiResult.confidence,
+					pageCount: 1,
+					language: detectLanguage(geminiResult.text),
+					source: 'gemini',
+				};
+			} catch (error) {
+				console.warn('Gemini image OCR failed, falling back to local extractor:', error.message);
+			}
+		}
+
 		const result = await imageText(filePath);
-		return { ...result, pageCount: 1, language: 'eng' };
+		return { ...result, pageCount: 1, language: detectLanguage(result.text) };
 	}
 
 	const pageCount = await pdfPageCount(filePath).catch(() => 1);
@@ -89,12 +114,12 @@ async function extractDocumentText({ filePath, mimeType }) {
 	// Primary OCR pathway: Google Gemini API when configured
 	if (isGeminiConfigured()) {
 		try {
-			const geminiResult = await extractPdfTextWithGemini({ filePath, mimeType });
+			const geminiResult = await extractTextWithGemini({ filePath, mimeType });
 			return {
 				text: geminiResult.text,
 				confidence: geminiResult.confidence,
 				pageCount: pageCount || 1,
-				language: 'eng',
+				language: detectLanguage(geminiResult.text),
 				source: 'gemini',
 			};
 		} catch (error) {
@@ -106,13 +131,14 @@ async function extractDocumentText({ filePath, mimeType }) {
 	try {
 		const embeddedText = await pdfText(filePath);
 		if (embeddedText && embeddedText.length >= 10) {
-			return { text: embeddedText, confidence: null, pageCount, language: 'eng', source: 'local_embedded' };
+			return { text: embeddedText, confidence: null, pageCount, language: detectLanguage(embeddedText), source: 'local_embedded' };
 		}
 	} catch {
 		// Continue to scanned fallback
 	}
 
-	return { ...(await scannedPdfText(filePath, pageCount)), pageCount, language: 'eng', source: 'local_ocr' };
+	const scanned = await scannedPdfText(filePath, pageCount);
+	return { ...scanned, pageCount, language: detectLanguage(scanned.text), source: 'local_ocr' };
 }
 
 module.exports = { extractDocumentText };

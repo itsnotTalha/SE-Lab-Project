@@ -61,6 +61,14 @@ const getDocumentVaultStatus = asyncHandler(async (req, res) => {
 	res.json({ success: true, vaultStatus });
 });
 
+const getDocumentThumbnail = asyncHandler(async (req, res) => {
+	const result = await documentService.getDocumentThumbnail(req.user.id, req.params.id);
+	res.type(result.mimeType || 'image/png');
+	res.set('Cache-Control', 'private, max-age=3600');
+	res.set('Content-Disposition', 'inline');
+	res.sendFile(result.filePath);
+});
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -68,6 +76,7 @@ module.exports = {
 	getOcrResult,
 	processOcr,
 	getDocumentContent,
+	getDocumentThumbnail,
 	deleteDocument,
 	verifyDocument,
 	getDocumentReport,

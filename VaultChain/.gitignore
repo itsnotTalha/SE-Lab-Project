@@ -10,3 +10,8 @@ coverage/
 *.sqlite-wal
 *.sqlite-shm
 *.sqlite-journal
+server/src/documents/*
+!server/src/documents/1788358829164-407431384.pdf
+!server/src/documents/.gitkeep
+server/src/vault_encrypted/*
+!server/src/vault_encrypted/.gitkeep

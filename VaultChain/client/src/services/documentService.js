@@ -84,6 +84,18 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
+async function getThumbnailObjectUrl(id) {
+	const response = await fetch(`${API_BASE_URL}/documents/${id}/thumbnail`, {
+		headers: { Authorization: `Bearer ${authService.getToken()}` },
+	});
+	if (!response.ok) {
+		let message = 'Unable to load thumbnail';
+		try { message = (await response.json()).message || message; } catch { /* Empty response. */ }
+		throw new Error(message);
+	}
+	return URL.createObjectURL(await response.blob());
+}
+
 export const documentService = {
 	list,
 	upload,
@@ -96,4 +108,5 @@ export const documentService = {
 	getVaultStatus,
 	remove,
 	getContentObjectUrl,
+	getThumbnailObjectUrl,
 };

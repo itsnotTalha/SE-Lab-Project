@@ -1,5 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 
 const { documentUploadDirectory } = require('../../middleware/upload');
 const documentRepository = require('../../repositories/documentRepository');
@@ -195,6 +198,51 @@ async function deleteDocument(userId, id) {
 	await fs.unlink(contentPath(document)).catch((error) => {
 		if (error.code !== 'ENOENT') void error;
 	});
+	const thumbPath = path.resolve(documentUploadDirectory, 'thumbnails', `thumb_${document.id}.png`);
+	await fs.unlink(thumbPath).catch(() => {});
+	const thumbDir = path.resolve(documentUploadDirectory, 'thumbnails');
+	await fs.rmdir(thumbDir).catch(() => {});
+}
+
+async function getDocumentThumbnail(userId, id) {
+	const document = await ownedDocument(userId, id);
+	const thumbDir = path.resolve(documentUploadDirectory, 'thumbnails');
+	await fs.mkdir(thumbDir, { recursive: true });
+
+	const thumbPath = path.resolve(thumbDir, `thumb_${document.id}.png`);
+	try {
+		await fs.access(thumbPath);
+		return { filePath: thumbPath, mimeType: 'image/png' };
+	} catch {
+		// Needs generation
+	}
+
+	const docPath = contentPath(document);
+	if (document.mimeType === 'application/pdf') {
+		const tempPrefix = path.resolve(thumbDir, `temp_${document.id}_${Date.now()}`);
+		try {
+			await execFileAsync('pdftoppm', ['-png', '-f', '1', '-l', '1', '-r', '150', docPath, tempPrefix], { timeout: 30000 });
+			const candidateName = `${tempPrefix}-1.png`;
+			try {
+				await fs.access(candidateName);
+				await fs.rename(candidateName, thumbPath);
+				return { filePath: thumbPath, mimeType: 'image/png' };
+			} catch {
+				const files = await fs.readdir(thumbDir);
+				const match = files.find((name) => name.startsWith(path.basename(tempPrefix)) && name.endsWith('.png'));
+				if (match) {
+					await fs.rename(path.resolve(thumbDir, match), thumbPath);
+					return { filePath: thumbPath, mimeType: 'image/png' };
+				}
+			}
+		} catch (error) {
+			console.warn(`Failed to render PDF thumbnail for document ${document.id}:`, error.message);
+		}
+	} else if (document.mimeType?.startsWith('image/')) {
+		return { filePath: docPath, mimeType: document.mimeType };
+	}
+
+	throw httpError(404, 'Thumbnail preview not available');
 }
 
 const documentVerificationService = require('../verification/documentVerificationService');
@@ -262,4 +310,5 @@ module.exports = {
 	getDocumentReport,
 	encryptAndVaultDocument,
 	getDocumentVaultStatus,
+	getDocumentThumbnail,
 };

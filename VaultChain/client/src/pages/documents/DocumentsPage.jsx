@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, Eye, FileCheck, FileSearch, FileText, Lock, 
 import { useCallback, useEffect, useState } from 'react';
 
 import DocumentPreviewModal from '../../components/documents/DocumentPreviewModal';
+import DocumentThumbnail from '../../components/documents/DocumentThumbnail';
 import DocumentVerificationModal from '../../components/documents/DocumentVerificationModal';
 import OcrResultModal from '../../components/documents/OcrResultModal';
 import UploadDocumentModal from '../../components/documents/UploadDocumentModal';
@@ -115,7 +116,7 @@ export default function DocumentsPage() {
 				{filtered ? <Button size="sm" variant="ghost" icon={X} onClick={clearFilters}>Reset</Button> : null}
 			</div>
 			{loading ? <LoadingState label="Searching documents" /> : documents.length === 0 ? <EmptyState icon={FileText} title={filtered ? 'No matching documents' : 'No documents yet'} description={filtered ? 'Try a different search or reset the document filters.' : 'Upload a PDF document to calculate SHA-256, extract text with Gemini, and store in Secure Vault.'} action={filtered ? <Button size="sm" onClick={clearFilters}>Reset filters</Button> : <Button size="sm" icon={Plus} onClick={() => setUploadOpen(true)}>Upload PDF</Button>} /> : <div className="document-list">{documents.map((document) => <article className="document-item" key={document.id}>
-				<span className="document-item__icon"><FileText size={20} /></span>
+				<DocumentThumbnail document={document} onPreview={setPreview} />
 				<div className="document-item__identity">
 					<strong>{document.originalName}</strong>
 					<span>{document.reference} · {fileSize(document.fileSize)} · {document.pageCount ? `${document.pageCount} ${document.pageCount === 1 ? 'page' : 'pages'}` : 'PDF'}</span>

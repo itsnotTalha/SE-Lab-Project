@@ -175,15 +175,20 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.deepEqual(otherDashboard.recentDocuments.map((document) => document.id), [otherDocument.id]);
 	assert.equal(JSON.stringify(ownerDashboard).includes('private-electricity'), false);
 
-	for (const endpoint of [`/documents/${architectureDoc.id}`, `/documents/${architectureDoc.id}/content`, `/documents/${architectureDoc.id}/ocr`]) {
+	for (const endpoint of [`/documents/${architectureDoc.id}`, `/documents/${architectureDoc.id}/content`, `/documents/${architectureDoc.id}/thumbnail`, `/documents/${architectureDoc.id}/ocr`]) {
 		assert.equal((await api(endpoint, { token: other.token })).status, 404);
 	}
+	assert.equal((await api(`/documents/${architectureDoc.id}/thumbnail`)).status, 401);
 	assert.equal((await api(`/documents/${architectureDoc.id}/ocr`, { token: other.token, method: 'POST' })).status, 404);
 	assert.equal((await api(`/documents/${architectureDoc.id}`, { token: other.token, method: 'DELETE' })).status, 404);
 
 	const content = await api(`/documents/${architectureDoc.id}/content`, { token: owner.token });
 	assert.equal(content.status, 200);
 	assert.match(content.type, /application\/pdf/);
+
+	const thumbnail = await api(`/documents/${architectureDoc.id}/thumbnail`, { token: owner.token });
+	assert.equal(thumbnail.status, 200);
+	assert.match(thumbnail.type, /image\/png/);
 	const ocr = expectStatus(await api(`/documents/${architectureDoc.id}/ocr`, { token: owner.token }), 200).ocr;
 	assert.equal(ocr.status, 'completed');
 	assert.match(ocr.extractedText, /System Architecture/i);
