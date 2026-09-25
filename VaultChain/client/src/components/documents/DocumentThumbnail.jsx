@@ -81,6 +81,13 @@ export default function DocumentThumbnail({ document, onPreview }) {
 							alt={`Front page of ${document.originalName}`}
 							className="doc-thumb-img"
 						/>
+						{hovered && (
+							<span
+								className="doc-thumb-lens"
+								style={{ left: `${zoomPos.x}%`, top: `${zoomPos.y}%` }}
+								aria-hidden="true"
+							/>
+						)}
 						<span className="doc-thumb-badge" aria-hidden="true">
 							<ZoomIn size={10} />
 						</span>
@@ -98,7 +105,6 @@ export default function DocumentThumbnail({ document, onPreview }) {
 					className="doc-zoom-popover"
 					role="tooltip"
 					aria-hidden="true"
-					onMouseEnter={() => setHovered(false)}
 				>
 					<div className="doc-zoom-popover__header">
 						<span className="doc-zoom-popover__title">Front Page Zoom</span>
@@ -111,13 +117,8 @@ export default function DocumentThumbnail({ document, onPreview }) {
 							className="doc-zoom-popover__img"
 							style={{
 								transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-								transform: 'scale(2.8)',
+								transform: 'scale(3.0)',
 							}}
-						/>
-						{/* Crosshair indicator */}
-						<div
-							className="doc-zoom-crosshair"
-							style={{ left: `${zoomPos.x}%`, top: `${zoomPos.y}%` }}
 						/>
 					</div>
 				</div>
