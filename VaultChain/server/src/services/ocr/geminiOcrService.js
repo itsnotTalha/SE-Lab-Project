@@ -7,14 +7,20 @@ function isGeminiConfigured() {
 	return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
 }
 
-const OCR_SYSTEM_PROMPT = `You are an expert OCR, document transcription, and handwriting recognition engine specializing in multilingual documents, specifically Bengali (বাংলা) and English.
-Please extract and transcribe ALL text content from this document with 100% completeness and high fidelity:
-1. Extract both HANDWRITTEN text (হাতের লেখা) and printed text accurately.
-2. Accurately transcribe all Bengali text (বাংলা বর্ণমালা, যুক্তাক্ষর, শব্দ, বাক্য, সংখ্যা) and English words, sentences, numbers, symbols, and formulas.
-3. Pay close attention to handwritten notes, annotations, scribbles, student answers, exam sheets, forms, signatures, and marginalia.
-4. Maintain the original reading order, line breaks, bullet points, and layout structure verbatim.
-5. Do NOT summarize, truncate, or omit any text. Transcribe the entire document completely from start to finish.
-6. Output ONLY the raw extracted text content without any introductory greetings, markdown backticks/fences, or conversational explanation.`;
+const OCR_SYSTEM_PROMPT = `You are an expert document digitizer and handwriting transcription engine specializing in multilingual technical documents, handwritten notes, diagrams, and formulas in Bengali (বাংলা) and English.
+Please transcribe and convert this document into clean, professional, standardized digitized text (স্ট্যান্ডার্ড টেক্সট):
+1. Completeness & Fidelity:
+   - Extract and transcribe ALL text content, labels, pin diagrams, signal names, formulas, notes, dates, and definitions with 100% completeness.
+   - Accurately recognize both handwritten text (হাতের লেখা) and printed text in both Bengali (বাংলা বর্ণমালা, যুক্তাক্ষর, শব্দ, বাক্য, সংখ্যা) and English.
+2. Standardized Formatting & Layout:
+   - Convert messy handwriting layouts, braces (e.g. bracketed groupings like "} Expected Behaviour" or "} Performance"), arrows (->), and pin diagrams into clean, well-structured headings, bullet lists, sub-points, or clear sections.
+   - Do NOT output disjointed ASCII art or broken braces. Translate visual groupings into logical hierarchy (e.g. Section Title -> Bullet Points).
+   - Convert margin notes, side notes, or scribbles into clean callouts (e.g. "> **Note:** ...").
+3. Clarity & Technical Normalization:
+   - Accurately correct obvious handwriting misspellings, scribbles, and abbreviations (e.g. "comprare" -> "compare", "soft." -> "software", "8086 Pin Diagram", "Active Low", "Address/Data Bus") while strictly preserving the author's technical meaning.
+   - Ensure proper punctuation, capitalization, and clean Unicode formatting for both Bengali and English.
+4. Output Format:
+   - Output ONLY the clean, standardized digitized text directly without introductory greetings, conversational chit-chat, or code-block wrappers.`;
 
 async function callGeminiGenerate(endpoint, mimeType, base64Data) {
 	const requestBody = {
@@ -74,10 +80,15 @@ async function extractTextWithGemini({ filePath, mimeType = 'application/pdf' })
 
 	const fileBuffer = await fs.readFile(filePath);
 	const base64Data = fileBuffer.toString('base64');
-	const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-	const fallbackModels = [primaryModel, 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest'].filter(
-		(value, index, self) => self.indexOf(value) === index
-	);
+	const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+	const fallbackModels = [
+		primaryModel,
+		'gemini-3.5-flash',
+		'gemini-3.5-flash-lite',
+		'gemini-3-flash-preview',
+		'gemini-flash-latest',
+		'gemini-3.8-flash',
+	].filter((value, index, self) => self.indexOf(value) === index);
 
 	let lastError = null;
 	for (const model of fallbackModels) {
