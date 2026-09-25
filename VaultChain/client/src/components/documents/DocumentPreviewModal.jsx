@@ -1,6 +1,8 @@
 import { AlertCircle, Download, FileText, Files, RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import Button from '../ui/Button';
+import DocumentDownloadModal from './DocumentDownloadModal';
 import { documentService } from '../../services/documentService';
 import LoadingState from '../ui/LoadingState';
 
@@ -11,6 +13,7 @@ export default function DocumentPreviewModal({ document, onClose }) {
 	const [downloadUrl, setDownloadUrl] = useState('');
 	const [error, setError] = useState('');
 	const [zoom, setZoom] = useState(1);
+	const [downloadAuthOpen, setDownloadAuthOpen] = useState(false);
 	const contentRef = useRef(null);
 
 	useEffect(() => {
@@ -156,17 +159,16 @@ export default function DocumentPreviewModal({ document, onClose }) {
 							</div>
 						) : null}
 
-						{downloadUrl ? (
-							<a
-								className="button button--secondary button--sm"
-								href={downloadUrl}
-								download={document.originalName}
-								title="Download original file"
-							>
-								<Download size={16} />
-								<span>Download</span>
-							</a>
-						) : null}
+						<Button
+							type="button"
+							size="sm"
+							variant="secondary"
+							icon={Download}
+							onClick={() => setDownloadAuthOpen(true)}
+							title="Download file (requires account password confirmation)"
+						>
+							Download
+						</Button>
 
 						<button type="button" className="icon-button" onClick={onClose} aria-label="Close">
 							<X size={18} />
@@ -219,6 +221,13 @@ export default function DocumentPreviewModal({ document, onClose }) {
 					)}
 				</div>
 			</section>
+			{downloadAuthOpen ? (
+				<DocumentDownloadModal
+					open={downloadAuthOpen}
+					onClose={() => setDownloadAuthOpen(false)}
+					document={document}
+				/>
+			) : null}
 		</div>
 	);
 }

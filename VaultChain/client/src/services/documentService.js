@@ -107,6 +107,38 @@ async function addToMarketplace(id, payload = {}) {
 	})).listing;
 }
 
+async function downloadWithPassword(id, password, originalName) {
+	const response = await fetch(`${API_BASE_URL}/documents/${id}/download`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${authService.getToken()}`,
+		},
+		body: JSON.stringify({ password }),
+	});
+
+	if (!response.ok) {
+		let message = 'Incorrect account password or download failed';
+		try {
+			const data = await response.json();
+			if (data?.message) message = data.message;
+		} catch { /* Empty */ }
+		const error = new Error(message);
+		error.status = response.status;
+		throw error;
+	}
+
+	const blob = await response.blob();
+	const downloadUrl = window.URL.createObjectURL(blob);
+	const link = window.document.createElement('a');
+	link.href = downloadUrl;
+	link.download = originalName || 'document.pdf';
+	window.document.body.appendChild(link);
+	link.click();
+	link.remove();
+	setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 2000);
+}
+
 export const documentService = {
 	list,
 	upload,
@@ -121,4 +153,5 @@ export const documentService = {
 	getContentObjectUrl,
 	getThumbnailObjectUrl,
 	addToMarketplace,
+	downloadWithPassword,
 };

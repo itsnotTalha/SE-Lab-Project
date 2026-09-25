@@ -370,6 +370,28 @@ async function addDocumentToMarketplace(userId, id, payload = {}, tokenFingerpri
 	return marketplaceService.toPublicListing(listing, userId, tokenFingerprint);
 }
 
+const authRepository = require('../../repositories/authRepository');
+
+async function verifyAndGetDownloadContent(userId, id, password) {
+	if (!password || typeof password !== 'string') {
+		throw httpError(400, 'Account password is required to download document');
+	}
+	const user = await authRepository.findUserById(userId);
+	if (!user) {
+		throw httpError(404, 'User account not found');
+	}
+	const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+	if (!isPasswordValid) {
+		throw httpError(401, 'Incorrect account password');
+	}
+	const document = await ownedDocument(userId, id);
+	return {
+		filePath: contentPath(document),
+		fileName: document.originalName,
+		mimeType: document.mimeType,
+	};
+}
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -384,4 +406,5 @@ module.exports = {
 	getDocumentVaultStatus,
 	getDocumentThumbnail,
 	addDocumentToMarketplace,
+	verifyAndGetDownloadContent,
 };

@@ -201,6 +201,16 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.equal(mktResult.price, 99);
 	assert.equal(mktResult.asset.isLocked, true);
 
+	assert.equal((await api(`/documents/${architectureDoc.id}/download`, { token: owner.token, method: 'POST', json: {} })).status, 400);
+	assert.equal((await api(`/documents/${architectureDoc.id}/download`, { token: owner.token, method: 'POST', json: { password: 'WrongPassword' } })).status, 401);
+	const authorizedDownload = await api(`/documents/${architectureDoc.id}/download`, {
+		token: owner.token,
+		method: 'POST',
+		json: { password: 'DocumentPass123!' },
+	});
+	assert.equal(authorizedDownload.status, 200);
+	assert.match(authorizedDownload.type, /application\/pdf/);
+
 	for (const document of [architectureDoc, pdf, failed]) {
 		expectStatus(await api(`/documents/${document.id}`, { token: owner.token, method: 'DELETE' }), 204);
 	}

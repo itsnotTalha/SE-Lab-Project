@@ -74,6 +74,14 @@ const addDocumentToMarketplace = asyncHandler(async (req, res) => {
 	res.status(201).json({ success: true, message: 'Document listed in Marketplace with Vault lock protection', listing });
 });
 
+const downloadDocument = asyncHandler(async (req, res) => {
+	const { password } = req.body || {};
+	const content = await documentService.verifyAndGetDownloadContent(req.user.id, req.params.id, password);
+	res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(content.fileName)}"`);
+	res.type(content.mimeType);
+	res.sendFile(content.filePath);
+});
+
 module.exports = {
 	uploadDocument,
 	getDocuments,
@@ -88,4 +96,5 @@ module.exports = {
 	encryptAndVaultDocument,
 	getDocumentVaultStatus,
 	addDocumentToMarketplace,
+	downloadDocument,
 };
