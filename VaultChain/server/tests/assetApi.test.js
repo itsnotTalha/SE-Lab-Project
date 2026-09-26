@@ -732,7 +732,7 @@ test('marketplace creation requires ownership, unlocked Vault access, and one ac
 	assert.equal(listing.seller.isCurrentUser, true);
 	assert.match(listing.seller.reference, /^VC-[A-F0-9]{8}$/);
 	assert.equal(listing.currency, 'VaultChain Credits');
-	assert.doesNotMatch(JSON.stringify(listing), /asset-owner-a@example\.test|Asset Owner A|filePath|passwordHash|password_hash/i);
+	assert.doesNotMatch(JSON.stringify(listing), /asset-owner-a@example\.test|filePath|passwordHash|password_hash/i);
 	await assert.rejects(
 		() => marketplaceService.createListing(userA.user.id, userAFingerprint, { assetId, title: 'Duplicate', description: '', price: 10 }),
 		(error) => error.status === 409 && error.code === 'DUPLICATE_LISTING'

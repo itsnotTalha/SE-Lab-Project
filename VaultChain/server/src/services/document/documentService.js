@@ -243,6 +243,8 @@ async function validateDocumentAccess(userId, id, { action = 'view', page = null
 					throw httpError(403, `Access to page ${pageNum} is not permitted`, { code: 'PAGE_NOT_PERMITTED' });
 				}
 			}
+		} else if (grant.accessType !== 'all') {
+			throw httpError(403, 'Full document view not permitted. Access is restricted to specific pages.', { code: 'PAGE_NOT_PERMITTED' });
 		}
 	} else if (action === 'download') {
 		if (!grant.canDownload) {
@@ -340,7 +342,28 @@ async function deleteDocument(userId, id) {
 }
 
 async function getDocumentThumbnail(userId, id) {
-	const document = await ownedDocument(userId, id);
+	const numericId = documentId(id);
+	let document;
+	if (userId) {
+		const doc = await documentRepository.getDocumentById(numericId);
+		if (!doc) throw httpError(404, 'Document not found');
+		if (doc.ownerId === userId) {
+			document = doc;
+		} else {
+			const activeGrant = await marketplaceRepository.getActiveAccessGrant({ buyerId: userId, documentId: numericId });
+			if (!activeGrant) {
+				throw httpError(404, 'Document not found');
+			}
+			const access = await validateDocumentAccess(userId, numericId, { action: 'view' });
+			if (access.grant && access.grant.accessType !== 'all' && !access.grant.pages.includes(1)) {
+				throw httpError(403, 'Access to page 1 thumbnail is not permitted', { code: 'PAGE_NOT_PERMITTED' });
+			}
+			document = access.document;
+		}
+	} else {
+		throw httpError(401, 'Authentication required');
+	}
+
 	const thumbDir = path.resolve(documentUploadDirectory, 'thumbnails');
 	await fs.mkdir(thumbDir, { recursive: true });
 

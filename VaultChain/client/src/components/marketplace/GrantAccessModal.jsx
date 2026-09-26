@@ -184,8 +184,8 @@ export default function GrantAccessModal({ request, onClose, onGranted }) {
 						<Button variant="secondary" type="button" onClick={onClose} disabled={loading}>
 							Cancel
 						</Button>
-						<Button icon={CheckCircle2} type="submit" disabled={loading}>
-							{loading ? 'Approving…' : 'Approve & Grant Access'}
+						<Button variant="primary" className="button--vault" icon={CheckCircle2} type="submit" disabled={loading}>
+							{loading ? 'Approving…' : 'Accept Request & Grant Access'}
 						</Button>
 					</footer>
 				</form>

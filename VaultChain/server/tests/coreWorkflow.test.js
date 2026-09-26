@@ -154,7 +154,7 @@ test('complete authenticated asset, verification, Vault, marketplace, wallet, an
 	assert.equal(buyerView.asset.id, null);
 	assert.equal(buyerView.asset.isLocked, true);
 	assert.equal((await api(`/marketplace/listings/${listing.reference}/content`, { token: buyerToken })).status, 423);
-	assert.doesNotMatch(JSON.stringify(buyerView), /workflow-owner@example\.test|Workflow Owner|filePath|fileName/);
+	assert.doesNotMatch(JSON.stringify(buyerView), /workflow-owner@example\.test|filePath|fileName/);
 
 	const failedPurchase = await api(`/marketplace/listings/${listing.reference}/purchase`, { token: buyerToken, method: 'POST' });
 	assert.equal(failedPurchase.status, 400);
@@ -223,6 +223,6 @@ test('complete authenticated asset, verification, Vault, marketplace, wallet, an
 	assert.equal(buyerRelisting.seller.isCurrentUser, true);
 	const formerOwnerView = expectStatus(await api(`/marketplace/listings/${buyerRelisting.reference}`, { token: ownerToken }), 200).listing;
 	assert.equal(formerOwnerView.asset.id, null);
-	assert.doesNotMatch(JSON.stringify(formerOwnerView), /workflow-buyer@example\.test|Workflow Buyer|filePath|fileName/);
+	assert.doesNotMatch(JSON.stringify(formerOwnerView), /workflow-buyer@example\.test|filePath|fileName/);
 	expectStatus(await api(`/marketplace/listings/${buyerRelisting.reference}`, { token: buyerToken, method: 'DELETE' }), 200);
 });

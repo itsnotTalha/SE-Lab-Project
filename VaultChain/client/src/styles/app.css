@@ -188,6 +188,11 @@
 .marketplace-card__seller { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:15px; padding-top:12px; border-top:1px solid rgba(132,150,177,.1); }
 .marketplace-card__seller span { color:var(--text-muted); font-size:.57rem; }
 .marketplace-card__seller code { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.marketplace-card__creator { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; }
+.marketplace-card__creator span { color:var(--text-muted); font-size:.57rem; }
+.marketplace-card__creator strong { color:var(--text); font-size:.68rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.button--vault { color:#fff !important; background:linear-gradient(135deg, #635bff, #4f46e5) !important; border-color:#635bff !important; box-shadow:0 4px 16px rgba(99,91,255,.35) !important; }
+.button--vault:hover:not(:disabled) { background:linear-gradient(135deg, #5048e5, #4338ca) !important; box-shadow:0 6px 22px rgba(99,91,255,.5) !important; }
 .marketplace-card__footer { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:auto; padding-top:18px; }
 .marketplace-card__price strong,.marketplace-card__price span { display:block; }
 .marketplace-card__price strong { color:var(--text); font-size:1.2rem; font-weight:700; letter-spacing:-.035em; }

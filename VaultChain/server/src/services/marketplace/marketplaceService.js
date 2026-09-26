@@ -78,6 +78,7 @@ async function toPublicListing(listing, requesterId, tokenFingerprint) {
 		soldAt: listing.soldAt,
 		seller: {
 			reference: publicOwnerReference(listing.sellerId),
+			name: listing.sellerName || 'Verified Seller',
 			isCurrentUser: isSeller,
 		},
 		documentId: listing.documentId || null,

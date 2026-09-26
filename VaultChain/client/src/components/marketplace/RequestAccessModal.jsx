@@ -87,7 +87,7 @@ export default function RequestAccessModal({ listing, onClose, onRequested }) {
 								<Button variant="secondary" type="button" onClick={onClose} disabled={loading}>
 									Cancel
 								</Button>
-								<Button icon={Send} type="submit" disabled={loading}>
+								<Button variant="primary" className="button--vault" icon={Send} type="submit" disabled={loading}>
 									{loading ? 'Sending…' : 'Send Request'}
 								</Button>
 							</footer>

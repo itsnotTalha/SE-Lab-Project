@@ -216,11 +216,13 @@ export default function AccessRequestsPage() {
 										</Button>
 										<Button
 											size="sm"
+											variant="primary"
+											className="button--vault"
 											icon={ShieldCheck}
 											disabled={actionLoadingId === req.id}
 											onClick={() => setSelectedRequestForGrant(req)}
 										>
-											Grant Access
+											Accept Request
 										</Button>
 									</div>
 								) : null}
