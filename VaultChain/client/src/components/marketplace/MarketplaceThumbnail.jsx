@@ -17,14 +17,14 @@ export default function MarketplaceThumbnail({ listing, large = false }) {
 		setSource('');
 		setFailed(false);
 
-		if (hasViewGrant) {
+		if (hasViewGrant && listing?.documentId) {
 			documentService.getPageContentObjectUrl(listing.documentId, permittedPage)
 				.then((url) => {
 					objectUrl = url;
 					if (active) setSource(url);
 				})
 				.catch(() => { if (active) setFailed(true); });
-		} else if (listing.asset?.previewAvailable && !listing.asset?.isLocked) {
+		} else if (listing?.asset?.previewAvailable && !listing?.asset?.isLocked && listing?.reference) {
 			marketplaceService.getContentObjectUrl(listing.reference)
 				.then((url) => {
 					objectUrl = url;
@@ -37,25 +37,25 @@ export default function MarketplaceThumbnail({ listing, large = false }) {
 			active = false;
 			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
-	}, [listing.reference, listing.asset?.previewAvailable, listing.asset?.isLocked, hasViewGrant, listing.documentId, permittedPage]);
+	}, [listing?.reference, listing?.asset?.previewAvailable, listing?.asset?.isLocked, hasViewGrant, listing?.documentId, permittedPage]);
 
 	const className = `marketplace-thumbnail${large ? ' marketplace-thumbnail--large' : ''}`;
-	if (listing.asset?.isLocked && !hasViewGrant) return <div className={className}><LockKeyhole size={large ? 34 : 24}/><span>Password Protected</span></div>;
-	if (failed || (!source && !listing.asset?.previewAvailable && !hasViewGrant)) return <div className={className}><Image size={large ? 34 : 24}/><span>Preview unavailable</span></div>;
+	if (listing?.asset?.isLocked && !hasViewGrant) return <div className={className}><LockKeyhole size={large ? 34 : 24}/><span>Password Protected</span></div>;
+	if (failed || (!source && !listing?.asset?.previewAvailable && !hasViewGrant)) return <div className={className}><Image size={large ? 34 : 24}/><span>Preview unavailable</span></div>;
 	if (!source) return <div className={`${className} is-loading`} aria-label="Loading asset preview" />;
 
-	const isPdf = listing.asset?.mimeType === 'application/pdf' || listing.asset?.category === 'pdf' || (hasViewGrant && !listing.asset?.mimeType?.startsWith('image/'));
+	const isPdf = listing?.asset?.mimeType === 'application/pdf' || listing?.asset?.category === 'pdf' || (hasViewGrant && !listing?.asset?.mimeType?.startsWith('image/'));
 	if (isPdf) {
 		return (
 			<div className={className}>
 				<iframe
 					src={`${source}#page=${permittedPage}&toolbar=0&navpanes=0`}
-					title={`Preview of ${listing.asset?.title || listing.title}`}
+					title={`Preview of ${listing?.asset?.title || listing?.title || 'Document'}`}
 					style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
 				/>
 			</div>
 		);
 	}
 
-	return <div className={className}><img src={source} alt={`Preview of ${listing.asset?.title || listing.title}`} /></div>;
+	return <div className={className}><img src={source} alt={`Preview of ${listing?.asset?.title || listing?.title || 'Asset'}`} /></div>;
 }

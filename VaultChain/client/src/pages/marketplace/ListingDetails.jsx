@@ -110,24 +110,12 @@ export default function ListingDetails() {
 		}
 	}
 
-	if (loading) return <LoadingState label="Loading listing" />;
-	if (error && !listing) {
-		return (
-			<>
-				<PageHeader title="Listing unavailable" description={error} />
-				<Link className="button button--secondary" to="/marketplace">
-					<ArrowLeft size={15} /> Back to marketplace
-				</Link>
-			</>
-		);
-	}
-
-	const owner = listing.seller.isCurrentUser;
-	const userAccess = listing.userAccess || {};
+	const owner = Boolean(listing?.seller?.isCurrentUser);
+	const userAccess = listing?.userAccess || {};
 	const grant = userAccess.grant;
-	const isPending = userAccess.hasActiveRequest || userAccess.requestStatus === 'pending';
-	const isApproved = userAccess.requestStatus === 'approved' && Boolean(grant);
-	const isRejected = userAccess.requestStatus === 'rejected';
+	const isPending = Boolean(userAccess.hasActiveRequest || userAccess.requestStatus === 'pending');
+	const isApproved = Boolean(userAccess.requestStatus === 'approved' && grant);
+	const isRejected = Boolean(userAccess.requestStatus === 'rejected');
 
 	const permittedPages = useMemo(() => {
 		if (!grant || !grant.canView) return [];
@@ -178,6 +166,19 @@ export default function ListingDetails() {
 			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
 	}, [isApproved, grant?.canView, listing?.documentId, selectedPermittedPage]);
+
+	if (loading) return <LoadingState label="Loading listing" />;
+	if (error && !listing) {
+		return (
+			<>
+				<PageHeader title="Listing unavailable" description={error} />
+				<Link className="button button--secondary" to="/marketplace">
+					<ArrowLeft size={15} /> Back to marketplace
+				</Link>
+			</>
+		);
+	}
+	if (!listing) return null;
 
 	return (
 		<>
