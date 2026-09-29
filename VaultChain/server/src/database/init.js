@@ -162,6 +162,13 @@ async function migrateAdminPlatform() {
       AND oh.previous_owner IS NOT NULL AND oh.new_owner IS NOT NULL AND oh.price IS NOT NULL`);
 }
 
+async function migrateUsernames() {
+  const columns = await all('PRAGMA table_info(users)');
+  if (!columns.some((column) => column.name === 'username')) await run('ALTER TABLE users ADD COLUMN username TEXT COLLATE NOCASE');
+  await run("UPDATE users SET username = 'user_' || id WHERE username IS NULL OR TRIM(username) = ''");
+  await exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
+}
+
 async function initializeDatabase() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -174,6 +181,7 @@ async function initializeDatabase() {
       await migrateMarketplaceOwnership();
       await migrateDocuments();
       await migrateAdminPlatform();
+      await migrateUsernames();
     })();
   }
 

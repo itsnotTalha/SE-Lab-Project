@@ -32,6 +32,7 @@ function toPublicUser(user) {
 	return {
 		id: user.id,
 		fullName: user.fullName,
+		username: user.username,
 		email: user.email,
 		role: user.role,
 		status: user.status,
@@ -89,16 +90,17 @@ function validateLoginInput(payload) {
 	return { email, password };
 }
 
-function validateProfileInput(payload) {
-	const fullName = String(payload.fullName || payload.full_name || '').trim();
-	const email = normalizeEmail(payload.email);
-
-	if (!fullName) throw createHttpError(400, 'Full name is required');
-	if (fullName.length > 100) throw createHttpError(400, 'Full name must be 100 characters or fewer');
-	if (!email) throw createHttpError(400, 'Email is required');
-	if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) throw createHttpError(400, 'Email is invalid');
-
-	return { fullName, email };
+function validateProfileInput(payload, currentUser) {
+ const fullName = String(payload.fullName || payload.full_name || '').trim();
+ const username = payload.username === undefined ? currentUser.username : String(payload.username).trim().toLowerCase();
+ if (!fullName) throw createHttpError(400, 'Full name is required');
+ if (fullName.length > 100) throw createHttpError(400, 'Full name must be 100 characters or fewer');
+ if (Object.hasOwn(payload, 'email') && normalizeEmail(payload.email) !== currentUser.email) {
+  throw createHttpError(400, 'Email address cannot be changed');
+ }
+ if (!/^[a-z0-9_]{3,30}$/.test(username)) throw createHttpError(400, 'Username must be 3–30 characters using letters, numbers, or underscores');
+ if (/^user_\d+$/.test(username) && username !== currentUser.username) throw createHttpError(400, 'This username is reserved');
+ return { fullName, username };
 }
 
 function validatePasswordChangeInput(payload) {
@@ -168,6 +170,7 @@ async function getAuthenticatedUser(userId) {
 	return {
 		id: user.id,
 		full_name: user.fullName,
+		username: user.username,
 		email: user.email,
 		role: user.role,
 		status: user.status,
@@ -179,11 +182,14 @@ async function updateProfile(userId, payload) {
 	const currentUser = await authRepository.findUserById(userId);
 	if (!currentUser) throw createHttpError(404, 'User not found');
 
-	const { fullName, email } = validateProfileInput(payload);
-	const emailOwner = await authRepository.findUserByEmail(email);
-	if (emailOwner && emailOwner.id !== userId) throw createHttpError(409, 'Email is already registered');
-
-	const user = await authRepository.updateUserProfile(userId, { fullName, email });
+ const { fullName, username } = validateProfileInput(payload, currentUser);
+ let user;
+ try {
+  user = await authRepository.updateUserProfile(userId, { fullName, username });
+ } catch (error) {
+  if (error.code === 'SQLITE_CONSTRAINT' && /username/.test(error.message)) throw createHttpError(409, 'Username is already taken');
+  throw error;
+ }
 	return toPublicUser(user);
 }
 

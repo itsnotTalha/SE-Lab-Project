@@ -35,6 +35,7 @@ function mapUserRow(row) {
 	return {
 		id: row.id,
 		fullName: row.full_name,
+		username: row.username,
 		email: row.email,
 		role: row.role,
 		status: row.status,
@@ -46,7 +47,7 @@ function mapUserRow(row) {
 
 async function findUserByEmail(email) {
 	const row = await get(
-		`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
+		`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
 		 FROM users
 		 WHERE email = ?
 		 LIMIT 1`,
@@ -58,7 +59,7 @@ async function findUserByEmail(email) {
 
 async function findUserById(id) {
 	const row = await get(
-		`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
+		`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
 		 FROM users
 		 WHERE id = ?
 		 LIMIT 1`,
@@ -80,12 +81,13 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'USE
 			);
 
 			const userId = userResult.lastID;
+			await run('UPDATE users SET username = ? WHERE id = ?', [`user_${userId}`, userId]);
 
 			await run('INSERT INTO wallets (user_id, balance) VALUES (?, ?)', [userId, 0]);
 			await run('COMMIT');
 
 			const createdUser = await get(
-				`SELECT id, full_name, email, password_hash, role, status, created_at, updated_at
+				`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
 				 FROM users
 				 WHERE id = ?
 				 LIMIT 1`,
@@ -105,12 +107,12 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'USE
 	});
 }
 
-async function updateUserProfile(id, { fullName, email }) {
+async function updateUserProfile(id, { fullName, username }) {
 	await run(
 		`UPDATE users
-		 SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP
+		 SET full_name = ?, username = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
-		[fullName, email, id]
+		[fullName, username, id]
 	);
 
 	return findUserById(id);

@@ -52,6 +52,7 @@ async function getCurrentUser() {
 
 	return {
 		id: data.user.id,
+		username: data.user.username,
 		fullName: data.user.fullName || data.user.full_name,
 		email: data.user.email,
 		role: data.user.role,
@@ -60,11 +61,11 @@ async function getCurrentUser() {
 	};
 }
 
-async function updateProfile({ fullName, email }) {
+async function updateProfile({ fullName, username }) {
 	const data = await request('/auth/profile', {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-		body: JSON.stringify({ fullName, email }),
+		body: JSON.stringify({ fullName, username }),
 	});
 
 	return data.user;
