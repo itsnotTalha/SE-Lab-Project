@@ -7,21 +7,34 @@ import AssetThumbnail from '../assets/AssetThumbnail';
 import Button from '../ui/Button';
 import LoadingState from '../ui/LoadingState';
 
-export default function CreateListingModal({ open, onClose, onCreated }) {
+export default function CreateListingModal({ open, onClose, onCreated, initialAssetId = null }) {
 	const [assets, setAssets] = useState([]);
 	const [assetId, setAssetId] = useState(null);
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [price, setPrice] = useState('');
+	const [isAnonymous, setIsAnonymous] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
 		if (!open) return;
-		setAssetId(null); setTitle(''); setDescription(''); setPrice(''); setError(''); setLoading(true);
-		assetService.getAssets().then(setAssets).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false));
-	}, [open]);
+		setIsAnonymous(false);
+		setAssetId(initialAssetId || null);
+		setTitle('');
+		setDescription('');
+		setPrice('');
+		setError('');
+		setLoading(true);
+		assetService.getAssets().then((data) => {
+			setAssets(data);
+			if (initialAssetId) {
+				const found = data.find((a) => a.id === initialAssetId);
+				if (found) setTitle(found.title);
+			}
+		}).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false));
+	}, [open, initialAssetId]);
 	if (!open) return null;
 
 	function choose(asset) {
@@ -33,7 +46,7 @@ export default function CreateListingModal({ open, onClose, onCreated }) {
 	async function submit(event) {
 		event.preventDefault(); setError(''); setSubmitting(true);
 		try {
-			const listing = await marketplaceService.createListing({ assetId, title, description, price: Number(price) });
+			const listing = await marketplaceService.createListing({ assetId, title, description, price: Number(price), isAnonymous });
 			onCreated(listing);
 		} catch (submitError) { setError(submitError.message); }
 		finally { setSubmitting(false); }
@@ -44,6 +57,8 @@ export default function CreateListingModal({ open, onClose, onCreated }) {
 		<div className="field"><label htmlFor="listing-title">Listing title</label><input id="listing-title" className="input" maxLength="120" value={title} onChange={(event)=>setTitle(event.target.value)} required/></div>
 		<div className="field"><label htmlFor="listing-description">Description <span className="field-hint">(optional)</span></label><textarea id="listing-description" className="textarea" maxLength="1000" value={description} onChange={(event)=>setDescription(event.target.value)}/></div>
 		<div className="field"><label htmlFor="listing-price">Price in VaultChain Credits</label><input id="listing-price" className="input" type="number" min="0.01" max="1000000000" step="0.01" value={price} onChange={(event)=>setPrice(event.target.value)} required/></div>
+		<label className="marketplace-anonymous"><input type="checkbox" checked={isAnonymous} disabled={submitting} onChange={(event)=>setIsAnonymous(event.target.checked)}/> Post anonymously (hide my name)</label>
+		<p className="field-hint">Assets in a Vault require your approval before a buyer can see their preview.</p>
 		{error?<div className="error-banner" role="alert"><AlertCircle size={16}/>{error}</div>:null}<footer className="modal__footer"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" icon={Store} disabled={submitting||!assetId}>{submitting?'Creating…':'Create listing'}</Button></footer>
 	</form></section></div>;
 }

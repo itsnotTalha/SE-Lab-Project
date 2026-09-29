@@ -1,0 +1,397 @@
+/* ==========================================================================
+   Organization Finance, Treasury & Revenue Styling
+   Vibrant financial jewel tones, luminous indicators, and rich ledger tables
+   ========================================================================== */
+
+.org-finance {
+	--finance-positive: #10b981;
+	--finance-positive-soft: rgba(16, 185, 129, 0.14);
+	--finance-positive-border: rgba(16, 185, 129, 0.32);
+
+	--finance-negative: #f43f5e;
+	--finance-negative-soft: rgba(244, 63, 94, 0.14);
+	--finance-negative-border: rgba(244, 63, 94, 0.32);
+
+	--finance-gold: #f59e0b;
+	--finance-gold-soft: rgba(245, 158, 11, 0.14);
+	--finance-gold-border: rgba(245, 158, 11, 0.32);
+
+	--finance-cyan: #0ea5e9;
+	--finance-cyan-soft: rgba(14, 165, 233, 0.14);
+	--finance-cyan-border: rgba(14, 165, 233, 0.32);
+
+	--finance-violet: #8b5cf6;
+	--finance-violet-soft: rgba(139, 92, 246, 0.14);
+	--finance-violet-border: rgba(139, 92, 246, 0.32);
+
+	color: var(--text);
+	min-width: 0;
+}
+
+[data-theme='dark'] .org-finance {
+	--finance-positive: #34d399;
+	--finance-negative: #fb7185;
+	--finance-gold: #fbbf24;
+	--finance-cyan: #38bdf8;
+	--finance-violet: #a78bfa;
+}
+
+/* 4-Stat Metric Grid */
+.org-finance .org-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 18px;
+	margin-bottom: 26px;
+}
+
+.org-finance .org-stat-card {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 14px;
+	padding: 22px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg, 16px);
+	min-width: 0;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+	transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Card color strip */
+.org-finance .org-stat-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: var(--stat-accent, var(--primary));
+	opacity: 0.9;
+}
+
+.org-finance .org-stat-card:hover {
+	transform: translateY(-2px);
+	border-color: var(--stat-accent, var(--border-strong));
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1), 0 0 20px var(--stat-accent-soft, transparent);
+}
+
+.org-finance .org-stat-card__icon {
+	width: 44px;
+	height: 44px;
+	display: grid;
+	place-items: center;
+	border-radius: 12px;
+	flex-shrink: 0;
+}
+
+.org-finance .org-stat-card__content {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.org-finance .org-stat-card__label {
+	color: var(--text-secondary);
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.org-finance .org-stat-card__value {
+	color: var(--text);
+	font-size: clamp(1.4rem, 2vw, 1.9rem);
+	font-weight: 800;
+	line-height: 1.2;
+	letter-spacing: -0.03em;
+	font-variant-numeric: tabular-nums;
+}
+
+.org-finance .org-stat-card__content > span:last-child {
+	font-size: 0.78rem;
+	line-height: 1.4;
+	color: var(--text-muted);
+}
+
+/* Section Containers */
+.org-finance .org-vaults-section,
+.org-finance .org-listings-section {
+	padding: 26px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg, 16px);
+	min-width: 0;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+	margin-bottom: 26px;
+}
+
+.org-finance .org-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 20px;
+}
+
+.org-finance .org-section-title {
+	margin: 0 0 6px;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.org-finance .org-section-subtitle {
+	margin: 0;
+	font-size: 0.82rem;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+/* Contract Address Capsule */
+.org-contract-capsule {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 14px;
+	border-radius: 8px;
+	background: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+	border: 1px solid var(--border-strong);
+	font-family: var(--font-mono, monospace);
+	font-size: 0.8rem;
+	color: var(--finance-gold);
+}
+
+/* Key Signers Grid */
+.org-signers-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 14px;
+	margin-top: 16px;
+}
+
+.org-signer-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px;
+	background: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	transition: all 0.2s ease;
+}
+
+.org-signer-card:hover {
+	border-color: var(--border-strong);
+	background: var(--surface-hover);
+}
+
+.org-signer-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	display: grid;
+	place-items: center;
+	font-weight: 700;
+	font-size: 0.9rem;
+	flex-shrink: 0;
+}
+
+.org-signer-badge {
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	padding: 2px 7px;
+	border-radius: 4px;
+}
+
+/* Transaction Badges */
+.org-flow-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 8px;
+	border-radius: 6px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.org-flow-badge--inflow {
+	background: var(--finance-positive-soft);
+	color: var(--finance-positive);
+	border: 1px solid var(--finance-positive-border);
+}
+
+.org-flow-badge--outflow {
+	background: var(--finance-negative-soft);
+	color: var(--finance-negative);
+	border: 1px solid var(--finance-negative-border);
+}
+
+/* Tables */
+.org-finance-table-wrapper {
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	margin-top: 16px;
+	background: var(--surface);
+}
+
+.org-finance-table {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+	font-size: 0.85rem;
+}
+
+.org-finance-table th {
+	padding: 14px 16px;
+	background: var(--bg-subtle);
+	color: var(--text-secondary);
+	font-weight: 600;
+	border-bottom: 1px solid var(--border);
+	white-space: nowrap;
+}
+
+.org-finance-table td {
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--border);
+	color: var(--text-secondary);
+	vertical-align: middle;
+}
+
+.org-finance-table tbody tr {
+	transition: background 0.15s ease;
+}
+
+.org-finance-table tbody tr:hover {
+	background: var(--surface-hover);
+}
+
+/* Modals */
+.org-finance .org-modal-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 120;
+	display: grid;
+	place-items: center;
+	padding: 20px;
+	background: rgba(5, 7, 14, 0.75);
+	backdrop-filter: blur(8px);
+}
+
+.org-finance .org-modal-content {
+	width: 100%;
+	max-height: 90dvh;
+	overflow-y: auto;
+	padding: 26px;
+	background: var(--surface-raised);
+	color: var(--text);
+	border: 1px solid var(--border-strong);
+	border-radius: 20px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+	position: relative;
+}
+
+.org-finance .org-modal-content::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #f59e0b, #8b5cf6);
+	border-radius: 20px 20px 0 0;
+}
+
+.org-finance .org-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.org-finance .org-modal-header h3 {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.org-finance .org-modal-close {
+	background: transparent;
+	border: 0;
+	color: var(--text-muted);
+	font-size: 1.2rem;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 6px;
+	transition: color 0.15s ease;
+}
+
+.org-finance .org-modal-close:hover {
+	color: var(--text);
+}
+
+.org-finance .org-form-group {
+	display: grid;
+	gap: 6px;
+	margin-bottom: 18px;
+}
+
+.org-finance .org-form-label {
+	color: var(--text-secondary);
+	font-size: 0.82rem;
+	font-weight: 600;
+}
+
+.org-finance .org-form-input {
+	width: 100%;
+	min-height: 44px;
+	padding: 10px 14px;
+	color: var(--text);
+	background: var(--bg);
+	border: 1px solid var(--border-strong);
+	border-radius: 10px;
+	font: inherit;
+	font-size: 0.88rem;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.org-finance .org-form-input:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* Responsiveness */
+@media (max-width: 1200px) {
+	.org-finance .org-stats-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 650px) {
+	.org-finance .org-stats-grid {
+		grid-template-columns: 1fr;
+	}
+	.org-finance .org-vaults-section,
+	.org-finance .org-listings-section {
+		padding: 18px;
+	}
+	.org-signers-grid {
+		grid-template-columns: 1fr;
+	}
+}

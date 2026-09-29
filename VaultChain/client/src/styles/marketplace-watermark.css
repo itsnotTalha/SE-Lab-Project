@@ -1,0 +1,54 @@
+/* Dynamic Watermark Overlay for Marketplace Previews */
+.watermark-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  user-select: none;
+}
+
+.watermark-pattern {
+  position: absolute;
+  inset: -50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  transform: rotate(-25deg);
+  opacity: 0.18;
+}
+
+.watermark-row {
+  display: flex;
+  justify-content: space-around;
+  white-space: nowrap;
+  gap: 32px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+.watermark-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(4, 10, 20, 0.85);
+  border: 1px solid rgba(65, 217, 255, 0.35);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #38bdf8;
+  backdrop-filter: blur(4px);
+  z-index: 6;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

@@ -1,0 +1,10 @@
+/* Enter immediately; never hold navigation behind an outgoing animation. */
+@keyframes page-enter-quick {
+ from { opacity: .65; transform: translateY(4px); }
+ to { opacity: 1; transform: translateY(0); }
+}
+.page-transition--quick { animation: page-enter-quick 140ms cubic-bezier(.16, 1, .3, 1); }
+@media (prefers-reduced-motion: reduce) {
+ .page-transition--quick { animation: none; }
+}
+:root[data-motion='off'] .page-transition--quick { animation: none; }

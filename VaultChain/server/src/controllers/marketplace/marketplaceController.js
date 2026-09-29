@@ -8,7 +8,7 @@ const createListing = asyncHandler(async (req, res) => {
 	const listing = await marketplaceService.createListing(
 		req.user.id,
 		req.authTokenFingerprint,
-		{ assetId: req.body.assetId, title: req.body.title, description: req.body.description, price: req.body.price }
+		{ assetId: req.body.assetId, title: req.body.title, description: req.body.description, price: req.body.price, isAnonymous: req.body.isAnonymous }
 	);
 	res.status(201).json({ success: true, message: 'Listing created successfully', listing });
 });
@@ -27,7 +27,7 @@ const updateListing = asyncHandler(async (req, res) => {
 	const listing = await marketplaceService.updateListing(
 		req.user.id,
 		req.params.reference,
-		{ price: req.body.price, title: req.body.title, description: req.body.description },
+		{ price: req.body.price, title: req.body.title, description: req.body.description, isAnonymous: req.body.isAnonymous },
 		req.authTokenFingerprint
 	);
 	res.status(200).json({ success: true, message: 'Listing updated successfully', listing });
@@ -49,7 +49,7 @@ const getListingContent = asyncHandler(async (req, res) => {
 		req.authTokenFingerprint
 	);
 	res.type(asset.mimeType || 'application/octet-stream');
-	res.set('Cache-Control', 'private, max-age=300');
+	res.set('Cache-Control', 'private, no-store');
 	res.sendFile(path.resolve(uploadDirectory, path.basename(asset.fileName)));
 });
 
@@ -62,3 +62,14 @@ module.exports = {
 	createListing, getListings, getListing, updateListing, deleteListing,
 	getListingContent, purchaseListing,
 };
+
+
+module.exports.requestPreview = asyncHandler(async (req, res) => {
+	res.json({ success: true, request: await marketplaceService.requestPreview(req.user.id, req.params.reference) });
+});
+module.exports.getPreviewRequests = asyncHandler(async (req, res) => {
+	res.json({ success: true, requests: await marketplaceService.getPreviewRequests(req.user.id, req.params.reference) });
+});
+module.exports.decidePreviewRequest = asyncHandler(async (req, res) => {
+	res.json({ success: true, request: await marketplaceService.decidePreviewRequest(req.user.id, req.params.reference, req.params.requestId, req.body?.status, req.authTokenFingerprint) });
+});

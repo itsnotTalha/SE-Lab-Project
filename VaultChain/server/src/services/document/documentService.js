@@ -2,8 +2,12 @@ const fs = require('fs/promises');
 const path = require('path');
 
 const { documentUploadDirectory } = require('../../middleware/upload');
+const { serializeTransaction } = require('../../database/transactionQueue');
 const documentRepository = require('../../repositories/documentRepository');
 const { generateFileSha256 } = require('../hashing/sha256Service');
+const { generateTextSha256 } = require('../hashing/textHashService');
+const { generateMetadataSha256 } = require('../hashing/documentHashService');
+const { validateDocumentFile } = require('../ocr/ocrService');
 const { extractDocumentText } = require('../ocr/ocrService');
 
 function httpError(status, message) {
@@ -34,13 +38,17 @@ function publicDocument(document, includeOcr = false) {
 		mimeType: document.mimeType,
 		fileSize: document.fileSize,
 		sha256: document.sha256Hash,
+		metadataSha256: document.metadataSha256,
+		textSha256: document.textSha256,
+		description: document.description,
+		category: document.category,
 		pageCount: document.pageCount,
 		language: document.language,
 		ocrStatus: document.ocrStatus,
 		ocrProcessedAt: document.ocrProcessedAt,
 		createdAt: document.createdAt,
 		contentUrl: `/api/documents/${document.id}/content`,
-		...(includeOcr ? { extractedText: document.extractedText || '', ocrError: document.ocrError || null, confidence: document.confidence } : {}),
+		...(includeOcr ? { extractedText: document.extractedText || '', ocrError: document.ocrError || null, confidence: document.confidence, ocrSource: document.ocrSource, ocrSelectionReason: document.ocrSelectionReason, ocrWarning: document.ocrWarning } : {}),
 	};
 }
 
@@ -51,6 +59,7 @@ async function ownedDocument(userId, id) {
 }
 
 function safeOcrError(error) {
+	if (error.code === 'GEMINI_IMAGE_TOO_LARGE') return 'For Gemini handwriting OCR, use an image no larger than 14 MB.';
 	if (/limited to \d+ pages/.test(error.message || '')) return error.message;
 	return 'Text extraction failed. You can retry OCR.';
 }
@@ -60,25 +69,41 @@ async function processOcr(userId, id) {
 	await documentRepository.setOcrStatus(document.id, userId, 'processing');
 	try {
 		const result = await extractDocumentText({ filePath: contentPath(document), mimeType: document.mimeType });
-		await documentRepository.saveOcrResult(document.id, userId, result);
+		await documentRepository.saveOcrResult(document.id, userId, { ...result, textSha256: generateTextSha256(result.text) });
 	} catch (error) {
 		await documentRepository.setOcrStatus(document.id, userId, 'failed', safeOcrError(error));
 	}
 	return publicDocument(await ownedDocument(userId, document.id), true);
 }
 
-async function uploadDocument(userId, file) {
+async function uploadDocument(userId, file, metadata = {}) {
 	if (!file) throw httpError(400, 'Document file is required');
 	let document;
 	try {
-		document = await documentRepository.createDocument({
-			ownerId: userId,
-			originalName: safeOriginalName(file.originalname),
-			storedName: path.basename(file.filename),
-			filePath: file.path,
+		await validateDocumentFile(file.path, file.mimetype);
+		const sha256Hash = await generateFileSha256(file.path);
+		if (metadata.name !== undefined && typeof metadata.name !== 'string') throw httpError(400, 'Invalid document name');
+		if (metadata.description !== undefined && typeof metadata.description !== 'string') throw httpError(400, 'Invalid document description');
+		const registration = {
+			originalName: safeOriginalName(metadata.name || file.originalname),
+			description: metadata.description?.trim().slice(0, 1000) || null,
+			category: file.mimetype === 'application/pdf' ? 'pdf' : 'image',
 			mimeType: file.mimetype,
 			fileSize: file.size,
-			sha256Hash: await generateFileSha256(file.path),
+		};
+		document = await serializeTransaction(async () => {
+			const existing = await documentRepository.findDocumentBySha256(sha256Hash, userId);
+			if (existing) throw httpError(409, `This file is already in your library (${existing.originalName}).`);
+			return documentRepository.createDocument({
+				ownerId: userId,
+				...registration,
+				metadataSha256: generateMetadataSha256(registration),
+				storedName: path.basename(file.filename),
+				filePath: file.path,
+				mimeType: file.mimetype,
+				fileSize: file.size,
+				sha256Hash,
+			});
 		});
 	} catch (error) {
 		await fs.unlink(file.path).catch(() => {});
@@ -123,6 +148,10 @@ async function getOcrResult(userId, id) {
 		processedAt: document.ocrProcessedAt,
 		error: document.ocrError || null,
 		confidence: document.confidence,
+		source: document.ocrSource,
+		selectionReason: document.ocrSelectionReason,
+		warning: document.ocrWarning,
+		textSha256: document.textSha256,
 	};
 }
 

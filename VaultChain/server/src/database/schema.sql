@@ -82,6 +82,9 @@ CREATE TABLE IF NOT EXISTS documents (
   mime_type TEXT NOT NULL,
   file_size INTEGER NOT NULL,
   sha256_hash TEXT NOT NULL,
+  metadata_sha256 TEXT,
+  description TEXT,
+  category TEXT,
   page_count INTEGER,
   language TEXT DEFAULT 'eng',
   ocr_status TEXT NOT NULL DEFAULT 'pending',
@@ -97,8 +100,12 @@ CREATE TABLE IF NOT EXISTS ocr_results (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   document_id INTEGER NOT NULL UNIQUE,
   extracted_text TEXT,
+  ocr_source TEXT,
+  selection_reason TEXT,
+  ocr_warning TEXT,
   confidence REAL,
   semantic_hash TEXT,
+  text_sha256 TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
 );
@@ -138,6 +145,8 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   public_reference TEXT UNIQUE,
   asset_id INTEGER NOT NULL,
   seller_id INTEGER NOT NULL,
+  is_anonymous INTEGER NOT NULL DEFAULT 1,
+  preview_requires_approval INTEGER NOT NULL DEFAULT 0,
   buyer_id INTEGER,
   title TEXT,
   description TEXT,
@@ -317,3 +326,14 @@ CREATE INDEX IF NOT EXISTS idx_vault_assets_asset_id ON vault_assets(asset_id);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_user_token ON vault_unlock_sessions(user_id, token_fingerprint);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_sessions_expires_at ON vault_unlock_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vault_unlock_attempts_blocked_until ON vault_unlock_attempts(blocked_until);
+
+
+CREATE TABLE IF NOT EXISTS marketplace_preview_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id INTEGER NOT NULL REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'denied', 'revoked')),
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(listing_id, buyer_id)
+);

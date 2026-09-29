@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
+import { organizationService } from '../services/organizationService';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -19,7 +20,7 @@ export function AuthProvider({ children }) {
 
 		authService.getCurrentUser()
 			.then((currentUser) => {
-				if (active) setUser(currentUser);
+				if (active) { organizationService.setAccount(currentUser.id); setUser(currentUser); }
 			})
 			.catch(() => {
 				if (active) {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }) {
 
 	async function login(credentials) {
 		const authenticatedUser = await authService.login(credentials);
+		organizationService.setAccount(authenticatedUser.id);
 		setUser(authenticatedUser);
 		setIsAuthenticated(true);
 		return authenticatedUser;
@@ -43,6 +45,7 @@ export function AuthProvider({ children }) {
 
 	async function register(payload) {
 		const authenticatedUser = await authService.register(payload);
+		organizationService.setAccount(authenticatedUser.id);
 		setUser(authenticatedUser);
 		setIsAuthenticated(true);
 		return authenticatedUser;
@@ -53,6 +56,7 @@ export function AuthProvider({ children }) {
 		finally {
 			setIsAuthenticated(false);
 			setUser(null);
+			organizationService.setAccount(null);
 		}
 	}
 

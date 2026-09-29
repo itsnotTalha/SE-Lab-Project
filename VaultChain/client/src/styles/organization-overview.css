@@ -1,0 +1,512 @@
+/* ==========================================================================
+   Organization Overview & Analytics Suite
+   Polished glassmorphism, luminous accent boundaries, and rich visualizations
+   ========================================================================== */
+
+.org-overview-analytics {
+	color: var(--text);
+}
+
+/* 4-Column Metric Cards Grid */
+.org-overview-analytics .organization-overview-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 18px;
+	margin-bottom: 28px;
+}
+
+.org-overview-analytics .organization-overview-card {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	padding: 22px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg, 16px);
+	text-decoration: none;
+	color: inherit;
+	transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Glowing top accent strip */
+.org-overview-analytics .organization-overview-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: var(--card-accent, var(--primary));
+	opacity: 0.9;
+	transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+.org-overview-analytics .organization-overview-card:hover {
+	transform: translateY(-3px);
+	border-color: var(--card-accent, var(--primary));
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 24px var(--card-accent-soft, rgba(99, 91, 255, 0.16));
+}
+
+.org-overview-analytics .organization-overview-card:hover::before {
+	height: 4px;
+	opacity: 1;
+}
+
+.org-card-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.org-overview-analytics .organization-mark {
+	width: 42px;
+	height: 42px;
+	border-radius: 12px;
+	display: grid;
+	place-items: center;
+	transition: transform 0.2s ease;
+}
+
+.org-overview-analytics .organization-overview-card:hover .organization-mark {
+	transform: scale(1.08);
+}
+
+.org-card-badge {
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: 6px;
+}
+
+.org-overview-analytics .organization-overview-card h2 {
+	margin: 0 0 6px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.org-overview-analytics .organization-overview-card > strong {
+	font-size: 1.85rem;
+	font-weight: 800;
+	line-height: 1.2;
+	letter-spacing: -0.03em;
+	color: var(--text);
+	font-variant-numeric: tabular-nums;
+	margin-bottom: 8px;
+}
+
+.org-overview-analytics .organization-overview-card p {
+	margin: 0 0 14px;
+	font-size: 0.78rem;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.org-card-link-hint {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--card-accent, var(--primary));
+	margin-top: auto;
+	transition: gap 0.2s ease;
+}
+
+.org-overview-analytics .organization-overview-card:hover .org-card-link-hint {
+	gap: 9px;
+}
+
+/* Toolbar & Timeframe Controls */
+.org-chart-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+	flex-wrap: wrap;
+	margin: 32px 0 20px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid var(--border);
+}
+
+.org-chart-toolbar h2 {
+	font-size: 1.15rem;
+	font-weight: 700;
+	margin: 0 0 4px;
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.org-chart-toolbar p {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: 0.82rem;
+	line-height: 1.5;
+}
+
+.org-chart-toolbar [role='group'] {
+	display: flex;
+	padding: 4px;
+	gap: 4px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.org-chart-toolbar button {
+	min-height: 34px;
+	padding: 6px 14px;
+	background: transparent;
+	color: var(--text-secondary);
+	border: 1px solid transparent;
+	border-radius: 7px;
+	cursor: pointer;
+	font: inherit;
+	font-size: 0.78rem;
+	font-weight: 600;
+	transition: all 0.18s ease;
+}
+
+.org-chart-toolbar button:hover {
+	color: var(--text);
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.org-chart-toolbar button[aria-pressed='true'] {
+	background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(56, 189, 248, 0.16));
+	color: var(--primary);
+	border-color: var(--primary);
+	box-shadow: 0 2px 8px rgba(138, 130, 255, 0.25);
+}
+
+/* Charts Grid */
+.org-overview-charts {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 20px;
+}
+
+.org-chart-panel {
+	position: relative;
+	padding: 24px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg, 16px);
+	min-width: 0;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.org-chart-panel:hover {
+	border-color: var(--border-strong);
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.org-chart-wide {
+	grid-column: span 2;
+}
+
+.org-chart-panel:nth-last-child(-n+2) {
+	grid-column: auto;
+}
+
+.org-chart-panel:last-child {
+	grid-column: span 2;
+}
+
+.org-chart-panel header h2 {
+	margin: 0 0 6px;
+	font-size: 1.05rem;
+	font-weight: 700;
+	color: var(--text);
+}
+
+.org-chart-panel header p {
+	margin: 0 0 18px;
+	color: var(--text-muted);
+	font-size: 0.8rem;
+	line-height: 1.5;
+}
+
+.org-chart-headline {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 20px;
+}
+
+.org-chart-headline strong {
+	font-size: 1.75rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--text);
+	letter-spacing: -0.02em;
+}
+
+.org-chart-headline small {
+	font-size: 0.82rem;
+	color: var(--text-muted);
+	font-weight: 500;
+	margin-left: 4px;
+}
+
+.org-chart-headline > span {
+	color: var(--text-muted);
+	font-size: 0.78rem;
+}
+
+.org-chart-canvas {
+	height: 260px;
+	min-width: 0;
+	font-size: 0.75rem;
+}
+
+/* Donut Chart */
+.org-chart-donut {
+	position: relative;
+	height: 220px;
+}
+
+.org-chart-donut-label {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.org-chart-donut-label strong {
+	font-size: 2.2rem;
+	font-weight: 800;
+	color: var(--text);
+	line-height: 1.1;
+}
+
+.org-chart-donut-label span {
+	color: var(--text-muted);
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-top: 2px;
+}
+
+.org-chart-legend {
+	list-style: none;
+	padding: 0;
+	margin: 18px 0 0;
+	display: grid;
+	gap: 10px;
+}
+
+.org-chart-legend li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 0.85rem;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+	border: 1px solid var(--border);
+}
+
+.org-chart-legend i {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	flex-shrink: 0;
+}
+
+.org-chart-legend span {
+	flex: 1;
+	color: var(--text-secondary);
+}
+
+.org-chart-legend strong {
+	font-weight: 700;
+	color: var(--text);
+}
+
+/* Allocation Visualizer */
+.org-allocation-number {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 24px;
+}
+
+.org-allocation-number strong {
+	font-size: 3.2rem;
+	font-weight: 800;
+	color: var(--primary);
+	letter-spacing: -0.04em;
+	line-height: 1;
+}
+
+.org-allocation-number span {
+	color: var(--text-secondary);
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+
+.org-allocation-track {
+	display: flex;
+	height: 14px;
+	border-radius: 7px;
+	background: linear-gradient(90deg, #f59e0b, #fbbf24);
+	overflow: hidden;
+	margin-top: 20px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.org-allocation-track span {
+	background: linear-gradient(90deg, #8b5cf6, #38bdf8);
+	box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+}
+
+.org-chart-note {
+	color: var(--text-muted);
+	font-size: 0.78rem;
+	line-height: 1.6;
+	margin-top: 20px;
+}
+
+.org-chart-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--primary);
+	font-size: 0.85rem;
+	font-weight: 600;
+	text-decoration: none;
+	margin-top: 12px;
+	transition: gap 0.2s ease;
+}
+
+.org-chart-link:hover {
+	gap: 10px;
+	text-decoration: underline;
+}
+
+/* Collapsible Data Table */
+.org-chart-data {
+	margin-top: 18px;
+	padding-top: 14px;
+	border-top: 1px solid var(--border);
+	font-size: 0.8rem;
+}
+
+.org-chart-data summary {
+	color: var(--primary);
+	cursor: pointer;
+	padding: 4px 0;
+	font-weight: 600;
+	user-select: none;
+}
+
+.org-chart-data > div {
+	overflow-x: auto;
+}
+
+.org-chart-data table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 12px;
+}
+
+.org-chart-data caption {
+	text-align: left;
+	color: var(--text-muted);
+	padding: 8px 0;
+	font-weight: 600;
+}
+
+.org-chart-data :is(th, td) {
+	text-align: left;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--border);
+}
+
+.org-chart-data th {
+	background: var(--bg-subtle);
+	color: var(--text-secondary);
+	font-weight: 600;
+}
+
+.org-chart-empty {
+	min-height: 220px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 12px;
+	text-align: center;
+	color: var(--text-muted);
+	background: rgba(255, 255, 255, 0.01);
+	border: 1px dashed var(--border);
+	border-radius: 12px;
+}
+
+.org-chart-empty strong {
+	color: var(--text-secondary);
+	font-size: 0.95rem;
+}
+
+.org-chart-empty p {
+	font-size: 0.8rem;
+	max-width: 320px;
+	line-height: 1.6;
+	margin: 0;
+}
+
+/* Responsiveness */
+@media (max-width: 1200px) {
+	.org-overview-analytics .organization-overview-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.org-overview-charts {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.org-chart-wide {
+		grid-column: span 2;
+	}
+	.org-chart-panel:last-child {
+		grid-column: auto;
+	}
+}
+
+@media (max-width: 650px) {
+	.org-overview-charts {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.org-chart-wide,
+	.org-chart-panel:last-child {
+		grid-column: auto;
+	}
+	.org-chart-panel {
+		padding: 18px;
+	}
+	.org-overview-analytics .organization-overview-card {
+		padding: 18px;
+	}
+	.org-chart-toolbar {
+		align-items: flex-start;
+	}
+}
+
+@media (max-width: 440px) {
+	.org-overview-analytics .organization-overview-grid {
+		grid-template-columns: 1fr;
+	}
+}

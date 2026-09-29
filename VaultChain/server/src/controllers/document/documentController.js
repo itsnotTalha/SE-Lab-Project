@@ -2,7 +2,7 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 const documentService = require('../../services/document/documentService');
 
 const uploadDocument = asyncHandler(async (req, res) => {
-	const document = await documentService.uploadDocument(req.user.id, req.file);
+	const document = await documentService.uploadDocument(req.user.id, req.file, req.body);
 	res.status(201).json({ success: true, message: 'Document uploaded successfully', document });
 });
 
@@ -36,3 +36,11 @@ const deleteDocument = asyncHandler(async (req, res) => {
 });
 
 module.exports = { uploadDocument, getDocuments, getDocument, getOcrResult, processOcr, getDocumentContent, deleteDocument };
+
+const verification = require('../../services/verification/documentVerificationService');
+module.exports.verifyDocument = asyncHandler(async (req, res) => {
+	res.json({ success: true, verification: await verification.verifyDocument(req.user.id, req.params.id, req.body?.targetDocumentId) });
+});
+module.exports.getDocumentReport = asyncHandler(async (req, res) => {
+	res.json({ success: true, report: await verification.getDocumentReport(req.user.id, req.params.id) });
+});

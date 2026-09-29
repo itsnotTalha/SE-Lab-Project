@@ -1,0 +1,70 @@
+.chain-view { --chain-accent: var(--primary); padding: clamp(16px, 3vw, 32px); border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); min-width: 0; }
+.chain-view h2, .chain-view h3, .chain-view p { margin: 0; }
+.chain-view h2 { margin-top: 10px; font-size: clamp(1.35rem, 2.3vw, 1.9rem); letter-spacing: -.035em; }
+.chain-view h3 { font-size: 1rem; }
+.chain-view p { margin-top: 9px; color: var(--text-secondary); line-height: 1.7; font-size: .82rem; }
+.chain-view__header, .chain-view__section-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.chain-view__eyebrow { display: flex; align-items: center; gap: 7px; font-size: .65rem; font-weight: 700; letter-spacing: .1em; color: var(--primary); }
+.chain-view__badge { flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 30px; font-size: .68rem; color: var(--text-secondary); background: var(--bg-subtle); }
+.chain-view__notice { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 13px 15px; border-radius: 10px; background: var(--primary-soft); font-size: .77rem; line-height: 1.6; color: var(--text-secondary); }
+.chain-view__notice svg { flex-shrink: 0; margin-top: 3px; color: var(--primary); }
+.chain-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; list-style: none; padding: 0; margin: 28px 0 18px; }
+.chain-steps li { position: relative; min-width: 0; }
+.chain-steps button { width: 100%; height: 100%; padding: 17px 10px; border: 1px solid var(--border); border-radius: 13px; background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer; text-align: center; transition: border-color .2s, background .2s; }
+.chain-steps button.is-active { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
+.chain-steps__icon { display: flex; justify-content: center; margin-bottom: 12px; color: var(--primary); }
+.chain-steps small { display: block; color: var(--text-muted); margin-bottom: 7px; font-size: .65rem; }
+.chain-steps strong { display: block; font-size: .75rem; }
+.chain-steps__arrow { position: absolute; top: 50%; right: -21px; color: var(--text-muted); }
+.chain-explanation { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 22px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 13px; min-height: 180px; }
+.chain-explanation > div:first-child { max-width: 760px; }
+.chain-explanation span, .chain-view__section-title > span { font-size: .7rem; color: var(--text-muted); }
+.chain-explanation h3 { margin-top: 8px; }
+.chain-explanation code { display: block; margin-top: 12px; font-size: .72rem; color: var(--primary); overflow-wrap: anywhere; }
+.chain-explanation__actions { display: flex; gap: 8px; flex-shrink: 0; }
+.chain-view__section-title { margin: 28px 0 16px; align-items: center; }
+.chain-view__section-title p { font-size: .75rem; margin-top: 4px; }
+.chain-blocks { display: flex; gap: 0; align-items: stretch; padding: 3px; }
+.chain-blocks__entry { display: flex; flex: 1; align-items: center; min-width: 0; }
+.chain-link { flex: 0 0 76px; display: grid; justify-items: center; gap: 5px; color: var(--primary); }
+.chain-link span { font-size: .59rem; text-align: center; }
+.chain-block { min-width: 0; flex: 1; text-align: left; padding: 20px 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-subtle); color: var(--text); cursor: pointer; }
+.chain-block.is-selected { outline: 2px solid var(--primary); outline-offset: 2px; }
+.chain-block__top { display: flex; gap: 9px; align-items: center; color: var(--primary); font-size: .7rem; letter-spacing: .07em; margin-bottom: 18px; }
+.chain-block > strong { display: block; font-size: .88rem; }
+.chain-block > small { display: block; color: var(--text-muted); font-size: .65rem; margin: 7px 0 20px; }
+.chain-block__hash { display: block; padding: 10px 0; border-top: 1px solid var(--border); }
+.chain-block__hash > span { display: block; color: var(--text-muted); font-size: .63rem; margin-bottom: 5px; }
+.chain-block__hash code { display: block; font-size: .69rem; color: var(--primary); overflow-wrap: anywhere; }
+.chain-block__status { display: flex; gap: 6px; align-items: center; font-size: .68rem; color: var(--success); margin-top: 12px; }
+.chain-block.is-invalid { border-color: var(--danger, #e05264); }
+.chain-link.is-broken, .chain-block.is-invalid .chain-block__status { color: var(--danger, #e05264); }
+.chain-detail { margin-top: 22px; padding: 20px; border: 1px solid var(--border); border-radius: 13px; }
+.chain-detail .chain-view__section-title { margin: 0 0 15px; }
+.chain-detail h3 { margin-top: 8px; }
+.chain-detail dl { margin: 0; }
+.chain-detail dl > div { padding: 12px 0; border-top: 1px solid var(--border); }
+.chain-detail dt { font-size: .7rem; color: var(--text-muted); }
+.chain-detail dd { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin: 6px 0 0; }
+.chain-detail code { font-size: .73rem; overflow-wrap: anywhere; min-width: 0; }
+.chain-detail dd > button { flex-shrink: 0; }
+.chain-experiment { margin-top: 22px; display: flex; align-items: center; gap: 24px; padding: 22px; border: 1px dashed var(--border); border-radius: 13px; background: var(--bg-subtle); }
+.chain-experiment > div { flex: 1; }
+.chain-experiment h3 { margin-top: 10px; }
+.chain-experiment.is-tampered { border-color: var(--danger, #e05264); }
+.chain-view button:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
+.tab-content-blockchain > .chain-view { margin-bottom: 24px; }
+@media (max-width: 1000px) { .chain-explanation { flex-direction: column; align-items: flex-start; } .chain-link { flex-basis: 54px; } }
+@media (max-width: 700px) {
+ .chain-view__header, .chain-view__section-title, .chain-experiment { flex-direction: column; align-items: flex-start; }
+ .chain-steps { grid-template-columns: 1fr; gap: 8px; }
+ .chain-steps button { display: flex; align-items: center; gap: 12px; padding: 12px; text-align: left; }
+ .chain-steps__icon, .chain-steps small { margin: 0; }
+ .chain-steps__arrow { display: none; }
+ .chain-blocks, .chain-blocks__entry { flex-direction: column; align-items: stretch; }
+ .chain-link { flex-basis: auto; padding: 12px; }
+ .chain-link > svg:last-child { transform: rotate(90deg); }
+ .chain-detail, .chain-explanation, .chain-experiment { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .chain-steps button { transition: none; } }
+[data-motion="off"] .chain-steps button { transition: none; }

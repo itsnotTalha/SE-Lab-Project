@@ -43,7 +43,8 @@ function fileFilter(req, file, callback) {
 
 function documentFileFilter(req, file, callback) {
 	const extension = path.extname(file.originalname).toLowerCase();
-	if (!allowedDocumentMimeTypes.has(file.mimetype) || !allowedDocumentExtensions.has(extension)) {
+	const expectedMime = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[extension];
+	if (!allowedDocumentMimeTypes.has(file.mimetype) || !allowedDocumentExtensions.has(extension) || expectedMime !== file.mimetype) {
 		const error = new Error('Only PDF, JPG, JPEG, and PNG documents are allowed');
 		error.status = 400;
 		callback(error, false);

@@ -10,6 +10,7 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import AppShell from './src/layouts/AppShell';
 import AdminShell from './src/layouts/AdminShell';
 
+const BlockchainPage = lazy(() => import('./src/pages/blockchain/BlockchainPage'));
 const AssetsPage = lazy(() => import('./src/pages/assets/AssetsPage'));
 const AssetInspectPage = lazy(() => import('./src/pages/assets/AssetInspectPage'));
 const LoginPage = lazy(() => import('./src/pages/auth/LoginPage'));
@@ -19,6 +20,13 @@ const DocumentsPage = lazy(() => import('./src/pages/documents/DocumentsPage'));
 const LandingPage = lazy(() => import('./src/pages/landing/LandingPage'));
 const ListingDetails = lazy(() => import('./src/pages/marketplace/ListingDetails'));
 const MarketplacePage = lazy(() => import('./src/pages/marketplace/MarketplacePage'));
+const PublicProfilePage = lazy(() => import('./src/pages/marketplace/PublicProfilePage'));
+const OrganizationsPage = lazy(() => import('./src/pages/organization/OrganizationsPage'));
+const OrgHubPage = lazy(() => import('./src/pages/organization/OrgHubPage'));
+const OrgInventoryPage = lazy(() => import('./src/pages/organization/OrgInventoryPage'));
+const OrgContributorsPage = lazy(() => import('./src/pages/organization/OrgContributorsPage'));
+const OrgTreasuryPage = lazy(() => import('./src/pages/organization/OrgTreasuryPage'));
+const OrgRevenuePage = lazy(() => import('./src/pages/organization/OrgRevenuePage'));
 const ProfilePage = lazy(() => import('./src/pages/settings/ProfilePage'));
 const SettingsPage = lazy(() => import('./src/pages/settings/SettingsPage'));
 const AnalyticsPage = lazy(() => import('./src/pages/analytics/AnalyticsPage'));
@@ -50,49 +58,68 @@ function PublicOnlyRoute({ children }) {
 
 function AppRoutes() {
 	return (
-		<Suspense fallback={<LoadingState fullScreen label="Loading VaultChain"/>}><Routes>
-			<Route path="/" element={<LandingPage />} />
-			<Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
-			<Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
-			<Route element={<ProtectedRoute />}>
-				<Route element={<AppShell />}>
-					<Route path="/dashboard" element={<DashboardPage />} />
-					<Route path="/documents" element={<DocumentsPage />} />
-					<Route path="/assets" element={<AssetsPage />} />
-					<Route path="/assets/:assetId/inspect" element={<AssetInspectPage />} />
-					<Route path="/upload" element={<UploadPage />} />
-					<Route path="/verification" element={<VerificationPage />} />
-					<Route path="/vault" element={<VaultPage />} />
-					<Route path="/vault/:reference" element={<VaultDetailPage />} />
-					<Route path="/profile" element={<ProfilePage />} />
-					<Route path="/settings" element={<SettingsPage />} />
-					<Route path="/analytics" element={<AnalyticsPage />} />
-					<Route path="/earnings" element={<EarningsPage />} />
-					<Route path="/activity" element={<ActivityPage />} />
-					<Route path="/wallet" element={<WalletPage />} />
-					<Route path="/marketplace" element={<MarketplacePage />} />
-					<Route path="/marketplace/:id" element={<ListingDetails />} />
+		<Suspense fallback={<LoadingState fullScreen label="Loading VaultChain"/>}>
+			<Routes>
+				<Route path="/" element={<LandingPage />} />
+				<Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+				<Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+				<Route element={<ProtectedRoute />}>
+					<Route element={<AppShell />}>
+						<Route path="/blockchain" element={<BlockchainPage />} />
+						<Route path="/dashboard" element={<DashboardPage />} />
+						<Route path="/documents" element={<DocumentsPage />} />
+						<Route path="/assets" element={<AssetsPage />} />
+						<Route path="/assets/:assetId/inspect" element={<AssetInspectPage />} />
+						<Route path="/upload" element={<UploadPage />} />
+						<Route path="/verification" element={<VerificationPage />} />
+						<Route path="/vault" element={<VaultPage />} />
+						<Route path="/vault/:reference" element={<VaultDetailPage />} />
+						<Route path="/profile" element={<ProfilePage />} />
+						<Route path="/settings" element={<SettingsPage />} />
+						<Route path="/analytics" element={<AnalyticsPage />} />
+						<Route path="/earnings" element={<EarningsPage />} />
+						<Route path="/activity" element={<ActivityPage />} />
+						<Route path="/wallet" element={<WalletPage />} />
+						<Route path="/marketplace" element={<MarketplacePage />} />
+						<Route path="/marketplace/:id" element={<ListingDetails />} />
+						<Route path="/creator/:sellerRef" element={<PublicProfilePage />} />
+						<Route path="/organizations" element={<OrganizationsPage />} />
+						<Route path="/organizations/:orgId/overview" element={<OrgHubPage />} />
+						<Route path="/organizations/:orgId/inventory" element={<OrgInventoryPage />} />
+						<Route path="/organizations/:orgId/contributors" element={<OrgContributorsPage />} />
+						<Route path="/organizations/:orgId/treasury" element={<OrgTreasuryPage />} />
+						<Route path="/organizations/:orgId/revenue" element={<OrgRevenuePage />} />
+						<Route path="/organizations/:orgId/vaults" element={<VaultPage />} />
+					</Route>
+					<Route path="/admin" element={<RoleGuard><AdminShell /></RoleGuard>}>
+						<Route index element={<Navigate to="/admin/dashboard" replace />} />
+						<Route path="dashboard" element={<AdminDashboardPage />} />
+						<Route path="revenue" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminRevenuePage /></RoleGuard>} />
+						<Route path="marketplace" element={<AdminMarketplacePage />} />
+						<Route path="transactions" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminTransactionsPage /></RoleGuard>} />
+						<Route path="users" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminUsersPage /></RoleGuard>} />
+						<Route path="assets" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminAssetsPage /></RoleGuard>} />
+						<Route path="verification" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminVerificationPage /></RoleGuard>} />
+						<Route path="analytics" element={<AdminAnalyticsPage />} />
+						<Route path="security" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR']}><AdminSecurityPage /></RoleGuard>} />
+						<Route path="logs" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminLogsPage /></RoleGuard>} />
+						<Route path="settings" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminSettingsPage /></RoleGuard>} />
+					</Route>
 				</Route>
-				<Route path="/admin" element={<RoleGuard><AdminShell /></RoleGuard>}>
-					<Route index element={<Navigate to="/admin/dashboard" replace />} />
-					<Route path="dashboard" element={<AdminDashboardPage />} />
-					<Route path="revenue" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminRevenuePage /></RoleGuard>} />
-					<Route path="marketplace" element={<AdminMarketplacePage />} />
-					<Route path="transactions" element={<RoleGuard roles={['SUPER_ADMIN', 'FINANCE_ADMIN']}><AdminTransactionsPage /></RoleGuard>} />
-					<Route path="users" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminUsersPage /></RoleGuard>} />
-					<Route path="assets" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminAssetsPage /></RoleGuard>} />
-					<Route path="verification" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR', 'VERIFICATION_ADMIN']}><AdminVerificationPage /></RoleGuard>} />
-					<Route path="analytics" element={<AdminAnalyticsPage />} />
-					<Route path="security" element={<RoleGuard roles={['SUPER_ADMIN', 'MODERATOR']}><AdminSecurityPage /></RoleGuard>} />
-					<Route path="logs" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminLogsPage /></RoleGuard>} />
-					<Route path="settings" element={<RoleGuard roles={['SUPER_ADMIN']}><AdminSettingsPage /></RoleGuard>} />
-				</Route>
-			</Route>
-			<Route path="*" element={<Navigate to="/" replace />} />
-		</Routes></Suspense>
+				<Route path="*" element={<Navigate to="/" replace />} />
+			</Routes>
+		</Suspense>
 	);
 }
 
 export default function App() {
-	return <ThemeProvider><BrowserRouter><AuthProvider><AppRoutes /></AuthProvider></BrowserRouter></ThemeProvider>;
+	return (
+		<ThemeProvider>
+			<BrowserRouter>
+				<AuthProvider>
+					<AppRoutes />
+				</AuthProvider>
+			</BrowserRouter>
+		</ThemeProvider>
+	);
 }

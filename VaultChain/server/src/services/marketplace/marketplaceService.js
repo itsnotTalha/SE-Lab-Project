@@ -65,7 +65,11 @@ async function toPublicListing(listing, requesterId, tokenFingerprint) {
 	if (listing.status === 'active' && listing.asset.ownerId === listing.sellerId) {
 		protection = await vaultAccessService.getAssetProtection(listing.sellerId, listing.assetId, isSeller ? tokenFingerprint : null);
 	}
-	const previewAvailable = listing.status === 'active' && !protection.isLocked;
+	const request = !isSeller && listing.previewRequiresApproval
+		? await marketplaceRepository.getPreviewRequest(listing.id, requesterId) : null;
+	const active = listing.status === 'active' && listing.asset.ownerId === listing.sellerId;
+	const previewAvailable = active && (isSeller ? !protection.isLocked : !listing.previewRequiresApproval || request?.status === 'approved');
+	const previewHidden = !previewAvailable;
 	return {
 		reference: listing.reference,
 		title: listing.title,
@@ -75,20 +79,28 @@ async function toPublicListing(listing, requesterId, tokenFingerprint) {
 		status: listing.status,
 		createdAt: listing.createdAt,
 		soldAt: listing.soldAt,
-		seller: { reference: publicOwnerReference(listing.sellerId), isCurrentUser: isSeller },
+		seller: {
+			reference: listing.isAnonymous ? null : publicOwnerReference(listing.sellerId),
+			name: listing.isAnonymous ? null : listing.sellerName,
+			isAnonymous: listing.isAnonymous,
+			isCurrentUser: isSeller,
+		},
+		previewRequest: request ? { id: request.id, status: request.status } : null,
+		pendingPreviewRequests: isSeller && active ? listing.pendingPreviewRequests : 0,
 		asset: {
 			id: isSeller ? listing.assetId : null,
 			reference: publicAssetReference(listing.assetId),
 			title: listing.asset.title,
-			category: protection.isLocked ? null : listing.asset.category,
-			mimeType: protection.isLocked ? null : listing.asset.mimeType,
-			fileSize: protection.isLocked ? null : listing.asset.fileSize,
+			category: previewHidden ? null : listing.asset.category,
+			mimeType: previewHidden ? null : listing.asset.mimeType,
+			fileSize: previewHidden ? null : listing.asset.fileSize,
 			width: previewAvailable ? listing.asset.width : null,
 			height: previewAvailable ? listing.asset.height : null,
 			previewAvailable,
 			contentUrl: previewAvailable ? `/api/marketplace/listings/${listing.reference}/content` : null,
 			passwordProtected: protection.passwordProtected,
-			isLocked: protection.isLocked,
+			isLocked: active && previewHidden,
+			previewRequiresApproval: listing.previewRequiresApproval,
 		},
 	};
 }
@@ -99,7 +111,8 @@ async function getInternalListing(reference) {
 	return listing;
 }
 
-async function createListing(userId, tokenFingerprint, { assetId, title, description, price }) {
+async function createListing(userId, tokenFingerprint, { assetId, title, description, price, isAnonymous = false }) {
+	if (typeof isAnonymous !== 'boolean') throw httpError(400, 'isAnonymous must be a boolean');
 	const numericAssetId = Number(assetId);
 	if (!Number.isInteger(numericAssetId) || numericAssetId <= 0) throw httpError(400, 'assetId is required');
 	const asset = await assetRepository.getAssetByIdAndOwnerId(numericAssetId, userId);
@@ -113,6 +126,8 @@ async function createListing(userId, tokenFingerprint, { assetId, title, descrip
 			reference: await createUniqueReference('ML'),
 			assetId: numericAssetId,
 			sellerId: userId,
+			isAnonymous,
+			previewRequiresApproval: await marketplaceRepository.assetIsInVault(numericAssetId, userId),
 			title: validateText(title, 'Title', 120),
 			description: validateText(description, 'Description', 1000, false),
 			price: await validatePrice(price),
@@ -137,7 +152,9 @@ async function updateListing(userId, reference, payload, tokenFingerprint) {
 	const listing = await getInternalListing(reference);
 	if (listing.sellerId !== userId) throw httpError(404, 'Listing not found');
 	if (listing.status !== 'active') throw httpError(409, 'Only active listings can be updated');
+	if (payload.isAnonymous !== undefined && typeof payload.isAnonymous !== 'boolean') throw httpError(400, 'isAnonymous must be a boolean');
 	const result = await marketplaceRepository.updateActiveListing(listing.reference, userId, {
+		isAnonymous: payload.isAnonymous,
 		price: payload.price == null ? null : await validatePrice(payload.price),
 		title: payload.title == null ? null : validateText(payload.title, 'Title', 120),
 		description: payload.description == null ? null : validateText(payload.description, 'Description', 1000, false),
@@ -160,8 +177,12 @@ async function getListingContent(reference, userId, tokenFingerprint) {
 	if (listing.status !== 'active' || listing.asset.ownerId !== listing.sellerId) {
 		throw httpError(404, 'Listing content not found');
 	}
-	const accessFingerprint = userId === listing.sellerId ? tokenFingerprint : null;
-	await vaultAccessService.assertAssetUnlocked(listing.sellerId, listing.assetId, accessFingerprint);
+	if (userId === listing.sellerId) {
+		await vaultAccessService.assertAssetUnlocked(listing.sellerId, listing.assetId, tokenFingerprint);
+	} else if (listing.previewRequiresApproval) {
+		const request = await marketplaceRepository.getPreviewRequest(listing.id, userId);
+		if (request?.status !== 'approved') throw httpError(423, 'Request preview access and wait for seller approval', 'PREVIEW_APPROVAL_REQUIRED');
+	}
 	return listing.asset;
 }
 
@@ -203,7 +224,47 @@ async function getOwnershipHistory(userId, assetId) {
 	}));
 }
 
+
+
+
+async function activeOwnedListing(reference, sellerId) {
+	const listing = await getInternalListing(reference);
+	if (listing.sellerId !== sellerId || listing.asset.ownerId !== sellerId) throw httpError(404, 'Listing not found');
+	if (listing.status !== 'active') throw httpError(409, 'Listing is no longer active');
+	return listing;
+}
+
+async function requestPreview(userId, reference) {
+	const listing = await getInternalListing(reference);
+	if (listing.status !== 'active' || listing.asset.ownerId !== listing.sellerId) throw httpError(409, 'Listing is no longer active');
+	if (listing.sellerId === userId) throw httpError(400, 'You cannot request your own preview');
+	if (!listing.previewRequiresApproval) throw httpError(400, 'This preview does not require approval');
+	const request = await marketplaceRepository.createPreviewRequest(listing.id, userId);
+	if (!request) throw httpError(409, 'Listing is no longer active');
+	return { id: request.id, status: request.status };
+}
+
+async function getPreviewRequests(userId, reference) {
+	const listing = await activeOwnedListing(reference, userId);
+	return (await marketplaceRepository.getPreviewRequests(listing.id)).map((request) => ({
+		id: request.id, buyerName: request.buyer_name, status: request.status,
+		createdAt: request.created_at, updatedAt: request.updated_at,
+	}));
+}
+
+async function decidePreviewRequest(userId, reference, requestId, status, tokenFingerprint) {
+	const listing = await activeOwnedListing(reference, userId);
+	if (!['approved', 'denied', 'revoked'].includes(status)) throw httpError(400, 'Invalid preview decision');
+	const id = Number(requestId);
+	if (!Number.isSafeInteger(id) || id <= 0) throw httpError(404, 'Preview request not found');
+	if (status === 'approved') await vaultAccessService.assertAssetUnlocked(userId, listing.assetId, tokenFingerprint);
+	const result = await marketplaceRepository.decidePreviewRequest(listing.id, userId, id, status);
+	if (!result.changes) throw httpError(404, 'Active listing or preview request not found');
+	return { id, status };
+}
+
 module.exports = {
 	createListing, getListings, getListing, updateListing, deleteListing,
 	getListingContent, purchaseListing, getOwnershipHistory,
+	requestPreview, getPreviewRequests, decidePreviewRequest,
 };

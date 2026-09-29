@@ -173,3 +173,24 @@
 .marketplace-card-skeleton__price { width:45%; height:20px; margin-top:10px; }
 @media (max-width:900px) { .marketplace-toolbar { align-items:stretch; flex-direction:column; }.marketplace-search { min-width:0; border-bottom:1px solid var(--border); }.marketplace-filter-group { padding:1px 7px 2px; }.marketplace-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:640px) { .marketplace-header-actions { width:100%; align-items:stretch; flex-direction:column; }.marketplace-wallet-balance { justify-content:center; }.marketplace-toolbar { padding:6px; }.marketplace-filter-group > svg { display:none; }.marketplace-filter-group button { flex:1 1 auto; padding:0 9px; }.marketplace-grid { grid-template-columns:1fr; }.marketplace-card { width:100%; }.marketplace-card__body { min-height:198px; }.marketplace-empty { min-height:320px; }.marketplace-card__footer { align-items:stretch; flex-direction:column; }.marketplace-card__footer > a { width:100%; }.marketplace-card__price { display:flex; align-items:baseline; gap:7px; }.marketplace-card__price span { margin-top:0; } }
+
+.ocr-modal--layout { width: min(96vw, 1280px); max-width: 1280px; }
+.ocr-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; min-height: 0; overflow: auto; }
+.ocr-original, .ocr-layout > .ocr-modal__body { min-width: 0; }
+.ocr-original iframe { width: 100%; height: 65vh; border: 0; background: white; }
+.ocr-original img { width: 100%; height: auto; }
+.ocr-pages { max-height: 52vh; overflow: auto; }
+.ocr-page { border-bottom: 1px solid var(--border); padding: 12px 0; }
+.ocr-page pre { white-space: pre; overflow-x: auto; font-family: monospace; line-height: 1.5; tab-size: 4; }
+.document-verification-result pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.document-verification-result dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.document-verification-result dd { margin: 0; }
+@media (max-width: 760px) { .ocr-layout { grid-template-columns: 1fr; } .ocr-original iframe { height: 45vh; } }
+
+.marketplace-anonymous { display: flex; align-items: center; gap: 10px; font-size: .85rem; }
+.marketplace-anonymous input { width: auto; }
+.preview-request-list { list-style: none; padding: 0; margin: 0 0 16px; }
+.preview-request-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.preview-request-list li > div:first-child { display: grid; gap: 6px; }
+.preview-request-list li span { color: var(--text-muted); font-size: .75rem; }
+.preview-request-actions { display: flex; gap: 8px; }

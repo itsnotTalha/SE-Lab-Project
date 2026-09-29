@@ -20,9 +20,10 @@ async function list(filters = {}) {
 	return (await request(`/documents${suffix}`)).documents;
 }
 
-async function upload(file) {
+async function upload(file, metadata = {}) {
 	const body = new FormData();
 	body.append('file', file);
+	for (const [key, value] of Object.entries(metadata)) body.append(key, value);
 	return (await request('/documents', { method: 'POST', body })).document;
 }
 
@@ -54,4 +55,15 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const documentService = { list, upload, get, getOcr, rerunOcr, remove, getContentObjectUrl };
+async function verify(id, targetDocumentId) {
+	return (await request(`/documents/${id}/verify`, {
+		method: 'POST', headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ targetDocumentId }),
+	})).verification;
+}
+
+async function getReport(id) {
+	return (await request(`/documents/${id}/report`)).report;
+}
+
+export const documentService = { verify, getReport, list, upload, get, getOcr, rerunOcr, remove, getContentObjectUrl };

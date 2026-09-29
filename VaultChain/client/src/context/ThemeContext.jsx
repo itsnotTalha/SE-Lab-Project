@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const ThemeContext = createContext(null);
@@ -10,6 +11,11 @@ function getInitialTheme() {
 
 export function ThemeProvider({ children }) {
 	const [theme, setTheme] = useState(getInitialTheme);
+	const [motionEnabled, setMotionEnabled] = useState(() => window.localStorage.getItem('vaultchain-motion') !== 'off');
+	useEffect(() => {
+		document.documentElement.dataset.motion = motionEnabled ? 'on' : 'off';
+		window.localStorage.setItem('vaultchain-motion', motionEnabled ? 'on' : 'off');
+	}, [motionEnabled]);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -19,11 +25,13 @@ export function ThemeProvider({ children }) {
 
 	const value = useMemo(() => ({
 		theme,
+		motionEnabled,
+		toggleMotion: () => setMotionEnabled((current) => !current),
 		setTheme,
 		toggleTheme: () => setTheme((current) => current === 'dark' ? 'light' : 'dark'),
-	}), [theme]);
+	}), [theme, motionEnabled]);
 
-	return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+	return <ThemeContext.Provider value={value}><MotionConfig reducedMotion={motionEnabled ? 'user' : 'always'}>{children}</MotionConfig></ThemeContext.Provider>;
 }
 
 export function useTheme() {

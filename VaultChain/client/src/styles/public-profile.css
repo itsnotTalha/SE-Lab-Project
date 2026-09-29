@@ -1,0 +1,109 @@
+/* Public Creator Profile Styles */
+.public-profile-container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 0 60px;
+  display: grid;
+  gap: 24px;
+}
+
+.creator-banner {
+  height: 180px;
+  border-radius: 20px;
+  background: radial-gradient(circle at 75% 30%, rgba(65, 217, 255, 0.25), transparent 60%),
+              linear-gradient(135deg, #0e172a 0%, #030712 100%);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.creator-header-card {
+  position: relative;
+  margin-top: -60px;
+  background: var(--surface-raised, #0b1120);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 24px 30px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.creator-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.creator-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #41d9ff, #798bff);
+  color: #041017;
+  font-size: 2.2rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  border: 4px solid var(--surface-raised, #0b1120);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.creator-details h1 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.creator-details span {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.creator-stats-row {
+  display: flex;
+  gap: 24px;
+}
+
+.creator-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.creator-stat strong {
+  font-size: 1.25rem;
+  color: #f1f5f9;
+}
+
+.creator-stat small {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.badge-verified {
+  background: rgba(66, 214, 157, 0.12);
+  border: 1px solid rgba(66, 214, 157, 0.35);
+  color: #42d69d;
+}
+
+.creator-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}

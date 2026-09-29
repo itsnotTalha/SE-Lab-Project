@@ -18,8 +18,8 @@ function all(sql, params = []) {
 const DOCUMENT_SELECT = `
 	SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 		d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
-		d.ocr_error, d.ocr_processed_at, d.created_at,
-		o.extracted_text, o.confidence
+		d.ocr_error, d.ocr_processed_at, d.description, d.category, d.metadata_sha256, d.created_at,
+		o.extracted_text, o.confidence, o.semantic_hash, o.text_sha256, o.ocr_source, o.selection_reason, o.ocr_warning
 	FROM documents d
 	LEFT JOIN ocr_results o ON o.document_id = d.id`;
 
@@ -34,22 +34,27 @@ function mapRow(row, includeText = true) {
 		mimeType: row.mime_type,
 		fileSize: row.file_size,
 		sha256Hash: row.sha256_hash,
+		metadataSha256: row.metadata_sha256 || null,
 		pageCount: row.page_count,
 		language: row.language,
 		ocrStatus: row.ocr_status,
 		ocrError: row.ocr_error,
 		ocrProcessedAt: row.ocr_processed_at,
+		description: row.description || null,
+		category: row.category || (row.mime_type?.startsWith('image/') ? 'image' : 'pdf'),
 		createdAt: row.created_at,
-		...(includeText ? { extractedText: row.extracted_text, confidence: row.confidence } : {}),
+		semanticHash: row.semantic_hash || null,
+		textSha256: row.text_sha256 || row.semantic_hash || null,
+		...(includeText ? { extractedText: row.extracted_text, confidence: row.confidence, ocrSource: row.ocr_source || null, ocrSelectionReason: row.selection_reason || null, ocrWarning: row.ocr_warning || null } : {}),
 	};
 }
 
-async function createDocument({ ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash }) {
+async function createDocument({ ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash, description = null, category = 'pdf', metadataSha256 }) {
 	const result = await run(
 		`INSERT INTO documents
-		 (owner_id, original_name, stored_name, file_path, mime_type, file_size, sha256_hash, language, ocr_status)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, 'eng', 'pending')`,
-		[ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash]
+		 (owner_id, original_name, stored_name, file_path, mime_type, file_size, sha256_hash, description, category, metadata_sha256, language, ocr_status)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'eng', 'pending')`,
+		[ownerId, originalName, storedName, filePath, mimeType, fileSize, sha256Hash, description, category, metadataSha256]
 	);
 	return getDocumentByIdAndOwnerId(result.lastID, ownerId);
 }
@@ -59,11 +64,12 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 	const filterParams = [ownerId];
 	if (search) {
 		conditions.push(`(instr(lower(d.original_name), lower(?)) > 0
+			OR instr(lower(COALESCE(d.description, '')), lower(?)) > 0
 			OR instr(lower(COALESCE(o.extracted_text, '')), lower(?)) > 0)`);
-		filterParams.push(search, search);
+		filterParams.push(search, search, search);
 	}
-	if (type === 'pdf') conditions.push("d.mime_type = 'application/pdf'");
-	if (type === 'image') conditions.push("d.mime_type LIKE 'image/%'");
+	if (type === 'pdf') conditions.push("(d.mime_type = 'application/pdf' OR d.category = 'pdf')");
+	if (type === 'image') conditions.push("(d.mime_type LIKE 'image/%' OR d.category = 'image')");
 	if (ocrStatus) {
 		conditions.push('d.ocr_status = ?');
 		filterParams.push(ocrStatus);
@@ -79,7 +85,7 @@ async function getDocumentsByOwnerId(ownerId, { search = '', type = '', ocrStatu
 	const rows = await all(
 		`SELECT d.id, d.owner_id, d.original_name, d.stored_name, d.file_path, d.mime_type,
 			d.file_size, d.sha256_hash, d.page_count, d.language, d.ocr_status,
-			d.ocr_error, d.ocr_processed_at, d.created_at, ${snippet}
+			d.ocr_error, d.ocr_processed_at, d.description, d.category, d.metadata_sha256, d.created_at, ${snippet}
 		 FROM documents d
 		 LEFT JOIN ocr_results o ON o.document_id = d.id
 		 WHERE ${conditions.join(' AND ')}
@@ -99,6 +105,10 @@ async function getDocumentByIdAndOwnerId(id, ownerId) {
 	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.id = ? AND d.owner_id = ? LIMIT 1`, [id, ownerId]));
 }
 
+async function findDocumentBySha256(sha256Hash, ownerId) {
+	return mapRow(await get(`${DOCUMENT_SELECT} WHERE d.sha256_hash = ? AND d.owner_id = ? LIMIT 1`, [sha256Hash, ownerId]));
+}
+
 async function setOcrStatus(id, ownerId, status, error = null) {
 	await run(
 		`UPDATE documents SET ocr_status = ?, ocr_error = ?,
@@ -108,16 +118,24 @@ async function setOcrStatus(id, ownerId, status, error = null) {
 	);
 }
 
-async function saveOcrResult(id, ownerId, { text, confidence, pageCount, language = 'eng' }) {
+async function saveOcrResult(id, ownerId, { text, confidence, pageCount, language = 'eng', semanticHash = null, textSha256 = null, source = null, selectionReason = null, warning = null }) {
+	const hashValue = textSha256 || semanticHash || null;
 	return serializeTransaction(async () => {
 		await run('BEGIN TRANSACTION');
 		try {
 			await run(
-				`INSERT INTO ocr_results (document_id, extracted_text, confidence, created_at)
-				 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+				`INSERT INTO ocr_results (document_id, extracted_text, confidence, semantic_hash, text_sha256, ocr_source, selection_reason, ocr_warning, created_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 				 ON CONFLICT(document_id) DO UPDATE SET
-				 extracted_text = excluded.extracted_text, confidence = excluded.confidence, created_at = CURRENT_TIMESTAMP`,
-				[id, text, confidence]
+				 extracted_text = excluded.extracted_text,
+				 confidence = excluded.confidence,
+				 semantic_hash = excluded.semantic_hash,
+				 text_sha256 = excluded.text_sha256,
+				 ocr_source = excluded.ocr_source,
+				 selection_reason = excluded.selection_reason,
+				 ocr_warning = excluded.ocr_warning,
+				 created_at = CURRENT_TIMESTAMP`,
+				[id, text, confidence, hashValue, hashValue, source, selectionReason, warning]
 			);
 			const result = await run(
 				`UPDATE documents SET ocr_status = 'completed', ocr_error = NULL,
@@ -138,6 +156,22 @@ async function saveOcrResult(id, ownerId, { text, confidence, pageCount, languag
 	});
 }
 
+async function saveDocumentVerificationReport({ userId, documentId, targetDocumentId = null, sha256Match, similarityScore, status, reportJson }) {
+	const result = await run(
+		`INSERT INTO verification_reports (user_id, document_id, target_document_id, verification_type, sha256_match, similarity_score, status, report_json, created_at)
+		 VALUES (?, ?, ?, 'document_verification', ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		[userId, documentId, targetDocumentId, sha256Match ? 1 : 0, similarityScore, status, typeof reportJson === 'string' ? reportJson : JSON.stringify(reportJson)]
+	);
+	return get('SELECT * FROM verification_reports WHERE id = ?', [result.lastID]);
+}
+
+async function getDocumentVerificationReport(documentId, userId) {
+	return get(
+		`SELECT * FROM verification_reports WHERE document_id = ? AND user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`,
+		[documentId, userId]
+	);
+}
+
 async function deleteDocument(id, ownerId) {
 	return run('DELETE FROM documents WHERE id = ? AND owner_id = ?', [id, ownerId]);
 }
@@ -146,7 +180,10 @@ module.exports = {
 	createDocument,
 	getDocumentsByOwnerId,
 	getDocumentByIdAndOwnerId,
+	findDocumentBySha256,
 	setOcrStatus,
 	saveOcrResult,
+	saveDocumentVerificationReport,
+	getDocumentVerificationReport,
 	deleteDocument,
 };

@@ -20,12 +20,16 @@ function all(sql, params = []) {
 
 const LISTING_SELECT = `
 	SELECT ml.id, ml.public_reference, ml.asset_id, ml.seller_id, ml.buyer_id,
+		ml.is_anonymous, ml.preview_requires_approval, seller.full_name AS seller_name,
+		EXISTS (SELECT 1 FROM vault_assets va JOIN vaults v ON v.id = va.vault_id WHERE va.asset_id = ml.asset_id AND v.user_id = ml.seller_id) AS in_vault,
+		(SELECT COUNT(*) FROM marketplace_preview_requests pr WHERE pr.listing_id = ml.id AND pr.status = 'pending') AS pending_preview_requests,
 		ml.title, ml.description, ml.listing_type, ml.price, ml.status, ml.created_at, ml.sold_at,
 		a.owner_id AS asset_owner_id, a.title AS asset_title, a.description AS asset_description,
 		a.category AS asset_category, a.file_name, a.file_path, a.file_size, a.mime_type,
 		a.created_at AS asset_created_at, am.width, am.height
 	FROM marketplace_listings ml
 	JOIN assets a ON a.id = ml.asset_id
+	JOIN users seller ON seller.id = ml.seller_id
 	LEFT JOIN asset_metadata am ON am.asset_id = a.id
 `;
 
@@ -33,7 +37,9 @@ function mapListingRow(row) {
 	if (!row) return null;
 	return {
 		id: row.id, reference: row.public_reference, assetId: row.asset_id,
-		sellerId: row.seller_id, buyerId: row.buyer_id, title: row.title,
+		sellerId: row.seller_id, sellerName: row.seller_name, isAnonymous: Boolean(row.is_anonymous),
+		previewRequiresApproval: Boolean(row.preview_requires_approval || row.in_vault),
+		pendingPreviewRequests: row.pending_preview_requests, buyerId: row.buyer_id, title: row.title,
 		description: row.description, listingType: row.listing_type, price: row.price,
 		status: row.status, createdAt: row.created_at, soldAt: row.sold_at,
 		asset: {
@@ -46,18 +52,18 @@ function mapListingRow(row) {
 	};
 }
 
-async function createListing({ reference, assetId, sellerId, title, description, price }) {
+async function createListing({ reference, assetId, sellerId, title, description, price, isAnonymous = false, previewRequiresApproval = false }) {
 	const result = await run(
 		`INSERT INTO marketplace_listings
-			(public_reference, asset_id, seller_id, title, description, listing_type, price, status)
-		 VALUES (?, ?, ?, ?, ?, 'sale', ?, 'active')`,
-		[reference, assetId, sellerId, title, description || null, price]
+			(public_reference, asset_id, seller_id, title, description, listing_type, price, status, is_anonymous, preview_requires_approval)
+		 VALUES (?, ?, ?, ?, ?, 'sale', ?, 'active', ?, ?)`,
+		[reference, assetId, sellerId, title, description || null, price, isAnonymous ? 1 : 0, previewRequiresApproval ? 1 : 0]
 	);
 	return getListingById(result.lastID);
 }
 
 async function getListings() {
-	return (await all(`${LISTING_SELECT} ORDER BY ml.created_at DESC, ml.id DESC`)).map(mapListingRow);
+	return (await all(`${LISTING_SELECT} ORDER BY CASE WHEN ml.status = 'active' THEN 0 ELSE 1 END, ml.created_at DESC, ml.id DESC`)).map(mapListingRow);
 }
 
 async function getListingById(id) {
@@ -72,12 +78,12 @@ async function getActiveListingForAsset(assetId) {
 	return mapListingRow(await get(`${LISTING_SELECT} WHERE ml.asset_id = ? AND ml.status = 'active' LIMIT 1`, [assetId]));
 }
 
-async function updateActiveListing(reference, sellerId, { price, title, description }) {
+async function updateActiveListing(reference, sellerId, { price, title, description, isAnonymous }) {
 	const result = await run(
 		`UPDATE marketplace_listings SET price = COALESCE(?, price), title = COALESCE(?, title),
-			description = COALESCE(?, description)
+			description = COALESCE(?, description), is_anonymous = COALESCE(?, is_anonymous)
 		 WHERE public_reference = ? AND seller_id = ? AND status = 'active'`,
-		[price, title, description, reference, sellerId]
+		[price, title, description, isAnonymous == null ? null : Number(isAnonymous), reference, sellerId]
 	);
 	return { changes: result.changes, listing: await getListingByReference(reference) };
 }
@@ -208,8 +214,42 @@ async function getOwnershipHistory(assetId) {
 	}));
 }
 
+
+
+
+async function assetIsInVault(assetId, ownerId) {
+	return Boolean(await get(`SELECT 1 FROM vault_assets va JOIN vaults v ON v.id = va.vault_id WHERE va.asset_id = ? AND v.user_id = ? LIMIT 1`, [assetId, ownerId]));
+}
+
+async function getPreviewRequest(listingId, buyerId) {
+	return get('SELECT id, status, created_at, updated_at FROM marketplace_preview_requests WHERE listing_id = ? AND buyer_id = ?', [listingId, buyerId]);
+}
+
+async function createPreviewRequest(listingId, buyerId) {
+	await run(`INSERT INTO marketplace_preview_requests (listing_id, buyer_id)
+		SELECT ml.id, ? FROM marketplace_listings ml JOIN assets a ON a.id = ml.asset_id
+		WHERE ml.id = ? AND ml.status = 'active' AND ml.seller_id = a.owner_id AND ml.seller_id != ?
+		ON CONFLICT(listing_id, buyer_id) DO NOTHING`, [buyerId, listingId, buyerId]);
+	return getPreviewRequest(listingId, buyerId);
+}
+
+async function getPreviewRequests(listingId) {
+	return all(`SELECT pr.id, pr.status, pr.created_at, pr.updated_at, u.full_name AS buyer_name
+		FROM marketplace_preview_requests pr JOIN users u ON u.id = pr.buyer_id
+		WHERE pr.listing_id = ? ORDER BY pr.created_at DESC, pr.id DESC`, [listingId]);
+}
+
+async function decidePreviewRequest(listingId, sellerId, requestId, status) {
+	return run(`UPDATE marketplace_preview_requests SET status = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND listing_id = ? AND EXISTS (
+			SELECT 1 FROM marketplace_listings ml JOIN assets a ON a.id = ml.asset_id
+			WHERE ml.id = ? AND ml.seller_id = ? AND a.owner_id = ml.seller_id AND ml.status = 'active'
+		)`, [status, requestId, listingId, listingId, sellerId]);
+}
+
 module.exports = {
 	createListing, getListings, getListingById, getListingByReference,
 	getActiveListingForAsset, updateActiveListing, cancelListing,
 	purchaseListing, getOwnershipHistory,
+	assetIsInVault, getPreviewRequest, createPreviewRequest, getPreviewRequests, decidePreviewRequest,
 };

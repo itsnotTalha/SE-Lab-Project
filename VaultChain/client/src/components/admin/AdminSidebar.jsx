@@ -1,3 +1,4 @@
+import { preloadPage } from '../../utils/preloadPage';
 import { Activity, BadgeDollarSign, BarChart3, ChevronLeft, CircleDollarSign, FileSearch, LayoutDashboard, ListChecks, LogOut, Settings, ShieldCheck, Store, UsersRound, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -29,7 +30,7 @@ export default function AdminSidebar({ open, collapsed, role, onClose, onCollaps
 	return <aside className={`admin-sidebar ${open ? 'is-open' : ''} ${collapsed ? 'is-collapsed' : ''}`}>
 		<header><BrandLogo/><button type="button" className="admin-icon-btn admin-sidebar__close" onClick={onClose} aria-label="Close navigation"><X size={18}/></button></header>
 		<div className="admin-workspace"><span>VC</span><div><strong>VaultChain Admin</strong><small>Protected workspace</small></div></div>
-		<nav>{[...new Set(visible.map((item) => item.section))].map((section) => <div className="admin-nav-group" key={section}><p>{section}</p>{visible.filter((item) => item.section === section).map((item) => { const Icon = item.icon; return <NavLink end={item.to === '/admin/dashboard'} to={item.to} key={item.to} title={collapsed ? item.label : undefined} onClick={onClose} className={({ isActive }) => `admin-nav-link ${isActive ? 'is-active' : ''}`}><Icon size={17}/><span>{item.label}</span></NavLink>; })}</div>)}</nav>
+		<nav>{[...new Set(visible.map((item) => item.section))].map((section) => <div className="admin-nav-group" key={section}><p>{section}</p>{visible.filter((item) => item.section === section).map((item) => { const Icon = item.icon; return <NavLink end={item.to === '/admin/dashboard'} to={item.to} onMouseEnter={() => preloadPage(item.to)} onFocus={() => preloadPage(item.to)} onTouchStart={() => preloadPage(item.to)} key={item.to} title={collapsed ? item.label : undefined} onClick={onClose} className={({ isActive }) => `admin-nav-link ${isActive ? 'is-active' : ''}`}><Icon size={17}/><span>{item.label}</span></NavLink>; })}</div>)}</nav>
 		<footer><button type="button" className="admin-nav-link" onClick={onLogout}><LogOut size={17}/><span>Log out</span></button></footer>
 		<button type="button" className="admin-sidebar__collapse" onClick={onCollapse} aria-label="Collapse sidebar"><ChevronLeft size={15}/></button>
 	</aside>;

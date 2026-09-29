@@ -10,15 +10,15 @@ export default function AssetSummaryCards({ ownership, verification, blockchain,
 		show: {
 			opacity: 1,
 			transition: {
-				staggerChildren: 0.1,
-				delayChildren: 0.2,
+				staggerChildren: 0.025,
+				delayChildren: 0,
 			},
 		},
 	};
 
 	const item = {
-		hidden: { opacity: 0, y: 15 },
-		show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+		hidden: { opacity: 0, y: 4 },
+		show: { opacity: 1, y: 0, transition: { duration: 0.16 } },
 	};
 
 	return (
@@ -88,11 +88,11 @@ export default function AssetSummaryCards({ ownership, verification, blockchain,
 						<rect x="14" y="14" width="7" height="7" />
 						<rect x="3" y="14" width="7" height="7" />
 					</svg>
-					<h3>Blockchain Status</h3>
+					<h3>Asset Fingerprint</h3>
 				</div>
 				<div className="card-content">
-					<p className="card-value">✓ Recorded</p>
-					<span className="card-detail">Cryptographic Identity</span>
+					<p className="card-value">{blockchain.hash ? 'Fingerprint ready' : 'Unavailable'}</p>
+					<span className="card-detail">SHA-256 identity · explore the Blockchain tab</span>
 					{blockchain.hash && (
 						<code className="card-hash">
 							{blockchain.hash.slice(0, 12)}…{blockchain.hash.slice(-6)}

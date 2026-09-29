@@ -1,0 +1,212 @@
+/* AI Smart Recommendation Pop-up inside Asset Preview */
+.ai-asset-popup {
+  position: absolute;
+  bottom: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92%, 580px);
+  background: rgba(10, 15, 29, 0.94);
+  border: 1px solid rgba(65, 217, 255, 0.38);
+  border-radius: 16px;
+  box-shadow: 
+    0 16px 40px rgba(0, 0, 0, 0.65),
+    0 0 25px rgba(65, 217, 255, 0.18);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 14px 18px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: aiPopupSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes aiPopupSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.ai-asset-popup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ai-asset-popup__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(65, 217, 255, 0.15), rgba(121, 139, 255, 0.15));
+  border: 1px solid rgba(65, 217, 255, 0.35);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.ai-asset-popup__tag svg {
+  color: #38bdf8;
+  animation: aiSparklePulse 2s infinite ease-in-out;
+}
+
+@keyframes aiSparklePulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.25) rotate(15deg); opacity: 0.7; }
+}
+
+.ai-asset-popup__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ai-asset-popup__close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-asset-popup__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-asset-popup__message {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+}
+
+.ai-asset-popup__message strong {
+  color: #38bdf8;
+}
+
+.ai-asset-popup__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.ai-action-btn--vault {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(14, 165, 233, 0.12));
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+}
+
+.ai-action-btn--vault:hover {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 165, 233, 0.22));
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
+}
+
+.ai-action-btn--market {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(126, 34, 206, 0.12));
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+}
+
+.ai-action-btn--market:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(126, 34, 206, 0.22));
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.25);
+  transform: translateY(-1px);
+}
+
+.ai-action-btn--inspect {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+.ai-action-btn--inspect:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Inline Vault Chooser */
+.ai-vault-chooser {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 6px 10px;
+  border-radius: 9px;
+  width: 100%;
+}
+
+.ai-vault-select {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.ai-vault-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.ai-vault-confirm-btn {
+  background: #38bdf8;
+  color: #020617;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.ai-vault-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-success-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4ade80;
+  font-size: 0.72rem;
+  font-weight: 650;
+}

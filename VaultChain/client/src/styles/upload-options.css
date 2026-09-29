@@ -1,0 +1,14 @@
+.upload-type-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.upload-type-options > button { display: flex; align-items: center; gap: 14px; padding: 18px; text-align: left; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+.upload-type-options > button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+.upload-type-options > button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.upload-type-options > button:disabled { cursor: wait; opacity: .65; }
+.upload-type-options svg { flex-shrink: 0; color: var(--primary); }
+.upload-type-options strong, .upload-type-options small { display: block; }
+.upload-type-options strong { color: var(--text); font-size: .85rem; }
+.upload-type-options small { margin-top: 5px; font-size: .72rem; line-height: 1.5; }
+.upload-document-option { display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; padding: 32px 16px; }
+.upload-document-option > svg { color: var(--primary); }
+.upload-document-option h2 { margin: 0; color: var(--text); font-size: 1.2rem; }
+.upload-document-option p { max-width: 480px; margin: 0; color: var(--text-secondary); font-size: .85rem; line-height: 1.7; }
+@media (max-width: 600px) { .upload-type-options { grid-template-columns: 1fr; } }

@@ -28,11 +28,11 @@ async function getListing(reference) {
 	return data.listing;
 }
 
-async function createListing({ assetId, title, description, price }) {
+async function createListing({ assetId, title, description, price, isAnonymous = false }) {
 	const data = await request('/marketplace/listings', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ assetId, title, description, price }),
+		body: JSON.stringify({ assetId, title, description, price, isAnonymous }),
 	});
 	return data.listing;
 }
@@ -70,7 +70,22 @@ async function getContentObjectUrl(reference) {
 	return URL.createObjectURL(await response.blob());
 }
 
+async function requestPreview(reference) {
+	return (await request(`/marketplace/listings/${reference}/preview-requests`, { method: 'POST' })).request;
+}
+
+async function getPreviewRequests(reference) {
+	return (await request(`/marketplace/listings/${reference}/preview-requests`)).requests;
+}
+
+async function decidePreviewRequest(reference, id, status) {
+	return (await request(`/marketplace/listings/${reference}/preview-requests/${id}`, {
+		method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+	})).request;
+}
+
 export const marketplaceService = {
+	requestPreview, getPreviewRequests, decidePreviewRequest,
 	getListings,
 	getListing,
 	createListing,

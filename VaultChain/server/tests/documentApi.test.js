@@ -20,15 +20,17 @@ const { initializeDatabase } = require('../src/database/initDatabase');
 let server;
 let baseUrl;
 
-function digitalPdf(text) {
-	const content = `BT /F1 24 Tf 72 720 Td (${text.replace(/[()\\]/g, '\\$&')}) Tj ET`;
-	const objects = [
-		'<< /Type /Catalog /Pages 2 0 R >>',
-		'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-		'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-		'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-		`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
-	];
+function digitalPdf(text, pageCount = 1) {
+	const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>'];
+	const kids = [];
+	for (let page = 0; page < pageCount; page++) {
+		const pageId = objects.length + 1;
+		kids.push(`${pageId} 0 R`);
+		const content = `BT /F1 16 Tf 72 720 Td (${text.replace(/[()\\]/g, '\\$&')}) Tj ET`;
+		objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageId + 1} 0 R >>`);
+		objects.push(`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`);
+	}
+	objects[1] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`;
 	let pdf = '%PDF-1.4\n';
 	const offsets = [0];
 	objects.forEach((object, index) => {
@@ -102,6 +104,10 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.match(image.sha256, /^[a-f0-9]{64}$/);
 	assert.match(image.extractedText, /System Architecture/i);
 	assert.equal(image.pageCount, 1);
+	assert.equal(image.ocrSource, 'local_tesseract');
+	const savedOcr = expectStatus(await api(`/documents/${image.id}/ocr`, { token: owner.token }), 200).ocr;
+	assert.equal(savedOcr.source, 'local_tesseract');
+	assert.ok(savedOcr.selectionReason);
 	assert.doesNotMatch(JSON.stringify(image), /filePath|storedName|ownerId/);
 
 	const pdf = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('digital.pdf', 'application/pdf', digitalPdf('DIGITAL PDF TEXT')) }), 201).document;
@@ -109,9 +115,9 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.match(pdf.extractedText, /DIGITAL PDF TEXT/);
 	assert.equal(pdf.pageCount, 1);
 
-	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('broken.png', 'image/png', Buffer.from('broken image')) }), 201).document;
+	const failed = expectStatus(await api('/documents', { token: owner.token, method: 'POST', form: uploadForm('scan-limit.pdf', 'application/pdf', digitalPdf('', 11)) }), 201).document;
 	assert.equal(failed.ocrStatus, 'failed');
-	assert.match(failed.ocrError, /retry/i);
+	assert.match(failed.ocrError, /limited to 10 pages/i);
 	assert.equal(expectStatus(await api(`/documents/${failed.id}`, { token: owner.token }), 200).document.id, failed.id);
 	assert.equal((await api(`/documents/${failed.id}/content`, { token: owner.token })).status, 200);
 
@@ -139,8 +145,8 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	assert.deepEqual(otherSearch.map((document) => document.id), [otherDocument.id]);
 	assert.match(otherSearch[0].ocrSnippet, /ELECTRICITY INVOICE/);
 
-	assert.deepEqual(expectStatus(await api('/documents?type=pdf', { token: owner.token }), 200).documents.map((document) => document.id), [pdf.id]);
-	assert.deepEqual(expectStatus(await api('/documents?type=image', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id, image.id]);
+	assert.deepEqual(expectStatus(await api('/documents?type=pdf', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id, pdf.id]);
+	assert.deepEqual(expectStatus(await api('/documents?type=image', { token: owner.token }), 200).documents.map((document) => document.id), [image.id]);
 	assert.deepEqual(expectStatus(await api('/documents?ocrStatus=failed', { token: owner.token }), 200).documents.map((document) => document.id), [failed.id]);
 	assert.deepEqual(expectStatus(await api('/documents?ocrStatus=completed', { token: owner.token }), 200).documents.map((document) => document.id), [pdf.id, image.id]);
 
@@ -174,4 +180,85 @@ test('document upload, OCR, listing, ownership, content, failure preservation, a
 	expectStatus(await api(`/documents/${otherDocument.id}`, { token: other.token, method: 'DELETE' }), 204);
 	assert.deepEqual(expectStatus(await api('/documents', { token: owner.token }), 200).documents, []);
 	assert.deepEqual(fs.readdirSync(documentDirectory), []);
+});
+
+
+test('metadata, duplicate races, content comparison, integrity changes, and report isolation', async () => {
+	const register = async (email) => expectStatus(await api('/auth/register', { method: 'POST', json: { fullName: 'Verifier', email, password: 'DocumentPass123!' } }), 201).token;
+	const token = await register('verify-doc@example.test');
+	const other = await register('verify-other@example.test');
+	const bytes = digitalPdf('Amount: 100    Approved');
+	const upload = (buffer, name = 'invoice.pdf', auth = token) => api('/documents', { token: auth, method: 'POST', form: uploadForm(name, 'application/pdf', buffer) });
+	const form = uploadForm('invoice.pdf', 'application/pdf', bytes);
+	form.set('name', 'Invoice'); form.set('description', 'September invoice');
+	const first = expectStatus(await api('/documents', { token, method: 'POST', form }), 201).document;
+	assert.equal(first.description, 'September invoice');
+	assert.match(first.metadataSha256, /^[a-f0-9]{64}$/);
+	assert.match(first.textSha256, /^[a-f0-9]{64}$/);
+	assert.match(first.extractedText, /100 {2,}Approved/);
+	const verify = (id, targetDocumentId, auth = token) => api(`/documents/${id}/verify`, { token: auth, method: 'POST', json: { targetDocumentId } });
+	assert.equal(expectStatus(await verify(first.id), 200).verification.status, 'original');
+	assert.equal((await upload(bytes)).status, 409);
+	const privateCopy = expectStatus(await upload(bytes, 'private-other.pdf', other), 201).document;
+	assert.equal((await verify(first.id, privateCopy.id)).status, 404);
+	assert.equal((await verify(first.id, undefined, other)).status, 404);
+	assert.equal((await api(`/documents/${first.id}/report`, { token: other })).status, 404);
+	const variant = expectStatus(await upload(Buffer.concat([bytes, Buffer.from('\n% revised metadata\n')]), 'variant.pdf'), 201).document;
+	const comparison = expectStatus(await verify(first.id, variant.id), 200).verification;
+	assert.equal(comparison.report.evidence.textMatch, true);
+	assert.equal(comparison.report.evidence.sha256Match, false);
+	assert.equal(comparison.report.evidence.metadataMatch, false);
+	assert.equal(comparison.status, 'modified');
+	const changed = expectStatus(await upload(digitalPdf('Amount: 900    Approved'), 'changed.pdf'), 201).document;
+	assert.equal(expectStatus(await verify(first.id, changed.id), 200).verification.report.evidence.textMatch, false);
+	const races = await Promise.all([upload(digitalPdf('Concurrent upload')), upload(digitalPdf('Concurrent upload'))]);
+	assert.deepEqual(races.map((response) => response.status).sort(), [201, 409]);
+	const repository = require('../src/repositories/documentRepository');
+	const stored = await repository.getDocumentByIdAndOwnerId(first.id, JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).id);
+	fs.appendFileSync(stored.filePath, '\n% tampered');
+	assert.equal(expectStatus(await verify(first.id), 200).verification.report.evidence.sourceIntegrity.fileMatch, false);
+	fs.writeFileSync(stored.filePath, bytes);
+	await new Promise((resolve, reject) => database.run('UPDATE documents SET description = ? WHERE id = ?', ['Altered', first.id], (err) => err ? reject(err) : resolve()));
+	assert.equal(expectStatus(await verify(first.id), 200).verification.report.evidence.sourceIntegrity.metadataMatch, false);
+	fs.unlinkSync(stored.filePath);
+	const missing = expectStatus(await verify(first.id), 200).verification;
+	assert.equal(missing.status, 'modified');
+	assert.equal(missing.report.evidence.sourceIntegrity.fileMatch, false);
+	assert.equal(expectStatus(await api(`/documents/${first.id}/report`, { token }), 200).report.id, missing.id);
+	const beforeFiles = fs.readdirSync(documentDirectory).sort();
+	assert.equal((await upload(Buffer.from('not a PDF'))).status, 400);
+	assert.deepEqual(fs.readdirSync(documentDirectory).sort(), beforeFiles);
+});
+
+test('mixed PDF retains all page boundaries, column spacing, scanned text, and original bytes', async () => {
+	const token = expectStatus(await api('/auth/register', { method: 'POST', json: { fullName: 'Layout Owner', email: 'layout@example.test', password: 'DocumentPass123!' } }), 201).token;
+	const bytes = fs.readFileSync(path.join(__dirname, 'fixtures/mixed-document.pdf'));
+	const document = expectStatus(await api('/documents', { token, method: 'POST', form: uploadForm('mixed.pdf', 'application/pdf', bytes) }), 201).document;
+	assert.equal(document.ocrStatus, 'completed');
+	assert.equal(document.pageCount, 3);
+	const pages = document.extractedText.split('\f');
+	assert.equal(pages.length, 3);
+	assert.match(pages[0], /FIRST PAGE {2,}AMOUNT/);
+	assert.match(pages[0], /Invoice {2,}100/);
+	assert.match(pages[1], /SCANNED SECOND PAGE/);
+	assert.match(pages[2], /FINAL PAGE/);
+	assert.deepEqual((await api(`/documents/${document.id}/content`, { token })).body, bytes);
+	const retry = expectStatus(await api(`/documents/${document.id}/ocr`, { token, method: 'POST' }), 200).document;
+	assert.equal(retry.textSha256, document.textSha256);
+	assert.equal(retry.metadataSha256, document.metadataSha256);
+});
+
+
+test('damaged image data reports OCR failure without crashing the API and remains retryable', async () => {
+	const token = expectStatus(await api('/auth/register', { method: 'POST', json: { fullName: 'Damaged Scan', email: 'damaged@example.test', password: 'DocumentPass123!' } }), 201).token;
+	const damaged = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+	const document = expectStatus(await api('/documents', { token, method: 'POST', form: uploadForm('damaged.png', 'image/png', damaged) }), 201).document;
+	assert.equal(document.ocrStatus, 'failed');
+	assert.match(document.ocrError, /retry/i);
+	assert.equal(document.textSha256, null);
+	const retry = expectStatus(await api(`/documents/${document.id}/ocr`, { token, method: 'POST' }), 200).document;
+	assert.equal(retry.ocrStatus, 'failed');
+	assert.deepEqual((await api(`/documents/${document.id}/content`, { token })).body, damaged);
+	assert.equal((await api('/documents', { token })).status, 200);
+	expectStatus(await api(`/documents/${document.id}`, { token, method: 'DELETE' }), 204);
 });

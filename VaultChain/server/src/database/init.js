@@ -66,10 +66,15 @@ async function migrateMarketplaceOwnership() {
     ['title', 'TEXT'],
     ['description', 'TEXT'],
     ['sold_at', 'DATETIME'],
+    ['is_anonymous', 'INTEGER NOT NULL DEFAULT 1'],
+    ['preview_requires_approval', 'INTEGER NOT NULL DEFAULT 0'],
   ];
   for (const [name, definition] of listingAdditions) {
     if (!listingColumns.some((column) => column.name === name)) await run(`ALTER TABLE marketplace_listings ADD COLUMN ${name} ${definition}`);
   }
+  await run(`UPDATE marketplace_listings SET preview_requires_approval = 1
+    WHERE EXISTS (SELECT 1 FROM vault_assets va JOIN vaults v ON v.id = va.vault_id
+      WHERE va.asset_id = marketplace_listings.asset_id AND v.user_id = marketplace_listings.seller_id)`);
   await run(`UPDATE marketplace_listings
     SET public_reference = 'ML-' || printf('%06X', id)
     WHERE public_reference IS NULL`);
@@ -111,11 +116,30 @@ async function migrateDocuments() {
     ['ocr_status', "TEXT NOT NULL DEFAULT 'pending'"],
     ['ocr_error', 'TEXT'],
     ['ocr_processed_at', 'DATETIME'],
+    ['description', 'TEXT'],
+    ['category', 'TEXT'],
+    ['metadata_sha256', 'TEXT'],
   ];
   for (const [name, definition] of additions) {
     if (!columns.some((column) => column.name === name)) await run(`ALTER TABLE documents ADD COLUMN ${name} ${definition}`);
   }
   await exec('CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents(owner_id)');
+  await exec('CREATE INDEX IF NOT EXISTS idx_documents_owner_hash ON documents(owner_id, sha256_hash)');
+  const ocrColumns = await all('PRAGMA table_info(ocr_results)');
+  for (const name of ['ocr_source', 'selection_reason', 'ocr_warning']) {
+    if (!ocrColumns.some((column) => column.name === name)) await run(`ALTER TABLE ocr_results ADD COLUMN ${name} TEXT`);
+  }
+  if (!ocrColumns.some((column) => column.name === 'text_sha256')) {
+    await run('ALTER TABLE ocr_results ADD COLUMN text_sha256 TEXT');
+  }
+  const reportColumns = await all('PRAGMA table_info(verification_reports)');
+  for (const [name, definition] of [
+    ['document_id', 'INTEGER REFERENCES documents(id) ON DELETE CASCADE'],
+    ['target_document_id', 'INTEGER REFERENCES documents(id) ON DELETE SET NULL'],
+  ]) {
+    if (!reportColumns.some((column) => column.name === name)) await run(`ALTER TABLE verification_reports ADD COLUMN ${name} ${definition}`);
+  }
+
 }
 
 async function migrateAdminPlatform() {

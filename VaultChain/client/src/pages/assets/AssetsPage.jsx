@@ -6,6 +6,7 @@ import AssetInspector from '../../components/assets/AssetInspector';
 import AssetPreviewModal from '../../components/assets/AssetPreviewModal';
 import OwnershipCheckPanel from '../../components/assets/OwnershipCheckPanel';
 import UploadAssetModal from '../../components/assets/UploadAssetModal';
+import CreateListingModal from '../../components/marketplace/CreateListingModal';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
 import PageHeader from '../../components/ui/PageHeader';
@@ -28,6 +29,8 @@ export default function AssetsPage() {
 	const [previewAsset, setPreviewAsset] = useState(null);
 	const [pendingUpload, setPendingUpload] = useState(null);
 	const [ownershipResetKey, setOwnershipResetKey] = useState(0);
+	const [listingOpen, setListingOpen] = useState(false);
+	const [listingAssetId, setListingAssetId] = useState(null);
 
 	const loadAssets = useCallback(async () => {
 		setLoading(true);
@@ -99,7 +102,30 @@ export default function AssetsPage() {
 
 			<div className="assets-ownership-section"><OwnershipCheckPanel key={ownershipResetKey} onAddToAssets={(file) => { setPendingUpload(file); setUploadOpen(true); }} onViewAsset={handleViewAsset}/></div>
 			{selected ? <AssetInspector asset={selected} onClose={() => setSelected(null)} onPreview={(asset) => { setSelected(null); setPreviewAsset(asset); }} /> : null}
-			{previewAsset ? <AssetPreviewModal asset={previewAsset} onClose={() => setPreviewAsset(null)} /> : null}
+			{previewAsset ? (
+				<AssetPreviewModal
+					asset={previewAsset}
+					onClose={() => setPreviewAsset(null)}
+					onPostMarketplace={(asset) => {
+						setPreviewAsset(null);
+						setListingAssetId(asset.id);
+						setListingOpen(true);
+					}}
+				/>
+			) : null}
+			<CreateListingModal
+				open={listingOpen}
+				initialAssetId={listingAssetId}
+				onClose={() => {
+					setListingOpen(false);
+					setListingAssetId(null);
+				}}
+				onCreated={() => {
+					setListingOpen(false);
+					setListingAssetId(null);
+					loadAssets();
+				}}
+			/>
 			<UploadAssetModal open={uploadOpen} initialFile={pendingUpload} onClose={() => { setUploadOpen(false); setPendingUpload(null); }} onUploaded={handleUploaded} />
 		</>
 	);

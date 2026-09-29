@@ -1,0 +1,74 @@
+/* Public Stealth Mode (Coffee Shop Frosted Blur) */
+body.stealth-mode-active .stealth-blur,
+body.stealth-mode-active [data-stealth="true"],
+body.stealth-mode-active .dashboard-stats,
+body.stealth-mode-active .topbar__profile strong,
+body.stealth-mode-active .topbar__profile small,
+body.stealth-mode-active .marketplace-wallet-balance strong,
+body.stealth-mode-active .ownership-hash code,
+body.stealth-mode-active .stat-card strong,
+body.stealth-mode-active .listing-hero h2,
+body.stealth-mode-active .asset-card__body strong {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter 0.2s ease-in-out;
+}
+
+body.stealth-mode-active .stealth-blur:hover,
+body.stealth-mode-active [data-stealth="true"]:hover,
+body.stealth-mode-active .dashboard-stats:hover,
+body.stealth-mode-active .marketplace-wallet-balance strong:hover,
+body.stealth-mode-active .stat-card strong:hover,
+body.stealth-mode-active .listing-hero h2:hover {
+  filter: blur(0px);
+}
+
+.stealth-indicator-floating {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 999;
+  background: rgba(14, 21, 37, 0.92);
+  border: 1px solid rgba(65, 217, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(65, 217, 255, 0.15);
+  backdrop-filter: blur(10px);
+  color: #e2e8f0;
+  border-radius: 30px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: stealthPulse 2s infinite ease-in-out;
+}
+
+@keyframes stealthPulse {
+  0%, 100% { border-color: rgba(65, 217, 255, 0.35); }
+  50% { border-color: rgba(66, 214, 157, 0.7); }
+}
+
+.stealth-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  transition: all 0.18s;
+}
+
+.stealth-toggle-btn:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+.stealth-toggle-btn.is-active {
+  background: rgba(65, 217, 255, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}

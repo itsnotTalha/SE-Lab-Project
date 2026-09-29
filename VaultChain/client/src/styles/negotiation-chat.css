@@ -1,0 +1,166 @@
+/* Encrypted Negotiation Chat & Counter-Offers CSS */
+.negotiation-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.negotiation-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 14, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.negotiation-card {
+  position: relative;
+  width: min(100%, 540px);
+  height: min(85vh, 680px);
+  background: var(--surface-raised, #0b1120);
+  border: 1px solid rgba(65, 217, 255, 0.28);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.negotiation-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.negotiation-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.negotiation-lock-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(65, 217, 255, 0.1);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+}
+
+.negotiation-header-info h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.negotiation-header-info span {
+  font-size: 0.64rem;
+  color: #42d69d;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.negotiation-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-bubble {
+  max-width: 82%;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.chat-bubble.mine {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(65, 217, 255, 0.18), rgba(65, 217, 255, 0.08));
+  border: 1px solid rgba(65, 217, 255, 0.35);
+  color: #f1f5f9;
+}
+
+.chat-bubble.theirs {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: #cbd5e1;
+}
+
+.chat-bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.offer-card {
+  align-self: center;
+  width: 100%;
+  max-width: 380px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(248, 188, 78, 0.35);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.offer-card-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f8bc4e;
+  letter-spacing: 0.06em;
+}
+
+.offer-card-amount {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.offer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.negotiation-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.negotiation-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.negotiation-counter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(248, 188, 78, 0.08);
+  border: 1px dashed rgba(248, 188, 78, 0.3);
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
