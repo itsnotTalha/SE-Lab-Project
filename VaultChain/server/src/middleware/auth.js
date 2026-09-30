@@ -33,6 +33,11 @@ async function authenticateToken(req, res, next) {
 			error.status = 401;
 			throw error;
 		}
+		if ((decoded.authVersion || 0) !== currentUser.authVersion) {
+			const error = new Error('Session expired. Please sign in again.');
+			error.status = 401;
+			throw error;
+		}
 		if (currentUser.status === 'suspended') {
 			const error = new Error('This account has been suspended');
 			error.status = 403;

@@ -103,7 +103,23 @@ function getCurrentUserId() {
 	}
 }
 
+async function getRecoverySettings() {
+ return request('/auth/recovery', { headers: { Authorization: `Bearer ${getToken()}` } });
+}
+async function getRecoveryQuestions() {
+ return request('/auth/recovery/questions');
+}
+async function saveRecoverySettings(payload) {
+ return request('/auth/recovery', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload) });
+}
+async function resetPassword(payload) {
+ return request('/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+}
 export const authService = {
+ getRecoverySettings,
+ getRecoveryQuestions,
+ saveRecoverySettings,
+ resetPassword,
 	login,
 	register,
 	logout,

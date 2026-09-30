@@ -338,3 +338,10 @@ CREATE TABLE IF NOT EXISTS marketplace_preview_requests (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(listing_id, buyer_id)
 );
+
+-- Persistent recovery throttling, shared by all API processes using this database.
+CREATE TABLE IF NOT EXISTS account_recovery_attempts (
+  attempt_key TEXT PRIMARY KEY,
+  attempts INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);

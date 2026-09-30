@@ -1,6 +1,7 @@
 import { AlertCircle, CalendarDays, CheckCircle2, KeyRound, Mail, Save, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import RecoverySettings from '../../components/auth/RecoverySettings';
 import Button from '../../components/ui/Button';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
@@ -93,6 +94,7 @@ export default function ProfilePage() {
 					</form>
 				</SectionCard>
 			</div>
+			<RecoverySettings/>
 		</>
 	);
 }

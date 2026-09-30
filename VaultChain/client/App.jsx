@@ -13,6 +13,7 @@ import AdminShell from './src/layouts/AdminShell';
 const BlockchainPage = lazy(() => import('./src/pages/blockchain/BlockchainPage'));
 const AssetsPage = lazy(() => import('./src/pages/assets/AssetsPage'));
 const AssetInspectPage = lazy(() => import('./src/pages/assets/AssetInspectPage'));
+const ForgotPasswordPage = lazy(() => import('./src/pages/auth/ForgotPasswordPage'));
 const LoginPage = lazy(() => import('./src/pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./src/pages/auth/RegisterPage'));
 const DashboardPage = lazy(() => import('./src/pages/dashboard/DashboardPage'));
@@ -62,6 +63,7 @@ function AppRoutes() {
 			<Routes>
 				<Route path="/" element={<LandingPage />} />
 				<Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+				<Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
 				<Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 				<Route element={<ProtectedRoute />}>
 					<Route element={<AppShell />}>

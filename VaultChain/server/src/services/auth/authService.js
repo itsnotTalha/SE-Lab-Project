@@ -25,6 +25,7 @@ function buildTokenPayload(user) {
 		role: user.role,
 		status: user.status,
 		jti: crypto.randomUUID(),
+		authVersion: user.authVersion || 0,
 	};
 }
 
@@ -197,7 +198,8 @@ async function changePassword(userId, payload) {
 	if (!isCurrentPasswordValid) throw createHttpError(401, 'Current password is incorrect');
 
 	const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-	await authRepository.updateUserPassword(userId, passwordHash);
+	const result = await authRepository.updateUserPassword(userId, passwordHash, user.passwordHash);
+	if (!result.changes) throw createHttpError(409, 'Account changed. Sign in again and retry.');
 }
 
 async function verifyAccountPassword(userId, password) {

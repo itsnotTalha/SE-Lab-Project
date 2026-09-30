@@ -1,0 +1,13 @@
+.recovery-settings { margin-top: 17px; }
+.recovery-settings__grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px; align-items: start; }
+.recovery-explanation { padding: 20px; background: var(--primary-soft); border: 1px solid var(--border); border-radius: 14px; }
+.recovery-explanation > svg, .recovery-code-card > svg { color: var(--primary); }
+.recovery-explanation h3, .recovery-code-card h3 { margin: 12px 0; }
+.recovery-explanation p, .recovery-code-card p { color: var(--text-secondary); line-height: 1.6; }
+.recovery-code-card { display: grid; gap: 16px; justify-items: start; }
+.recovery-code-card code { max-width: 100%; overflow-wrap: anywhere; padding: 18px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: var(--bg-subtle); font-size: 1rem; user-select: all; }
+.recovery-acknowledgement { display: flex; align-items: center; gap: 10px; line-height: 1.5; color: var(--text-secondary); }
+.recovery-acknowledgement input { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; }
+.recovery-settings .button { justify-self: start; }
+.auth-card[data-mode='recovery'] { margin-block: 24px; }
+@media (max-width: 850px) { .recovery-settings__grid { grid-template-columns: 1fr; } }

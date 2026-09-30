@@ -169,6 +169,19 @@ async function migrateUsernames() {
   await exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
 }
 
+async function migrateAccountRecovery() {
+  const columns = await all('PRAGMA table_info(users)');
+  for (const [name, definition] of [
+    ['auth_version', 'INTEGER NOT NULL DEFAULT 0'],
+    ['recovery_question', 'TEXT'],
+    ['recovery_answer_hash', 'TEXT'],
+    ['recovery_birth_date_hash', 'TEXT'],
+    ['recovery_code_hash', 'TEXT'],
+  ]) {
+    if (!columns.some((column) => column.name === name)) await run(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+  }
+}
+
 async function initializeDatabase() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -182,6 +195,7 @@ async function initializeDatabase() {
       await migrateDocuments();
       await migrateAdminPlatform();
       await migrateUsernames();
+      await migrateAccountRecovery();
     })();
   }
 

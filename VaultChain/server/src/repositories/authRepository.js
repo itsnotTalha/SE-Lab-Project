@@ -40,6 +40,7 @@ function mapUserRow(row) {
 		role: row.role,
 		status: row.status,
 		passwordHash: row.password_hash,
+		authVersion: row.auth_version || 0,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
@@ -47,7 +48,7 @@ function mapUserRow(row) {
 
 async function findUserByEmail(email) {
 	const row = await get(
-		`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
+		`SELECT id, full_name, username, email, password_hash, auth_version, role, status, created_at, updated_at
 		 FROM users
 		 WHERE email = ?
 		 LIMIT 1`,
@@ -59,7 +60,7 @@ async function findUserByEmail(email) {
 
 async function findUserByUsername(username) {
  const row = await get(
-  `SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
+  `SELECT id, full_name, username, email, password_hash, auth_version, role, status, created_at, updated_at
    FROM users WHERE username = ? COLLATE NOCASE LIMIT 1`, [username]
  );
  return mapUserRow(row);
@@ -67,7 +68,7 @@ async function findUserByUsername(username) {
 
 async function findUserById(id) {
 	const row = await get(
-		`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
+		`SELECT id, full_name, username, email, password_hash, auth_version, role, status, created_at, updated_at
 		 FROM users
 		 WHERE id = ?
 		 LIMIT 1`,
@@ -95,7 +96,7 @@ async function createUserWithWallet({ fullName, email, passwordHash, role = 'USE
 			await run('COMMIT');
 
 			const createdUser = await get(
-				`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
+				`SELECT id, full_name, username, email, password_hash, auth_version, role, status, created_at, updated_at
 				 FROM users
 				 WHERE id = ?
 				 LIMIT 1`,
@@ -126,12 +127,12 @@ async function updateUserProfile(id, { fullName, username }) {
 	return findUserById(id);
 }
 
-async function updateUserPassword(id, passwordHash) {
-	await run(
+async function updateUserPassword(id, passwordHash, previousPasswordHash) {
+	return run(
 		`UPDATE users
 		 SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		[passwordHash, id]
+		 WHERE id = ? AND password_hash = ?`,
+		[passwordHash, id, previousPasswordHash]
 	);
 }
 
