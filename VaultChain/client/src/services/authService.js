@@ -23,11 +23,11 @@ async function request(path, options) {
 	return data;
 }
 
-async function login({ email, password }) {
+async function login({ identifier, email, username, password }) {
 	const data = await request('/auth/login', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email, password }),
+		body: JSON.stringify({ identifier: identifier ?? email ?? username, password }),
 	});
 
 	setToken(data.token);

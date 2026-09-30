@@ -1,165 +1,61 @@
-import { ArrowRight, Check, Loader2, ShieldCheck } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import '../../styles/slide-to-confirm.css';
 
-export default function SlideToConfirm({
-	label = 'Slide to confirm payment',
-	successLabel = 'Payment authorized!',
-	onConfirm,
-	disabled = false,
-	loading = false,
-}) {
-	const trackRef = useRef(null);
-	const thumbRef = useRef(null);
-	const [dragging, setDragging] = useState(false);
-	const [dragX, setDragX] = useState(0);
-	const [confirmed, setConfirmed] = useState(false);
-	const [maxX, setMaxX] = useState(200);
-
-	useEffect(() => {
-		function updateMax() {
-			if (trackRef.current && thumbRef.current) {
-				const trackWidth = trackRef.current.clientWidth;
-				const thumbWidth = thumbRef.current.clientWidth;
-				setMaxX(Math.max(0, trackWidth - thumbWidth - 6));
-			}
-		}
-		updateMax();
-		window.addEventListener('resize', updateMax);
-		return () => window.removeEventListener('resize', updateMax);
-	}, []);
-
-	useEffect(() => {
-		if (!dragging && !confirmed) {
-			setDragX(0);
-		}
-	}, [dragging, confirmed]);
-
-	function handlePointerDown() {
-		if (disabled || loading || confirmed) return;
-		setDragging(true);
-	}
-
-	useEffect(() => {
-		function onPointerMove(e) {
-			if (!dragging || confirmed || !trackRef.current) return;
-			const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-			const rect = trackRef.current.getBoundingClientRect();
-			const offsetX = clientX - rect.left - 24;
-			const clamped = Math.max(0, Math.min(offsetX, maxX));
-			setDragX(clamped);
-
-			if (maxX > 0 && clamped >= maxX * 0.85) {
-				setConfirmed(true);
-				setDragging(false);
-				setDragX(maxX);
-				if (onConfirm) {
-					onConfirm();
-				}
-			}
-		}
-
-		function onPointerUp() {
-			if (dragging && !confirmed) {
-				setDragging(false);
-				setDragX(0);
-			}
-		}
-
-		if (dragging) {
-			window.addEventListener('mousemove', onPointerMove);
-			window.addEventListener('mouseup', onPointerUp);
-			window.addEventListener('touchmove', onPointerMove, { passive: true });
-			window.addEventListener('touchend', onPointerUp);
-		}
-
-		return () => {
-			window.removeEventListener('mousemove', onPointerMove);
-			window.removeEventListener('mouseup', onPointerUp);
-			window.removeEventListener('touchmove', onPointerMove);
-			window.removeEventListener('touchend', onPointerUp);
-		};
-	}, [dragging, confirmed, maxX, onConfirm]);
-
-	const progressPercent = maxX > 0 ? Math.min(100, Math.max(0, (dragX / maxX) * 100)) : 0;
-
-	return (
-		<div className="slide-confirm-container">
-			<div
-				ref={trackRef}
-				className={`slide-confirm-track ${confirmed || loading ? 'is-confirmed' : ''}`}
-				style={{ opacity: disabled ? 0.6 : 1 }}
-			>
-				<div
-					className="slide-confirm-progress"
-					style={{ width: `${Math.max(24, progressPercent)}%` }}
-				/>
-
-				<div className="slide-confirm-label">
-					{loading ? (
-						<>
-							<Loader2 size={16} className="slide-confirm-spinner" />
-							<span>Authorizing transaction...</span>
-						</>
-					) : confirmed ? (
-						<>
-							<ShieldCheck size={17} style={{ color: '#42d69d' }} />
-							<span style={{ color: '#42d69d' }}>{successLabel}</span>
-						</>
-					) : (
-						<span className="slide-confirm-shimmer">{label}</span>
-					)}
-				</div>
-
-				<div
-					ref={thumbRef}
-					className="slide-confirm-thumb"
-					style={{
-						transform: `translateX(${dragX}px)`,
-						transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
-					}}
-					onMouseDown={handlePointerDown}
-					onTouchStart={handlePointerDown}
-					role="slider"
-					aria-label={label}
-					aria-valuenow={Math.round(progressPercent)}
-					aria-valuemin="0"
-					aria-valuemax="100"
-					tabIndex={disabled ? -1 : 0}
-					onKeyDown={(e) => {
-						if ((e.key === 'Enter' || e.key === ' ') && !disabled && !loading && !confirmed) {
-							e.preventDefault();
-							setConfirmed(true);
-							setDragX(maxX);
-							onConfirm?.();
-						}
-					}}
-				>
-					{loading ? (
-						<Loader2 size={18} className="slide-confirm-spinner" />
-					) : confirmed ? (
-						<Check size={20} strokeWidth={2.5} />
-					) : (
-						<ArrowRight size={20} className="slide-confirm-arrow" />
-					)}
-				</div>
-			</div>
-
-			<div className="slide-confirm-hint">
-				<span>🔒 Drag slider to right or tap fallback</span>
-				{!disabled && !loading && !confirmed && (
-					<button
-						type="button"
-						className="slide-confirm-fallback-btn"
-						onClick={() => {
-							setConfirmed(true);
-							setDragX(maxX);
-							onConfirm?.();
-						}}
-					>
-						Instant click confirm
-					</button>
-				)}
-			</div>
-		</div>
-	);
+export default function SlideToConfirm({ label = 'Slide to confirm purchase', successLabel = 'Purchase confirmed', onConfirm, disabled = false, loading = false }) {
+ const track = useRef(null);
+ const gesture = useRef(null);
+ const submitting = useRef(false);
+ const [progress, setProgress] = useState(0);
+ const [pending, setPending] = useState(false);
+ const [confirmed, setConfirmed] = useState(false);
+ const blocked = disabled || loading || pending || confirmed;
+ async function confirm() {
+  if (blocked || submitting.current) return;
+  submitting.current = true;
+  setPending(true);
+  setProgress(1);
+  try {
+   const succeeded = await onConfirm?.();
+   if (succeeded === false) setProgress(0);
+   else setConfirmed(true);
+  } catch { setProgress(0); }
+  finally { submitting.current = false; setPending(false); }
+ }
+ function start(event) {
+  if (blocked || !event.isPrimary || event.button !== 0) return;
+  const distance = track.current.clientWidth - event.currentTarget.offsetWidth - 8;
+  if (distance <= 0) return;
+  gesture.current = { id: event.pointerId, start: event.clientX, distance, progress: 0 };
+  event.currentTarget.setPointerCapture(event.pointerId);
+ }
+ function move(event) {
+  const drag = gesture.current;
+  if (!drag || drag.id !== event.pointerId || blocked) return;
+  drag.progress = Math.min(1, Math.max(0, (event.clientX - drag.start) / drag.distance));
+  setProgress(drag.progress);
+ }
+ function finish(event, cancelled = false) {
+  const drag = gesture.current;
+  if (!drag || drag.id !== event.pointerId) return;
+  gesture.current = null;
+  if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  if (!cancelled && drag.progress >= .95) void confirm();
+  else setProgress(0);
+ }
+ return <div className="slide-confirm-container">
+  <div ref={track} className={`slide-confirm-track ${confirmed ? 'is-confirmed' : ''}`} aria-busy={loading || pending}>
+   <div className="slide-confirm-progress" style={{ width: `${progress * 100}%` }}/>
+   <span className="slide-confirm-label" role="status">{loading || pending ? 'Processing purchase…' : confirmed ? successLabel : label}</span>
+   <button type="button" className="slide-confirm-thumb" disabled={blocked}
+    style={{ left: `calc(4px + (100% - 56px) * ${progress})` }}
+    aria-label={`${label}. Press Enter to confirm, or drag fully to the right.`}
+    onPointerDown={start} onPointerMove={move} onPointerUp={(event) => finish(event)} onPointerCancel={(event) => finish(event, true)}
+    onLostPointerCapture={(event) => finish(event, true)}
+    onClick={(event) => { if (event.detail === 0) void confirm(); }}>
+    {loading || pending ? <Loader2 className="slide-confirm-spinner" size={20}/> : confirmed ? <Check size={20}/> : <ArrowRight size={20}/>}
+   </button>
+  </div>
+  <div className="slide-confirm-hint"><span>Slide fully to the right and release.</span><button type="button" className="slide-confirm-fallback-btn" disabled={blocked} onClick={confirm}>Confirm without dragging</button></div>
+ </div>;
 }

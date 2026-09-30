@@ -57,6 +57,14 @@ async function findUserByEmail(email) {
 	return mapUserRow(row);
 }
 
+async function findUserByUsername(username) {
+ const row = await get(
+  `SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
+   FROM users WHERE username = ? COLLATE NOCASE LIMIT 1`, [username]
+ );
+ return mapUserRow(row);
+}
+
 async function findUserById(id) {
 	const row = await get(
 		`SELECT id, full_name, username, email, password_hash, role, status, created_at, updated_at
@@ -128,6 +136,7 @@ async function updateUserPassword(id, passwordHash) {
 }
 
 module.exports = {
+	findUserByUsername,
 	findUserByEmail,
 	findUserById,
 	createUserWithWallet,

@@ -103,3 +103,33 @@ test('password change invalidates the old password and accepts the new password'
 	const login = await authService.login({ email: 'original@example.test', password: 'NewStrongPass123!' });
 	assert.equal(login.user.id, account.user.id);
 });
+
+
+test('login accepts saved usernames, @handles, email and legacy payloads', async () => {
+ for (const payload of [
+  { identifier: ' UPDATED_NAME ' }, { identifier: '@updated_name' },
+  { username: 'updated_name' }, { email: 'updated_name' },
+  { identifier: ' ORIGINAL@EXAMPLE.TEST ' }, { email: 'original@example.test' },
+ ]) {
+  const result = await authService.login({ ...payload, password: 'NewStrongPass123!' });
+  assert.equal(result.user.id, account.user.id);
+  assert.equal(result.user.username, 'updated_name');
+  assert.ok(result.token);
+ }
+});
+
+test('username login rejects wrong passwords and unknown handles with the same error', async () => {
+ for (const [identifier, password] of [['updated_name', 'wrong'], ['missing_username', 'NewStrongPass123!']]) {
+  await assert.rejects(() => authService.login({ identifier, password }),
+   (error) => error.status === 401 && error.message === 'Invalid username, email, or password');
+ }
+});
+
+test('username login retains suspended-account checks', async () => {
+ await new Promise((resolve, reject) => database.run("UPDATE users SET status = 'suspended' WHERE id = ?", [account.user.id], (error) => error ? reject(error) : resolve()));
+ try {
+  await assert.rejects(() => authService.login({ identifier: 'updated_name', password: 'NewStrongPass123!' }), (error) => error.status === 403);
+ } finally {
+  await new Promise((resolve, reject) => database.run("UPDATE users SET status = 'active' WHERE id = ?", [account.user.id], (error) => error ? reject(error) : resolve()));
+ }
+});

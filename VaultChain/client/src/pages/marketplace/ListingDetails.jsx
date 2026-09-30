@@ -235,14 +235,14 @@ export default function ListingDetails() {
 			) : null}
 
 			{/* SlideToConfirm & Security Receipt Modal */}
-			<PurchaseListingModal
-				listing={purchaseOpen ? listing : null}
+			{purchaseOpen && <PurchaseListingModal
+				listing={listing}
 				onClose={() => {
 					setPurchaseOpen(false);
 					load();
 				}}
-				onPurchased={() => load()}
-			/>
+				onPurchased={() => setListing((current) => ({ ...current, status: 'sold' }))}
+			/>}
 
 			{/* Encrypted Negotiation Modal */}
 			<NegotiationChatModal

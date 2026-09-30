@@ -66,3 +66,13 @@ and mobile/collapsed sidebar layouts. Organization features are browser-local
 demos, not server-enforced shared memberships. Active selection uses session
 storage per account/tab; organization records use account-scoped local storage.
 The previous unscoped local-storage records are left untouched.
+
+## Purchase confirmation regression
+
+```bash
+python tests/selenium/test_purchase.py
+```
+
+Uses disposable seller/buyer accounts to check partial-slide cancellation,
+keyboard confirmation, insufficient-funds retry, successful drag confirmation,
+remaining balance, receipt persistence, and purchased-asset navigation.

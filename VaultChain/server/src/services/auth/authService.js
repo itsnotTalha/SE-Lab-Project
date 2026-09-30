@@ -76,18 +76,11 @@ function validateRegisterInput(payload) {
 }
 
 function validateLoginInput(payload) {
-	const email = normalizeEmail(payload.email);
-	const password = String(payload.password || '');
-
-	if (!email) {
-		throw createHttpError(400, 'Email is required');
-	}
-
-	if (!password) {
-		throw createHttpError(400, 'Password is required');
-	}
-
-	return { email, password };
+ const identifier = String(payload.identifier ?? payload.email ?? payload.username ?? '').trim().toLowerCase();
+ const password = String(payload.password || '');
+ if (!identifier) throw createHttpError(400, 'Username or email is required');
+ if (!password) throw createHttpError(400, 'Password is required');
+ return { identifier, password };
 }
 
 function validateProfileInput(payload, currentUser) {
@@ -138,17 +131,19 @@ async function register(payload) {
 }
 
 async function login(payload) {
-	const { email, password } = validateLoginInput(payload);
-	const user = await authRepository.findUserByEmail(email);
+	const { identifier, password } = validateLoginInput(payload);
+	const user = identifier.includes('@') && !identifier.startsWith('@')
+		? await authRepository.findUserByEmail(identifier)
+		: await authRepository.findUserByUsername(identifier.replace(/^@/, ''));
 
 	if (!user) {
-		throw createHttpError(401, 'Invalid email or password');
+		throw createHttpError(401, 'Invalid username, email, or password');
 	}
 
 	const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
 	if (!isPasswordValid) {
-		throw createHttpError(401, 'Invalid email or password');
+		throw createHttpError(401, 'Invalid username, email, or password');
 	}
 	if (user.status === 'suspended') {
 		throw createHttpError(403, 'This account has been suspended');

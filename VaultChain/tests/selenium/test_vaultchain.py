@@ -187,7 +187,7 @@ class VaultChainTests(unittest.TestCase):
         self.driver.get(self.base_url + '/login')
         self.click('button[type="submit"]')
         self.assertEqual(self.visible('[role="alert"]').text,
-                         'Enter your email and password to continue.')
+                         'Enter your username or email and password to continue.')
         self.driver.get(self.base_url + '/register')
         self.fill('#register-name', 'Selenium Tester')
         self.fill('#register-email', f'selenium-{uuid.uuid4().hex}@example.com')
